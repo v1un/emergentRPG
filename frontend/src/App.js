@@ -86,7 +86,7 @@ function App() {
       )}
       
       {currentView === 'game' && (
-        <div className="h-screen overflow-hidden">
+        <div className="h-[calc(100vh-72px)] overflow-hidden">
           <GameInterface 
             gameState={gameState} 
             setGameState={setGameState}
