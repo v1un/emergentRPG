@@ -291,11 +291,11 @@ export const GameInterface = ({ gameState, setGameState, onAction }) => {
   return (
     <div className="h-screen flex overflow-hidden bg-dungeon-dark">
       {/* Main Game Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-h-0">
         {/* Story Display */}
         <div 
           ref={chatRef}
-          className="flex-1 overflow-y-auto p-6 space-y-4 relative"
+          className="flex-1 overflow-y-auto p-6 space-y-4 relative min-h-0"
           style={{
             backgroundImage: `url('https://images.unsplash.com/photo-1598205542984-6720bbcf74f1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzd8MHwxfHNlYXJjaHwxfHxmYW50YXN5JTIwbGFuZHNjYXBlfGVufDB8fHx0ZWFsfDE3NDgwMTQ3NjZ8MA&ixlib=rb-4.1.0&q=85')`,
             backgroundSize: 'cover',
