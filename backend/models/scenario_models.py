@@ -91,6 +91,7 @@ class ScenarioTemplate(BaseModel):
     difficulty_level: str = "medium"
     estimated_duration: str = "2-4 hours"
     tags: List[str] = Field(default_factory=list)
+    playable_characters: List[Dict[str, Any]] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=datetime.now)
 
 class GenerationRequest(BaseModel):
