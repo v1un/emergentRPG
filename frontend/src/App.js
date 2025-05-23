@@ -3,7 +3,10 @@ import './App.css';
 import { 
   LandingPage, 
   GameInterface, 
-  Navigation 
+  Navigation,
+  ScenarioGeneratorPage,
+  ConfigurationPage,
+  LorebooksPage
 } from './components';
 
 function App() {
