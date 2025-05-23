@@ -308,10 +308,10 @@ export const GameInterface = ({ gameState, setGameState, onAction }) => {
             {gameState.story.map((entry, index) => (
               <motion.div
                 key={index}
-                className={`p-4 rounded-lg chat-message border shadow-lg ${
+                className={`p-4 rounded-lg chat-message shadow-xl ${
                   entry.type === 'narration' 
-                    ? 'bg-slate-900/98 border-l-4 border-dungeon-orange border-slate-700/50 backdrop-blur-sm' 
-                    : 'bg-blue-900/95 border-l-4 border-blue-400 border-blue-700/50 ml-8 backdrop-blur-sm'
+                    ? 'bg-slate-900 border-l-4 border-dungeon-orange border border-slate-700' 
+                    : 'bg-blue-900 border-l-4 border-blue-400 border border-blue-700 ml-8'
                 }`}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
