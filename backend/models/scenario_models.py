@@ -87,6 +87,7 @@ class ScenarioTemplate(BaseModel):
     time_period: str
     starting_situation: str
     key_characters: List[str] = Field(default_factory=list)
+    playable_characters: List[Dict[str, Any]] = Field(default_factory=list)
     available_paths: List[str] = Field(default_factory=list)
     difficulty_level: str = "medium"
     estimated_duration: str = "2-4 hours"

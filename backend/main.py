@@ -216,6 +216,7 @@ async def delete_lorebook(lorebook_id: str):
 async def create_game_session(
     lorebook_id: Optional[str] = None,
     character_name: Optional[str] = None,
+    scenario_template_id: Optional[str] = None,
     scenario_type: str = "custom"
 ):
     """Create a new game session"""
@@ -229,8 +230,45 @@ async def create_game_session(
             if not lorebook:
                 raise HTTPException(status_code=404, detail="Lorebook not found")
         
+        # Get scenario template if specified
+        scenario_template = None
+        if scenario_template_id:
+            scenario_template = await db_service.get_scenario_template(scenario_template_id)
+            if not scenario_template:
+                raise HTTPException(status_code=404, detail="Scenario template not found")
+            
+            # If we have a scenario template but no lorebook, get the lorebook from the template
+            if not lorebook and scenario_template.lorebook_id:
+                lorebook = await db_service.get_lorebook(scenario_template.lorebook_id)
+        
         # Create character
-        if character_name and lorebook:
+        if scenario_template and scenario_template.playable_characters and character_name:
+            # Find the selected character in the template's playable characters
+            selected_character = None
+            for char_data in scenario_template.playable_characters:
+                if char_data.get("name") == character_name:
+                    # Create character from template data
+                    selected_character = Character(**char_data)
+                    break
+            
+            if not selected_character and lorebook:
+                # If character not found in template but name and lorebook provided, create it
+                character = await character_creation_flow.create_character_from_series(
+                    character_name, lorebook, scenario_template.starting_situation
+                )
+            else:
+                character = selected_character or Character(
+                    name=character_name or "Adventurer",
+                    level=1,
+                    health=100,
+                    max_health=100,
+                    mana=50,
+                    max_mana=50,
+                    experience=0,
+                    stats=CharacterStats(),
+                    class_name="Adventurer"
+                )
+        elif character_name and lorebook:
             # Create character from series
             character = await character_creation_flow.create_character_from_series(
                 character_name, lorebook, "Beginning adventure"
@@ -417,6 +455,8 @@ async def list_scenario_templates(
                     "difficulty_level": template.difficulty_level,
                     "estimated_duration": template.estimated_duration,
                     "tags": template.tags,
+                    "has_playable_characters": len(template.playable_characters) > 0,
+                    "playable_character_count": len(template.playable_characters),
                     "created_at": template.created_at.isoformat()
                 }
                 for template in templates
@@ -425,6 +465,56 @@ async def list_scenario_templates(
         
     except Exception as e:
         logger.error(f"Error listing scenario templates: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/scenarios/templates/{template_id}")
+async def get_scenario_template(template_id: str):
+    """Get detailed information about a specific scenario template"""
+    try:
+        template = await db_service.get_scenario_template(template_id)
+        if not template:
+            raise HTTPException(status_code=404, detail="Scenario template not found")
+        
+        return {
+            "template": template.model_dump(),
+            "summary": {
+                "playable_character_count": len(template.playable_characters),
+                "key_characters_count": len(template.key_characters),
+                "available_paths_count": len(template.available_paths)
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting scenario template details: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/scenarios/templates/{template_id}/characters")
+async def get_template_playable_characters(template_id: str):
+    """Get playable characters for a specific scenario template"""
+    try:
+        template = await db_service.get_scenario_template(template_id)
+        if not template:
+            raise HTTPException(status_code=404, detail="Scenario template not found")
+        
+        return {
+            "characters": [
+                {
+                    "name": char.get("name", "Unknown"),
+                    "class_name": char.get("class_name", "Adventurer"),
+                    "level": char.get("level", 1),
+                    "background": char.get("background", "Unknown background"),
+                    "stats": char.get("stats", {})
+                }
+                for char in template.playable_characters
+            ]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting template characters: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # ===== CHARACTER CREATION ENDPOINTS =====

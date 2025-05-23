@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Sword, 
@@ -98,8 +98,192 @@ export const Navigation = ({ currentView, setCurrentView }) => {
 };
 
 // Landing Page Component
+// Character Selection Component for Scenario Templates
+export const CharacterSelectionModal = ({ isOpen, onClose, templateId, onSelectCharacter }) => {
+  const [characters, setCharacters] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedCharacter, setSelectedCharacter] = useState(null);
+  const [error, setError] = useState(null);
+
+  const fetchCharacters = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/scenarios/templates/${templateId}/characters`);
+      if (response.ok) {
+        const result = await response.json();
+        setCharacters(result.characters);
+      } else {
+        setError('Failed to load characters');
+      }
+    } catch (error) {
+      console.error('Error fetching characters:', error);
+      setError('Error loading characters');
+    } finally {
+      setLoading(false);
+    }
+  }, [templateId]);
+
+  useEffect(() => {
+    if (isOpen && templateId) {
+      fetchCharacters();
+    }
+  }, [isOpen, templateId, fetchCharacters]);
+
+  const handleSelectCharacter = () => {
+    if (selectedCharacter) {
+      onSelectCharacter(selectedCharacter);
+      onClose();
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+      <div className="bg-dungeon-darker rounded-xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+        <div className="p-6 border-b border-slate-700">
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold text-white">Choose Your Character</h2>
+            <button onClick={onClose} className="text-slate-400 hover:text-white">
+              <X size={24} />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw size={32} className="animate-spin text-dungeon-orange" />
+            </div>
+          ) : error ? (
+            <div className="text-center py-8 text-red-400">
+              <AlertCircle size={32} className="mx-auto mb-2" />
+              <p>{error}</p>
+            </div>
+          ) : characters.length === 0 ? (
+            <div className="text-center py-8 text-dungeon-text-secondary">
+              <User size={32} className="mx-auto mb-2 opacity-50" />
+              <p>No characters available for this scenario.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {characters.map((character, index) => (
+                <div 
+                  key={index}
+                  onClick={() => setSelectedCharacter(character)}
+                  className={`p-4 rounded-lg cursor-pointer transition-colors ${selectedCharacter === character 
+                    ? 'bg-dungeon-orange bg-opacity-20 border border-dungeon-orange' 
+                    : 'bg-slate-700 hover:bg-slate-600 border border-transparent'}`}
+                >
+                  <div className="flex items-center space-x-3 mb-2">
+                    <div className="w-10 h-10 rounded-full bg-dungeon-orange flex items-center justify-center">
+                      <User size={20} className="text-dungeon-dark" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-white">{character.name}</h3>
+                      <p className="text-sm text-dungeon-text-secondary">Level {character.level} {character.class_name}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-2 text-sm text-dungeon-text-secondary">
+                    <p className="line-clamp-2">{character.background}</p>
+                  </div>
+
+                  {character.stats && (
+                    <div className="mt-3 grid grid-cols-3 gap-2">
+                      <div className="text-center">
+                        <div className="text-xs text-dungeon-text-secondary">STR</div>
+                        <div className="text-white font-medium">{character.stats.strength}</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-xs text-dungeon-text-secondary">INT</div>
+                        <div className="text-white font-medium">{character.stats.intelligence}</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-xs text-dungeon-text-secondary">DEX</div>
+                        <div className="text-white font-medium">{character.stats.dexterity}</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="p-6 border-t border-slate-700 flex justify-end">
+          <button 
+            onClick={onClose}
+            className="px-4 py-2 text-dungeon-text-secondary hover:text-white transition-colors mr-3"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={handleSelectCharacter}
+            disabled={!selectedCharacter}
+            className="px-6 py-2 bg-dungeon-orange text-dungeon-dark rounded-lg font-medium hover:bg-dungeon-orange-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Select Character
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const LandingPage = ({ onStartGame }) => {
-  const scenarios = [
+  const [scenarios, setScenarios] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [showCharacterModal, setShowCharacterModal] = useState(false);
+
+  useEffect(() => {
+    fetchScenarioTemplates();
+  }, []);
+
+  const fetchScenarioTemplates = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/scenarios/templates`);
+      if (response.ok) {
+        const result = await response.json();
+        setScenarios(result.templates.map(template => ({
+          id: template.id,
+          title: template.title,
+          description: template.description,
+          image: "https://images.unsplash.com/photo-1598205542984-6720bbcf74f1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzd8MHwxfHNlYXJjaHwxfHxmYW50YXN5JTIwbGFuZHNjYXBlfGVufDB8fHx0ZWFsfDE3NDgwMTQ3NjZ8MA&ixlib=rb-4.1.0&q=85",
+          lorebook_id: template.lorebook_id,
+          has_characters: template.has_playable_characters,
+          character_count: template.playable_character_count
+        })));
+      }
+    } catch (error) {
+      console.error('Error fetching scenario templates:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleScenarioSelect = (scenario) => {
+    setSelectedTemplate(scenario);
+    if (scenario.has_characters) {
+      setShowCharacterModal(true);
+    } else {
+      // Start game with default character if no characters available
+      onStartGame(scenario);
+    }
+  };
+
+  const handleCharacterSelect = (character) => {
+    // Start game with selected character and scenario
+    onStartGame({
+      ...selectedTemplate,
+      character: character
+    });
+  };
+
+  // Fallback scenarios if API fails
+  const fallbackScenarios = [
     {
       id: 1,
       title: "Fantasy Adventure",
@@ -120,29 +304,11 @@ export const LandingPage = ({ onStartGame }) => {
       description: "Rule a kingdom in an age of knights and castles",
       image: "https://images.pexels.com/photos/32166318/pexels-photo-32166318.jpeg",
       intro: "The crown weighs heavy on your head as you survey your kingdom from the castle walls. Dark times approach..."
-    },
-    {
-      id: 4,
-      title: "Modern Mystery",
-      description: "Solve crimes and uncover conspiracies in the modern world",
-      image: "https://images.unsplash.com/photo-1591340481334-cf7a7edd2989?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzd8MHwxfHNlYXJjaHwyfHxmYW50YXN5JTIwbGFuZHNjYXBlfGVufDB8fHx0ZWFsfDE3NDgwMTQ3NjZ8MA&ixlib=rb-4.1.0&q=85",
-      intro: "Rain pours down on the city streets as you arrive at the crime scene. Something isn't right about this case..."
-    },
-    {
-      id: 5,
-      title: "Horror Mansion",
-      description: "Survive a night in a haunted mansion filled with terrors",
-      image: "https://images.pexels.com/photos/11785594/pexels-photo-11785594.jpeg",
-      intro: "Thunder crashes as you approach the abandoned mansion. The locals warned you not to come here alone..."
-    },
-    {
-      id: 6,
-      title: "Cyberpunk City",
-      description: "Navigate the neon-lit streets of a dystopian future",
-      image: "https://images.pexels.com/photos/1693095/pexels-photo-1693095.jpeg",
-      intro: "Neon lights reflect off rain-slicked streets as you jack into the neural network. Time to infiltrate the corporation..."
     }
   ];
+
+  // Use fallback scenarios if API call failed and no scenarios loaded
+  const displayScenarios = scenarios.length > 0 ? scenarios : fallbackScenarios;
 
   return (
     <div className="min-h-screen">
@@ -183,13 +349,7 @@ export const LandingPage = ({ onStartGame }) => {
             transition={{ duration: 1, delay: 0.6 }}
           >
             <button 
-              onClick={() => onStartGame({
-                id: 1,
-                title: "Fantasy Adventure",
-                description: "Embark on a magical quest in a world of dragons and wizards",
-                image: "https://images.unsplash.com/photo-1598205542984-6720bbcf74f1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzd8MHwxfHNlYXJjaHwxfHxmYW50YXN5JTIwbGFuZHNjYXBlfGVufDB8fHx0ZWFsfDE3NDgwMTQ3NjZ8MA&ixlib=rb-4.1.0&q=85",
-                intro: "You awaken in a mystical forest, ancient magic flowing through your veins. Your destiny as a hero begins now..."
-              })}
+              onClick={() => handleScenarioSelect(displayScenarios[0])}
               className="flex items-center space-x-3 px-8 py-4 bg-dungeon-orange text-dungeon-dark rounded-lg font-bold text-lg hover:bg-dungeon-orange-dark transition-colors glow-orange"
             >
               <Play size={24} />
@@ -219,37 +379,59 @@ export const LandingPage = ({ onStartGame }) => {
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {scenarios.map((scenario, index) => (
-              <motion.div
-                key={scenario.id}
-                className="scenario-card rounded-xl overflow-hidden cursor-pointer"
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
-                whileHover={{ scale: 1.02 }}
-                onClick={() => onStartGame(scenario)}
-              >
-                <div 
-                  className="h-48 bg-cover bg-center relative"
-                  style={{ backgroundImage: `url('${scenario.image}')` }}
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <RefreshCw size={48} className="animate-spin text-dungeon-orange" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {displayScenarios.map((scenario, index) => (
+                <motion.div
+                  key={scenario.id}
+                  className="scenario-card rounded-xl overflow-hidden cursor-pointer"
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: index * 0.1 }}
+                  whileHover={{ scale: 1.02 }}
+                  onClick={() => handleScenarioSelect(scenario)}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-t from-dungeon-dark via-transparent to-transparent"></div>
-                </div>
-                <div className="p-6">
-                  <h3 className="text-xl font-bold mb-3 text-white">{scenario.title}</h3>
-                  <p className="text-dungeon-text-secondary mb-4">{scenario.description}</p>
-                  <button className="flex items-center space-x-2 text-dungeon-orange hover:text-dungeon-orange-dark transition-colors">
-                    <Play size={16} />
-                    <span>Start Adventure</span>
-                  </button>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+                  <div 
+                    className="h-48 bg-cover bg-center relative"
+                    style={{ backgroundImage: `url('${scenario.image}')` }}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-t from-dungeon-dark via-transparent to-transparent"></div>
+                  </div>
+                  <div className="p-6">
+                    <h3 className="text-xl font-bold mb-3 text-white">{scenario.title}</h3>
+                    <p className="text-dungeon-text-secondary mb-4">{scenario.description}</p>
+                    
+                    {scenario.has_characters && (
+                      <div className="flex items-center mb-4 text-sm text-dungeon-orange">
+                        <User size={16} className="mr-2" />
+                        <span>{scenario.character_count} playable {scenario.character_count === 1 ? 'character' : 'characters'}</span>
+                      </div>
+                    )}
+                    
+                    <button className="flex items-center space-x-2 text-dungeon-orange hover:text-dungeon-orange-dark transition-colors">
+                      <Play size={16} />
+                      <span>Start Adventure</span>
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
+      {/* Character Selection Modal */}
+      <CharacterSelectionModal 
+        isOpen={showCharacterModal}
+        onClose={() => setShowCharacterModal(false)}
+        templateId={selectedTemplate?.id}
+        onSelectCharacter={handleCharacterSelect}
+      />
+      
       {/* Features Section */}
       <div className="py-20 px-6 bg-dungeon-dark">
         <div className="max-w-7xl mx-auto">
