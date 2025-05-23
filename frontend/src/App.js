@@ -43,16 +43,54 @@ function App() {
     ]
   });
 
-  const startGame = (scenario) => {
-    setCurrentView('game');
-    // Initialize game based on selected scenario
-    setGameState(prev => ({
-      ...prev,
-      scenario: scenario,
-      story: [
-        { type: 'narration', text: scenario.intro }
-      ]
-    }));
+  const startGame = async (scenario) => {
+    try {
+      // Create game session with backend
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/game/sessions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          scenario_type: 'fantasy',
+          character_name: 'Adventurer'
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        
+        // Switch to game view
+        setCurrentView('game');
+        
+        // Initialize game state with backend response
+        setGameState(prev => ({
+          ...prev,
+          session_id: result.session_id,
+          character: result.character,
+          world_state: result.world_state,
+          scenario: scenario,
+          story: result.story.length > 0 ? result.story : [
+            { type: 'narration', text: scenario.intro }
+          ]
+        }));
+      } else {
+        throw new Error('Failed to create game session');
+      }
+    } catch (error) {
+      console.error('Error creating game session:', error);
+      
+      // Fallback to local game state
+      setCurrentView('game');
+      setGameState(prev => ({
+        ...prev,
+        session_id: `local_${Date.now()}`,
+        scenario: scenario,
+        story: [
+          { type: 'narration', text: scenario.intro }
+        ]
+      }));
+    }
   };
 
   const handleAction = async (action) => {
