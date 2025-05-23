@@ -289,13 +289,13 @@ export const GameInterface = ({ gameState, setGameState, onAction }) => {
   ];
 
   return (
-    <div className="h-screen flex overflow-hidden">
+    <div className="h-screen flex overflow-hidden bg-dungeon-dark">
       {/* Main Game Area */}
       <div className="flex-1 flex flex-col">
         {/* Story Display */}
         <div 
           ref={chatRef}
-          className="flex-1 overflow-y-auto p-6 space-y-4"
+          className="flex-1 overflow-y-auto p-6 space-y-4 relative"
           style={{
             backgroundImage: `url('https://images.unsplash.com/photo-1598205542984-6720bbcf74f1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzd8MHwxfHNlYXJjaHwxfHxmYW50YXN5JTIwbGFuZHNjYXBlfGVufDB8fHx0ZWFsfDE3NDgwMTQ3NjZ8MA&ixlib=rb-4.1.0&q=85')`,
             backgroundSize: 'cover',
@@ -303,15 +303,15 @@ export const GameInterface = ({ gameState, setGameState, onAction }) => {
             backgroundPosition: 'center'
           }}
         >
-          <div className="hero-gradient absolute inset-0"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-dungeon-dark/90 via-dungeon-dark/80 to-dungeon-dark/90"></div>
           <div className="relative z-10 max-w-4xl mx-auto space-y-4">
             {gameState.story.map((entry, index) => (
               <motion.div
                 key={index}
                 className={`p-4 rounded-lg chat-message ${
                   entry.type === 'narration' 
-                    ? 'bg-slate-800/90 border-l-4 border-dungeon-orange' 
-                    : 'bg-dungeon-orange/20 border-l-4 border-blue-500 ml-8'
+                    ? 'bg-slate-800/95 border-l-4 border-dungeon-orange shadow-lg' 
+                    : 'bg-blue-900/80 border-l-4 border-blue-500 ml-8 shadow-lg'
                 }`}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -319,9 +319,9 @@ export const GameInterface = ({ gameState, setGameState, onAction }) => {
               >
                 <div className="flex items-start space-x-3">
                   <div className={`w-2 h-2 rounded-full mt-2 ${
-                    entry.type === 'narration' ? 'bg-dungeon-orange' : 'bg-blue-500'
+                    entry.type === 'narration' ? 'bg-dungeon-orange' : 'bg-blue-400'
                   }`}></div>
-                  <p className="text-dungeon-text leading-relaxed">{entry.text}</p>
+                  <p className="text-dungeon-text leading-relaxed font-medium">{entry.text}</p>
                 </div>
               </motion.div>
             ))}
@@ -329,7 +329,7 @@ export const GameInterface = ({ gameState, setGameState, onAction }) => {
         </div>
 
         {/* Input Area */}
-        <div className="bg-dungeon-darker border-t border-slate-700 p-6">
+        <div className="bg-dungeon-darker border-t border-slate-600 p-6 flex-shrink-0">
           <div className="max-w-4xl mx-auto">
             {/* Quick Actions */}
             <div className="flex flex-wrap gap-2 mb-4">
@@ -337,7 +337,7 @@ export const GameInterface = ({ gameState, setGameState, onAction }) => {
                 <button
                   key={index}
                   onClick={() => onAction(action.text)}
-                  className="flex items-center space-x-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors"
+                  className="flex items-center space-x-2 px-3 py-2 bg-slate-700/90 hover:bg-slate-600 rounded-lg text-sm transition-all hover:scale-105 border border-slate-600"
                 >
                   {action.icon}
                   <span>{action.text}</span>
@@ -352,11 +352,11 @@ export const GameInterface = ({ gameState, setGameState, onAction }) => {
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 placeholder="What do you do next?"
-                className="flex-1 px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-dungeon-text placeholder-slate-400 focus:outline-none focus:border-dungeon-orange"
+                className="flex-1 px-4 py-3 bg-slate-700/90 border border-slate-600 rounded-lg text-dungeon-text placeholder-slate-400 focus:outline-none focus:border-dungeon-orange focus:ring-1 focus:ring-dungeon-orange"
               />
               <button
                 type="submit"
-                className="px-6 py-3 bg-dungeon-orange text-dungeon-dark rounded-lg font-medium hover:bg-dungeon-orange-dark transition-colors flex items-center space-x-2"
+                className="px-6 py-3 bg-dungeon-orange text-dungeon-dark rounded-lg font-medium hover:bg-dungeon-orange-dark transition-colors flex items-center space-x-2 shadow-lg hover:shadow-xl"
               >
                 <Send size={18} />
                 <span>Send</span>
@@ -367,9 +367,9 @@ export const GameInterface = ({ gameState, setGameState, onAction }) => {
       </div>
 
       {/* Right Sidebar */}
-      <div className="w-80 bg-dungeon-darker border-l border-slate-700 flex flex-col">
+      <div className="w-80 bg-dungeon-darker border-l border-slate-600 flex flex-col flex-shrink-0">
         {/* Panel Tabs */}
-        <div className="flex border-b border-slate-700">
+        <div className="flex border-b border-slate-600">
           {[
             { id: 'character', label: 'Character', icon: <User size={16} /> },
             { id: 'inventory', label: 'Inventory', icon: <Backpack size={16} /> },
@@ -380,8 +380,8 @@ export const GameInterface = ({ gameState, setGameState, onAction }) => {
               onClick={() => setActivePanel(tab.id)}
               className={`flex-1 flex items-center justify-center space-x-2 px-4 py-3 transition-colors ${
                 activePanel === tab.id
-                  ? 'bg-dungeon-orange text-dungeon-dark'
-                  : 'text-dungeon-text-secondary hover:text-dungeon-text'
+                  ? 'bg-dungeon-orange text-dungeon-dark font-medium'
+                  : 'text-dungeon-text-secondary hover:text-dungeon-text hover:bg-slate-700/50'
               }`}
             >
               {tab.icon}
