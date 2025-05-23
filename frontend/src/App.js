@@ -86,11 +86,13 @@ function App() {
       )}
       
       {currentView === 'game' && (
-        <GameInterface 
-          gameState={gameState} 
-          setGameState={setGameState}
-          onAction={handleAction}
-        />
+        <div className="h-screen overflow-hidden">
+          <GameInterface 
+            gameState={gameState} 
+            setGameState={setGameState}
+            onAction={handleAction}
+          />
+        </div>
       )}
     </div>
   );
