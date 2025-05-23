@@ -3,7 +3,7 @@
 # EmergentRPG Start Script for Arch Linux
 # This script handles Python virtual environments to avoid pip/pacman conflicts
 
-set -e  # Exit on error
+set -euo pipefail  # Exit on error, undefined vars, and pipe failures
 
 # Colors for output
 RED='\033[0;31m'
@@ -23,6 +23,11 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# Function to check if process is running
+is_process_running() {
+    kill -0 "$1" 2>/dev/null
+}
+
 # Function to check system dependencies
 check_system_deps() {
     echo -e "${YELLOW}Checking system dependencies...${NC}"
@@ -31,7 +36,13 @@ check_system_deps() {
     
     # Check for Python
     if ! command_exists python3; then
-        missing_deps+=("python")
+        # Check if pyenv is available
+        if command_exists pyenv; then
+            echo -e "${YELLOW}Using pyenv for Python environment${NC}"
+            eval "$(pyenv init -)"
+        else
+            missing_deps+=("python")
+        fi
     fi
     
     # Check for Node.js
@@ -65,6 +76,11 @@ setup_python_env() {
     
     VENV_DIR="$PROJECT_ROOT/venv"
     
+    # Check if pyenv is active
+    if command_exists pyenv; then
+        echo -e "${YELLOW}Using pyenv Python version: $(pyenv version-name)${NC}"
+    fi
+    
     # Create virtual environment if it doesn't exist
     if [ ! -d "$VENV_DIR" ]; then
         echo -e "${YELLOW}Creating virtual environment...${NC}"
@@ -84,9 +100,9 @@ install_python_deps() {
     # Upgrade pip first
     pip install --upgrade pip
     
-    # Install required packages
+    # Install required packages with pinned versions
     # Since there's no requirements.txt, we'll install the packages mentioned in the code
-    pip install fastapi uvicorn pymongo motor google-generativeai python-dotenv
+    pip install fastapi==0.104.1 uvicorn==0.24.0 pymongo==4.6.0 motor==3.3.2 google-generativeai==0.3.0 python-dotenv==1.0.0
     
     echo -e "${GREEN}✓ Python dependencies installed${NC}\n"
 }
@@ -101,10 +117,10 @@ setup_env_file() {
         echo -e "${YELLOW}Creating .env file...${NC}"
         cat > "$ENV_FILE" << EOF
 # Google AI Studio API Key
-GOOGLE_API_KEY=your_actual_google_api_key_here
+GOOGLE_API_KEY=<YOUR_GOOGLE_API_KEY_HERE>
 
 # MongoDB Configuration
-MONGO_URL=mongodb://localhost:27017/ai_dungeon_db
+MONGO_URL=<YOUR_MONGODB_URL_HERE>
 
 # Backend Configuration
 BACKEND_PORT=8001
@@ -116,10 +132,11 @@ EOF
         echo -e "${RED}⚠️  Please edit $ENV_FILE and add your Google API key!${NC}"
         echo -e "${YELLOW}Visit https://makersuite.google.com/app/apikey to get your API key${NC}"
     else
-        # Check if API key is still the placeholder
-        if grep -q "your_actual_google_api_key_here" "$ENV_FILE"; then
-            echo -e "${RED}⚠️  Google API key not configured in $ENV_FILE${NC}"
-            echo -e "${YELLOW}The app will run but AI features won't work without a valid API key${NC}"
+        # Validate configuration before starting
+        if grep -q "<YOUR_GOOGLE_API_KEY_HERE>" "$ENV_FILE"; then
+            echo -e "${RED}❌ Google API key not configured in $ENV_FILE${NC}"
+            echo -e "${YELLOW}Please replace <YOUR_GOOGLE_API_KEY_HERE> with your actual API key${NC}"
+            exit 1
         fi
     fi
     
@@ -149,8 +166,12 @@ start_backend() {
     # Make sure we're in the virtual environment
     source "$PROJECT_ROOT/venv/bin/activate"
     
-    # Set Python path
-    export PYTHONPATH="$PROJECT_ROOT/backend:$PYTHONPATH"
+    # Set Python path - handle case where PYTHONPATH might not be set
+    if [ -z "${PYTHONPATH:-}" ]; then
+        export PYTHONPATH="$PROJECT_ROOT/backend"
+    else
+        export PYTHONPATH="$PROJECT_ROOT/backend:$PYTHONPATH"
+    fi
     
     # Start the backend
     cd "$PROJECT_ROOT/backend"
@@ -184,9 +205,19 @@ wait_for_services() {
     done
     echo -e "\n${GREEN}✓ Backend is ready${NC}"
     
-    # Wait for frontend (give it a bit more time to compile)
-    sleep 5
-    echo -e "${GREEN}✓ Frontend should be ready${NC}\n"
+    # Wait for frontend
+    local max_attempts=60
+    local attempt=0
+    while ! curl -s http://localhost:3000 > /dev/null 2>&1; do
+        if [ $attempt -ge $max_attempts ]; then
+            echo -e "\n${RED}✗ Frontend failed to start after ${max_attempts} seconds${NC}"
+            return 1
+        fi
+        sleep 1
+        echo -n "."
+        ((attempt++))
+    done
+    echo -e "\n${GREEN}✓ Frontend is ready${NC}\n"
 }
 
 # Function to display access information
@@ -206,17 +237,19 @@ cleanup() {
     echo -e "\n${YELLOW}Shutting down services...${NC}"
     
     # Kill backend if running
-    if [ ! -z "$BACKEND_PID" ]; then
-        kill $BACKEND_PID 2>/dev/null || true
+    if [ -n "${BACKEND_PID:-}" ] && is_process_running "$BACKEND_PID"; then
+        kill "$BACKEND_PID" 2>/dev/null
     fi
     
     # Kill frontend if running
-    if [ ! -z "$FRONTEND_PID" ]; then
-        kill $FRONTEND_PID 2>/dev/null || true
+    if [ -n "${FRONTEND_PID:-}" ] && is_process_running "$FRONTEND_PID"; then
+        kill "$FRONTEND_PID" 2>/dev/null
     fi
     
     # Deactivate virtual environment
-    deactivate 2>/dev/null || true
+    if command -v deactivate >/dev/null 2>&1; then
+        deactivate
+    fi
     
     echo -e "${GREEN}✓ All services stopped${NC}"
     exit 0
