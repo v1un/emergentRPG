@@ -9,6 +9,7 @@ import {
 function App() {
   const [currentView, setCurrentView] = useState('landing');
   const [gameState, setGameState] = useState({
+    session_id: null,
     character: {
       name: 'Adventurer',
       level: 1,
