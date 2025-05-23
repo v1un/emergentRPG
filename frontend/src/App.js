@@ -56,16 +56,65 @@ function App() {
   };
 
   const handleAction = (action) => {
-    // Mock AI response for demo
-    const responses = [
-      "The shadows seem to respond to your presence, shifting and moving as if alive.",
-      "A mysterious figure emerges from behind the trees, offering you a cryptic warning.",
-      "You discover a hidden pathway leading deeper into the unknown.",
-      "The ground beneath your feet begins to glow with ancient runes.",
-      "A gentle breeze carries the scent of magic and distant adventures."
-    ];
+    // Enhanced AI response system with more variety and context awareness
+    const responses = {
+      attack: [
+        "Your weapon strikes true, but the enemy counters with unexpected skill.",
+        "The clash of steel echoes through the area as you engage in combat.",
+        "Your attack lands, but your opponent seems unfazed by the blow.",
+        "You strike with precision, gaining the upper hand in this battle.",
+        "The enemy dodges your attack and retaliates with a swift counter-strike."
+      ],
+      defend: [
+        "You raise your guard just in time, deflecting the incoming attack.",
+        "Your defensive stance proves effective against the enemy's assault.",
+        "You successfully block the attack, creating an opening for a counter.",
+        "Your careful defense allows you to study your opponent's patterns.",
+        "You weather the storm of attacks, waiting for the perfect moment to strike back."
+      ],
+      look: [
+        "You notice ancient runes carved into the nearby surfaces, glowing faintly with magic.",
+        "The area reveals hidden details that weren't visible before.",
+        "Your careful observation reveals a secret passage behind the stone wall.",
+        "Strange shadows dance at the edge of your vision, hinting at hidden dangers.",
+        "You spot something glinting in the distance that might be valuable."
+      ],
+      spell: [
+        "Your spell crackles with energy, illuminating the dark surroundings.",
+        "Magical energy surges through you as the spell takes effect.",
+        "The incantation echoes through the air, causing reality to shimmer.",
+        "Your magic weaves through the air, creating unexpected effects.",
+        "The spell succeeds, but you sense something responding to your magical energy."
+      ],
+      general: [
+        "The wind whispers secrets of ancient times as you continue your journey.",
+        "A mysterious figure watches you from the shadows before disappearing.",
+        "You discover clues that hint at a larger mystery unfolding around you.",
+        "The ground beneath your feet tells a story of countless adventures before yours.",
+        "Something in the distance catches your attention, beckoning you forward.",
+        "The air shimmers with possibility as new paths reveal themselves.",
+        "You sense that your actions have set greater events into motion.",
+        "The world around you seems to respond to your presence in subtle ways."
+      ]
+    };
     
-    const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+    // Determine response category based on action
+    let category = 'general';
+    const actionLower = action.toLowerCase();
+    
+    if (actionLower.includes('attack') || actionLower.includes('strike') || actionLower.includes('fight')) {
+      category = 'attack';
+    } else if (actionLower.includes('defend') || actionLower.includes('block') || actionLower.includes('guard')) {
+      category = 'defend';
+    } else if (actionLower.includes('look') || actionLower.includes('examine') || actionLower.includes('search')) {
+      category = 'look';
+    } else if (actionLower.includes('cast') || actionLower.includes('spell') || actionLower.includes('magic')) {
+      category = 'spell';
+    }
+    
+    // Get a random response from the appropriate category
+    const categoryResponses = responses[category];
+    const randomResponse = categoryResponses[Math.floor(Math.random() * categoryResponses.length)];
     
     setGameState(prev => ({
       ...prev,
