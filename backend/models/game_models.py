@@ -1,18 +1,22 @@
-from pydantic import BaseModel, Field
-from typing import List, Dict, Optional, Any, Union
 from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional, Union
+
+from pydantic import BaseModel, Field
+
 
 class ActionType(str, Enum):
     NARRATION = "narration"
     ACTION = "action"
     SYSTEM = "system"
 
+
 class StoryEntry(BaseModel):
     type: ActionType
     text: str
     timestamp: datetime = Field(default_factory=datetime.now)
     metadata: Optional[Dict[str, Any]] = None
+
 
 class CharacterStats(BaseModel):
     strength: int = Field(ge=1, le=20, default=10)
@@ -21,6 +25,7 @@ class CharacterStats(BaseModel):
     constitution: int = Field(ge=1, le=20, default=10)
     wisdom: int = Field(ge=1, le=20, default=10)
     charisma: int = Field(ge=1, le=20, default=10)
+
 
 class Character(BaseModel):
     name: str
@@ -34,6 +39,7 @@ class Character(BaseModel):
     class_name: Optional[str] = "Adventurer"
     background: Optional[str] = None
 
+
 class InventoryItem(BaseModel):
     id: str
     name: str
@@ -43,6 +49,7 @@ class InventoryItem(BaseModel):
     quantity: int = Field(ge=1, default=1)
     equipped: bool = False
     metadata: Optional[Dict[str, Any]] = None
+
 
 class Quest(BaseModel):
     id: str
@@ -54,6 +61,7 @@ class Quest(BaseModel):
     rewards: Optional[Dict[str, Any]] = None
     metadata: Optional[Dict[str, Any]] = None
 
+
 class WorldState(BaseModel):
     current_location: str = "Unknown Location"
     time_of_day: str = "morning"
@@ -62,6 +70,7 @@ class WorldState(BaseModel):
     available_actions: List[str] = Field(default_factory=list)
     environment_description: str = ""
     special_conditions: List[str] = Field(default_factory=list)
+
 
 class GameSession(BaseModel):
     session_id: str

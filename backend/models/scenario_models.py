@@ -1,7 +1,9 @@
-from pydantic import BaseModel, Field
-from typing import List, Dict, Optional, Any
 from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, Field
+
 
 class SeriesType(str, Enum):
     ANIME = "anime"
@@ -13,6 +15,7 @@ class SeriesType(str, Enum):
     BOOK = "book"
     COMIC = "comic"
 
+
 class GenerationStatus(str, Enum):
     PENDING = "pending"
     ANALYZING = "analyzing"
@@ -20,6 +23,7 @@ class GenerationStatus(str, Enum):
     VALIDATING = "validating"
     COMPLETED = "completed"
     FAILED = "failed"
+
 
 class SeriesMetadata(BaseModel):
     title: str
@@ -33,6 +37,7 @@ class SeriesMetadata(BaseModel):
     source_urls: List[str] = Field(default_factory=list)
     confidence_score: float = Field(ge=0, le=1, default=0.0)
 
+
 class Character(BaseModel):
     name: str
     role: str  # protagonist, antagonist, supporting, etc.
@@ -44,6 +49,7 @@ class Character(BaseModel):
     goals: List[str] = Field(default_factory=list)
     speech_patterns: List[str] = Field(default_factory=list)
 
+
 class Location(BaseModel):
     name: str
     type: str  # city, dungeon, forest, etc.
@@ -54,6 +60,7 @@ class Location(BaseModel):
     atmosphere: str = ""
     dangers: List[str] = Field(default_factory=list)
 
+
 class WorldSystem(BaseModel):
     name: str
     type: str  # magic, political, economic, etc.
@@ -62,6 +69,7 @@ class WorldSystem(BaseModel):
     limitations: List[str] = Field(default_factory=list)
     key_figures: List[str] = Field(default_factory=list)
     historical_events: List[str] = Field(default_factory=list)
+
 
 class Lorebook(BaseModel):
     id: str
@@ -77,6 +85,7 @@ class Lorebook(BaseModel):
     generation_metadata: Dict[str, Any] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
+
 
 class ScenarioTemplate(BaseModel):
     id: str
@@ -94,12 +103,14 @@ class ScenarioTemplate(BaseModel):
     tags: List[str] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=datetime.now)
 
+
 class GenerationRequest(BaseModel):
     series_title: str
     series_type: SeriesType
     additional_context: Optional[str] = None
     user_preferences: Optional[Dict[str, Any]] = None
     generation_options: Optional[Dict[str, Any]] = None
+
 
 class GenerationTask(BaseModel):
     task_id: str

@@ -1,30 +1,32 @@
 import json
 import logging
-from typing import Dict, List, Any, Optional
-from utils.gemini_client import gemini_client
+from typing import Any, Dict, List, Optional
+
 from models.game_models import Character, CharacterStats, InventoryItem
 from models.scenario_models import Lorebook
+from utils.gemini_client import gemini_client
 
 logger = logging.getLogger(__name__)
 
+
 class CharacterCreationFlow:
     """Genkit-style flow for creating player characters from existing series"""
-    
-    async def personality_extraction_flow(self, 
-                                        character_name: str, 
-                                        lorebook: Lorebook) -> Dict[str, Any]:
+
+    async def personality_extraction_flow(
+        self, character_name: str, lorebook: Lorebook
+    ) -> Dict[str, Any]:
         """Flow: Extract personality traits from source character"""
-        
+
         # Find character in lorebook
         source_char = None
         for char in lorebook.characters:
             if char.name.lower() == character_name.lower():
                 source_char = char
                 break
-        
+
         if not source_char:
             return {"error": "Character not found in lorebook"}
-        
+
         prompt = f"""
         Analyze the personality of {character_name} from {lorebook.series_metadata.title} for game adaptation.
         
@@ -70,41 +72,41 @@ class CharacterCreationFlow:
             }}
         }}
         """
-        
+
         system_instruction = """You are an expert in character psychology and game design.
         Analyze characters for authentic personality translation into interactive gameplay.
         Focus on traits that will create interesting roleplay opportunities.
         Always respond in valid JSON format."""
-        
+
         response = await gemini_client.generate_text(
             prompt,
             system_instruction=system_instruction,
             temperature=0.5,
-            response_format="json"
+            response_format="json",
         )
-        
+
         try:
             return json.loads(response)
         except json.JSONDecodeError:
             logger.error(f"Failed to parse personality extraction JSON: {response}")
             return {"error": "Failed to extract personality"}
-    
-    async def ability_mapping_flow(self, 
-                                 character_name: str, 
-                                 lorebook: Lorebook) -> Dict[str, Any]:
+
+    async def ability_mapping_flow(
+        self, character_name: str, lorebook: Lorebook
+    ) -> Dict[str, Any]:
         """Flow: Convert series abilities to game mechanics"""
-        
+
         source_char = None
         for char in lorebook.characters:
             if char.name.lower() == character_name.lower():
                 source_char = char
                 break
-        
+
         if not source_char:
             return {"error": "Character not found"}
-        
+
         power_system = lorebook.series_metadata.power_system or "No special powers"
-        
+
         prompt = f"""
         Convert {character_name}'s abilities from {lorebook.series_metadata.title} into game mechanics.
         
@@ -170,40 +172,39 @@ class CharacterCreationFlow:
         
         Balance abilities to be powerful but not game-breaking.
         """
-        
+
         system_instruction = """You are an expert game designer specializing in character balance and mechanics.
         Create faithful but balanced translations of fictional abilities into game mechanics.
         Ensure abilities are fun to use while maintaining game balance.
         Always respond in valid JSON format."""
-        
+
         response = await gemini_client.generate_text(
             prompt,
             system_instruction=system_instruction,
             temperature=0.4,
-            response_format="json"
+            response_format="json",
         )
-        
+
         try:
             return json.loads(response)
         except json.JSONDecodeError:
             logger.error(f"Failed to parse ability mapping JSON: {response}")
             return {"error": "Failed to map abilities"}
-    
-    async def background_adaptation_flow(self, 
-                                       character_name: str, 
-                                       lorebook: Lorebook,
-                                       scenario_context: str) -> Dict[str, Any]:
+
+    async def background_adaptation_flow(
+        self, character_name: str, lorebook: Lorebook, scenario_context: str
+    ) -> Dict[str, Any]:
         """Flow: Adapt character history to game context"""
-        
+
         source_char = None
         for char in lorebook.characters:
             if char.name.lower() == character_name.lower():
                 source_char = char
                 break
-        
+
         if not source_char:
             return {"error": "Character not found"}
-        
+
         prompt = f"""
         Adapt {character_name}'s background for an interactive game scenario.
         
@@ -258,47 +259,50 @@ class CharacterCreationFlow:
             }}
         }}
         """
-        
+
         system_instruction = """You are an expert in character development and narrative integration.
         Adapt character backgrounds to create rich gameplay opportunities while staying true to source material.
         Focus on elements that will create interesting story hooks and player choices.
         Always respond in valid JSON format."""
-        
+
         response = await gemini_client.generate_text(
             prompt,
             system_instruction=system_instruction,
             temperature=0.6,
-            response_format="json"
+            response_format="json",
         )
-        
+
         try:
             return json.loads(response)
         except json.JSONDecodeError:
             logger.error(f"Failed to parse background adaptation JSON: {response}")
             return {"error": "Failed to adapt background"}
-    
-    async def create_character_from_series(self, 
-                                         character_name: str, 
-                                         lorebook: Lorebook,
-                                         scenario_context: str = "") -> Character:
+
+    async def create_character_from_series(
+        self, character_name: str, lorebook: Lorebook, scenario_context: str = ""
+    ) -> Character:
         """Complete flow: Create a playable character based on series character"""
-        
+
         try:
             # Extract personality
-            personality_data = await self.personality_extraction_flow(character_name, lorebook)
+            personality_data = await self.personality_extraction_flow(
+                character_name, lorebook
+            )
             if "error" in personality_data:
                 raise ValueError(f"Character '{character_name}' not found in lorebook")
-            
+
             # Map abilities to game mechanics
             abilities_data = await self.ability_mapping_flow(character_name, lorebook)
             if "error" in abilities_data:
                 raise ValueError("Failed to map character abilities")
-            
+
             # Adapt background
-            background_data = await self.background_adaptation_flow(character_name, lorebook, scenario_context)
+            background_data = await self.background_adaptation_flow(
+                character_name, lorebook, scenario_context
+            )
             if "error" in background_data:
                 raise ValueError("Failed to adapt character background")
-            
+
             # Create character stats
             attr_scores = abilities_data.get("attribute_scores", {})
             stats = CharacterStats(
@@ -307,9 +311,9 @@ class CharacterCreationFlow:
                 intelligence=attr_scores.get("intelligence", 10),
                 constitution=attr_scores.get("constitution", 10),
                 wisdom=attr_scores.get("wisdom", 10),
-                charisma=attr_scores.get("charisma", 10)
+                charisma=attr_scores.get("charisma", 10),
             )
-            
+
             # Create starting character
             character = Character(
                 name=character_name,
@@ -320,12 +324,16 @@ class CharacterCreationFlow:
                 max_mana=50 + (stats.intelligence - 10) * 3,
                 experience=0,
                 stats=stats,
-                class_name=abilities_data.get("class_recommendations", [{}])[0].get("class_name", "Adventurer"),
-                background=background_data.get("adapted_background", {}).get("current_situation", "Unknown background")
+                class_name=abilities_data.get("class_recommendations", [{}])[0].get(
+                    "class_name", "Adventurer"
+                ),
+                background=background_data.get("adapted_background", {}).get(
+                    "current_situation", "Unknown background"
+                ),
             )
-            
+
             return character
-            
+
         except Exception as e:
             logger.error(f"Error creating character from series: {str(e)}")
             # Return default character
@@ -339,8 +347,9 @@ class CharacterCreationFlow:
                 experience=0,
                 stats=CharacterStats(),
                 class_name="Adventurer",
-                background="A mysterious adventurer with unknown origins"
+                background="A mysterious adventurer with unknown origins",
             )
+
 
 # Global flow instance
 character_creation_flow = CharacterCreationFlow()

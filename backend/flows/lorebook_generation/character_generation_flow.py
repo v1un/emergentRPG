@@ -1,15 +1,19 @@
 import json
 import logging
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
+
+from models.scenario_models import Character, SeriesMetadata
 from utils.gemini_client import gemini_client
-from models.scenario_models import SeriesMetadata, Character
 
 logger = logging.getLogger(__name__)
 
+
 class CharacterGenerationFlow:
     """Genkit-style flow for comprehensive character generation"""
-    
-    async def main_characters_flow(self, series_metadata: SeriesMetadata) -> List[Character]:
+
+    async def main_characters_flow(
+        self, series_metadata: SeriesMetadata
+    ) -> List[Character]:
         """Flow: Generate detailed main character profiles"""
         prompt = f"""
         Create detailed main character profiles for "{series_metadata.title}".
@@ -57,20 +61,20 @@ class CharacterGenerationFlow:
         Ensure at least 2-3 characters have "high" playable_potential for interactive gameplay.
         Focus on characters that would be engaging to play as protagonists in an adventure.
         """
-        
+
         system_instruction = """You are an expert character designer and narrative specialist.
         Create complex, multi-dimensional characters with realistic flaws and growth potential.
         Ensure characters have clear motivations and interesting relationships.
         Always respond in valid JSON format."""
-        
+
         response = await gemini_client.generate_text(
             prompt,
             system_instruction=system_instruction,
             temperature=0.7,
             max_output_tokens=4000,
-            response_format="json"
+            response_format="json",
         )
-        
+
         try:
             data = json.loads(response)
             characters = []
@@ -84,28 +88,36 @@ class CharacterGenerationFlow:
                     relationships=char_data.get("relationships", {}),
                     background=char_data.get("background", ""),
                     goals=char_data.get("goals", []),
-                    speech_patterns=char_data.get("speech_patterns", [])
+                    speech_patterns=char_data.get("speech_patterns", []),
                 )
                 characters.append(character)
             return characters
         except (json.JSONDecodeError, KeyError) as e:
-            logger.error(f"Failed to parse main characters JSON: {response}, Error: {e}")
-            return [Character(
-                name="Hero",
-                role="protagonist",
-                description="A brave adventurer",
-                personality=["courageous", "determined"],
-                abilities=["swordsmanship"],
-                relationships={},
-                background="Unknown origins",
-                goals=["save the world"],
-                speech_patterns=["speaks confidently"]
-            )]
-    
-    async def supporting_cast_flow(self, series_metadata: SeriesMetadata, main_characters: List[Character]) -> List[Character]:
+            logger.error(
+                f"Failed to parse main characters JSON: {response}, Error: {e}"
+            )
+            return [
+                Character(
+                    name="Hero",
+                    role="protagonist",
+                    description="A brave adventurer",
+                    personality=["courageous", "determined"],
+                    abilities=["swordsmanship"],
+                    relationships={},
+                    background="Unknown origins",
+                    goals=["save the world"],
+                    speech_patterns=["speaks confidently"],
+                )
+            ]
+
+    async def supporting_cast_flow(
+        self, series_metadata: SeriesMetadata, main_characters: List[Character]
+    ) -> List[Character]:
         """Flow: Generate supporting character network"""
-        main_chars_context = "\n".join([f"- {c.name}: {c.role}, {c.description}" for c in main_characters[:4]])
-        
+        main_chars_context = "\n".join(
+            [f"- {c.name}: {c.role}, {c.description}" for c in main_characters[:4]]
+        )
+
         prompt = f"""
         Create a network of supporting characters for "{series_metadata.title}".
         
@@ -144,20 +156,20 @@ class CharacterGenerationFlow:
         
         Create 8-12 diverse supporting characters that expand the world.
         """
-        
+
         system_instruction = """You are an expert in ensemble cast creation and narrative support.
         Create memorable supporting characters that enhance main character development.
         Ensure each character serves a clear narrative function and has distinct personality.
         Always respond in valid JSON format."""
-        
+
         response = await gemini_client.generate_text(
             prompt,
             system_instruction=system_instruction,
             temperature=0.7,
             max_output_tokens=4000,
-            response_format="json"
+            response_format="json",
         )
-        
+
         try:
             data = json.loads(response)
             characters = []
@@ -171,18 +183,24 @@ class CharacterGenerationFlow:
                     relationships=char_data.get("relationships", {}),
                     background=char_data.get("background", ""),
                     goals=char_data.get("goals", []),
-                    speech_patterns=char_data.get("speech_patterns", [])
+                    speech_patterns=char_data.get("speech_patterns", []),
                 )
                 characters.append(character)
             return characters
         except (json.JSONDecodeError, KeyError) as e:
-            logger.error(f"Failed to parse supporting characters JSON: {response}, Error: {e}")
+            logger.error(
+                f"Failed to parse supporting characters JSON: {response}, Error: {e}"
+            )
             return []
-    
-    async def relationship_mapping_flow(self, characters: List[Character]) -> Dict[str, Any]:
+
+    async def relationship_mapping_flow(
+        self, characters: List[Character]
+    ) -> Dict[str, Any]:
         """Flow: Generate complex relationship dynamics"""
-        chars_context = "\n".join([f"- {c.name}: {c.role}, {c.personality[:2]}" for c in characters[:10]])
-        
+        chars_context = "\n".join(
+            [f"- {c.name}: {c.role}, {c.personality[:2]}" for c in characters[:10]]
+        )
+
         prompt = f"""
         Create detailed relationship mappings between these characters:
         
@@ -235,20 +253,20 @@ class CharacterGenerationFlow:
             ]
         }}
         """
-        
+
         system_instruction = """You are an expert in character dynamics and relationship writing.
         Create complex, realistic relationships that generate interesting story possibilities.
         Ensure relationships have both positive and negative aspects for dramatic tension.
         Always respond in valid JSON format."""
-        
+
         response = await gemini_client.generate_text(
             prompt,
             system_instruction=system_instruction,
             temperature=0.6,
             max_output_tokens=3000,
-            response_format="json"
+            response_format="json",
         )
-        
+
         try:
             return json.loads(response)
         except json.JSONDecodeError:
@@ -257,14 +275,22 @@ class CharacterGenerationFlow:
                 "relationship_matrix": {},
                 "group_dynamics": [],
                 "love_triangles": [],
-                "rivalries": []
+                "rivalries": [],
             }
-    
-    async def character_progression_flow(self, characters: List[Character], series_metadata: SeriesMetadata) -> Dict[str, Any]:
+
+    async def character_progression_flow(
+        self, characters: List[Character], series_metadata: SeriesMetadata
+    ) -> Dict[str, Any]:
         """Flow: Generate character development arcs and progression paths"""
-        main_chars = [c for c in characters if c.role in ["protagonist", "deuteragonist", "antagonist"]][:4]
-        chars_context = "\n".join([f"- {c.name}: {c.goals[:2]}, {c.personality[:2]}" for c in main_chars])
-        
+        main_chars = [
+            c
+            for c in characters
+            if c.role in ["protagonist", "deuteragonist", "antagonist"]
+        ][:4]
+        chars_context = "\n".join(
+            [f"- {c.name}: {c.goals[:2]}, {c.personality[:2]}" for c in main_chars]
+        )
+
         prompt = f"""
         Create character development arcs for "{series_metadata.title}".
         
@@ -317,20 +343,20 @@ class CharacterGenerationFlow:
             ]
         }}
         """
-        
+
         system_instruction = """You are an expert in character development and narrative progression.
         Create meaningful character arcs that reflect the series themes and provide satisfying growth.
         Ensure progression feels earned and has both victories and setbacks.
         Always respond in valid JSON format."""
-        
+
         response = await gemini_client.generate_text(
             prompt,
             system_instruction=system_instruction,
             temperature=0.6,
             max_output_tokens=3000,
-            response_format="json"
+            response_format="json",
         )
-        
+
         try:
             return json.loads(response)
         except json.JSONDecodeError:
@@ -341,10 +367,11 @@ class CharacterGenerationFlow:
                     "beginner_level": "Basic abilities",
                     "intermediate_level": "Improved skills",
                     "advanced_level": "Strong capabilities",
-                    "master_level": "Peak performance"
+                    "master_level": "Peak performance",
                 },
-                "character_milestones": []
+                "character_milestones": [],
             }
+
 
 # Global flow instance
 character_generation_flow = CharacterGenerationFlow()

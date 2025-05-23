@@ -104,6 +104,9 @@ install_python_deps() {
     # Since there's no requirements.txt, we'll install the packages mentioned in the code
     pip install fastapi==0.104.1 uvicorn==0.24.0 pymongo==4.6.0 motor==3.3.2 google-generativeai==0.3.0 python-dotenv==1.0.0
     
+    # Install linting dependencies for development
+    pip install flake8==6.1.0 black==23.11.0 isort==5.12.0
+    
     echo -e "${GREEN}✓ Python dependencies installed${NC}\n"
 }
 

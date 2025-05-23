@@ -1,15 +1,19 @@
 import json
 import logging
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
+
+from models.scenario_models import Location, SeriesMetadata, WorldSystem
 from utils.gemini_client import gemini_client
-from models.scenario_models import SeriesMetadata, Location, WorldSystem
 
 logger = logging.getLogger(__name__)
 
+
 class WorldBuildingFlow:
     """Genkit-style flow for comprehensive world building"""
-    
-    async def geography_generation_flow(self, series_metadata: SeriesMetadata) -> List[Location]:
+
+    async def geography_generation_flow(
+        self, series_metadata: SeriesMetadata
+    ) -> List[Location]:
         """Flow: Generate detailed world geography and locations"""
         prompt = f"""
         Based on "{series_metadata.title}" ({series_metadata.type}), generate comprehensive world geography.
@@ -44,20 +48,20 @@ class WorldBuildingFlow:
         
         Generate 8-12 diverse, interconnected locations that form a cohesive world.
         """
-        
+
         system_instruction = """You are a master world-builder and geography expert.
         Create detailed, immersive locations that feel authentic to the source material.
         Ensure locations are interconnected and support interesting adventures.
         Always respond in valid JSON format."""
-        
+
         response = await gemini_client.generate_text(
             prompt,
             system_instruction=system_instruction,
             temperature=0.6,
             max_output_tokens=3000,
-            response_format="json"
+            response_format="json",
         )
-        
+
         try:
             data = json.loads(response)
             locations = []
@@ -70,24 +74,28 @@ class WorldBuildingFlow:
                     inhabitants=loc_data.get("inhabitants", []),
                     connected_locations=loc_data.get("connected_locations", []),
                     atmosphere=loc_data.get("atmosphere", ""),
-                    dangers=loc_data.get("dangers", [])
+                    dangers=loc_data.get("dangers", []),
                 )
                 locations.append(location)
             return locations
         except (json.JSONDecodeError, KeyError) as e:
             logger.error(f"Failed to parse geography JSON: {response}, Error: {e}")
-            return [Location(
-                name="Starting Village",
-                type="settlement",
-                description="A small village where adventures begin",
-                notable_features=["village square", "local inn"],
-                inhabitants=["villagers", "local merchants"],
-                connected_locations=["nearby forest"],
-                atmosphere="peaceful and welcoming",
-                dangers=["occasional bandits"]
-            )]
-    
-    async def political_systems_flow(self, series_metadata: SeriesMetadata) -> List[WorldSystem]:
+            return [
+                Location(
+                    name="Starting Village",
+                    type="settlement",
+                    description="A small village where adventures begin",
+                    notable_features=["village square", "local inn"],
+                    inhabitants=["villagers", "local merchants"],
+                    connected_locations=["nearby forest"],
+                    atmosphere="peaceful and welcoming",
+                    dangers=["occasional bandits"],
+                )
+            ]
+
+    async def political_systems_flow(
+        self, series_metadata: SeriesMetadata
+    ) -> List[WorldSystem]:
         """Flow: Generate political and social systems"""
         prompt = f"""
         Create detailed political and social systems for "{series_metadata.title}".
@@ -122,20 +130,20 @@ class WorldBuildingFlow:
         
         Create 4-6 interconnected political/social systems.
         """
-        
+
         system_instruction = """You are an expert in political science and social systems.
         Create realistic, complex systems that reflect the source material's themes.
         Ensure systems interact and create potential for conflict and cooperation.
         Always respond in valid JSON format."""
-        
+
         response = await gemini_client.generate_text(
             prompt,
             system_instruction=system_instruction,
             temperature=0.5,
             max_output_tokens=3000,
-            response_format="json"
+            response_format="json",
         )
-        
+
         try:
             data = json.loads(response)
             systems = []
@@ -147,27 +155,33 @@ class WorldBuildingFlow:
                     rules=sys_data.get("rules", []),
                     limitations=sys_data.get("limitations", []),
                     key_figures=sys_data.get("key_figures", []),
-                    historical_events=sys_data.get("historical_events", [])
+                    historical_events=sys_data.get("historical_events", []),
                 )
                 systems.append(system)
             return systems
         except (json.JSONDecodeError, KeyError) as e:
-            logger.error(f"Failed to parse political systems JSON: {response}, Error: {e}")
-            return [WorldSystem(
-                name="Local Government",
-                type="political",
-                description="Basic local governance structure",
-                rules=["maintain order", "collect taxes"],
-                limitations=["limited resources"],
-                key_figures=["village elder"],
-                historical_events=["village founding"]
-            )]
-    
-    async def magic_power_systems_flow(self, series_metadata: SeriesMetadata) -> List[WorldSystem]:
+            logger.error(
+                f"Failed to parse political systems JSON: {response}, Error: {e}"
+            )
+            return [
+                WorldSystem(
+                    name="Local Government",
+                    type="political",
+                    description="Basic local governance structure",
+                    rules=["maintain order", "collect taxes"],
+                    limitations=["limited resources"],
+                    key_figures=["village elder"],
+                    historical_events=["village founding"],
+                )
+            ]
+
+    async def magic_power_systems_flow(
+        self, series_metadata: SeriesMetadata
+    ) -> List[WorldSystem]:
         """Flow: Generate magic/power systems and rules"""
         if not series_metadata.power_system:
             return []
-            
+
         prompt = f"""
         Create detailed magic/power systems for "{series_metadata.title}".
         
@@ -202,20 +216,20 @@ class WorldBuildingFlow:
         
         Create 2-4 interconnected power systems with clear rules and limitations.
         """
-        
+
         system_instruction = """You are an expert in fantasy/sci-fi power systems and game mechanics.
         Create balanced, interesting systems that enable exciting gameplay.
         Ensure clear rules, limitations, and consequences for power use.
         Always respond in valid JSON format."""
-        
+
         response = await gemini_client.generate_text(
             prompt,
             system_instruction=system_instruction,
             temperature=0.5,
             max_output_tokens=3000,
-            response_format="json"
+            response_format="json",
         )
-        
+
         try:
             data = json.loads(response)
             systems = []
@@ -227,15 +241,17 @@ class WorldBuildingFlow:
                     rules=sys_data.get("rules", []),
                     limitations=sys_data.get("limitations", []),
                     key_figures=sys_data.get("key_figures", []),
-                    historical_events=sys_data.get("historical_events", [])
+                    historical_events=sys_data.get("historical_events", []),
                 )
                 systems.append(system)
             return systems
         except (json.JSONDecodeError, KeyError) as e:
             logger.error(f"Failed to parse power systems JSON: {response}, Error: {e}")
             return []
-    
-    async def cultural_systems_flow(self, series_metadata: SeriesMetadata) -> List[WorldSystem]:
+
+    async def cultural_systems_flow(
+        self, series_metadata: SeriesMetadata
+    ) -> List[WorldSystem]:
         """Flow: Generate cultural and religious systems"""
         prompt = f"""
         Create detailed cultural and religious systems for "{series_metadata.title}".
@@ -271,20 +287,20 @@ class WorldBuildingFlow:
         
         Create 3-5 diverse cultural/religious systems that shape society.
         """
-        
+
         system_instruction = """You are an expert in comparative religion and cultural anthropology.
         Create rich, authentic cultural systems that feel realistic and meaningful.
         Ensure cultures have both positive and negative aspects for balanced storytelling.
         Always respond in valid JSON format."""
-        
+
         response = await gemini_client.generate_text(
             prompt,
             system_instruction=system_instruction,
             temperature=0.6,
             max_output_tokens=3000,
-            response_format="json"
+            response_format="json",
         )
-        
+
         try:
             data = json.loads(response)
             systems = []
@@ -296,18 +312,24 @@ class WorldBuildingFlow:
                     rules=sys_data.get("rules", []),
                     limitations=sys_data.get("limitations", []),
                     key_figures=sys_data.get("key_figures", []),
-                    historical_events=sys_data.get("historical_events", [])
+                    historical_events=sys_data.get("historical_events", []),
                 )
                 systems.append(system)
             return systems
         except (json.JSONDecodeError, KeyError) as e:
-            logger.error(f"Failed to parse cultural systems JSON: {response}, Error: {e}")
+            logger.error(
+                f"Failed to parse cultural systems JSON: {response}, Error: {e}"
+            )
             return []
-    
-    async def historical_timeline_flow(self, series_metadata: SeriesMetadata, systems: List[WorldSystem]) -> List[Dict[str, Any]]:
+
+    async def historical_timeline_flow(
+        self, series_metadata: SeriesMetadata, systems: List[WorldSystem]
+    ) -> List[Dict[str, Any]]:
         """Flow: Generate historical timeline and major events"""
-        systems_context = "\n".join([f"- {s.name}: {s.description}" for s in systems[:5]])
-        
+        systems_context = "\n".join(
+            [f"- {s.name}: {s.description}" for s in systems[:5]]
+        )
+
         prompt = f"""
         Create a comprehensive historical timeline for "{series_metadata.title}".
         
@@ -341,39 +363,42 @@ class WorldBuildingFlow:
         
         Create 6-8 distinct historical eras that lead to the current setting.
         """
-        
+
         system_instruction = """You are a master historian and chronicler.
         Create compelling historical narratives that explain the current world state.
         Ensure events are interconnected and have lasting consequences.
         Always respond in valid JSON format."""
-        
+
         response = await gemini_client.generate_text(
             prompt,
             system_instruction=system_instruction,
             temperature=0.6,
             max_output_tokens=3000,
-            response_format="json"
+            response_format="json",
         )
-        
+
         try:
             data = json.loads(response)
             return data.get("timeline", [])
         except (json.JSONDecodeError, KeyError) as e:
             logger.error(f"Failed to parse timeline JSON: {response}, Error: {e}")
-            return [{
-                "era_name": "Ancient Times",
-                "time_period": "Long ago",
-                "major_events": ["World creation", "First civilizations"],
-                "key_figures": ["Legendary heroes"],
-                "technological_level": "Basic",
-                "political_situation": "Tribal societies",
-                "cultural_developments": ["Basic traditions"],
-                "catastrophes": ["Natural disasters"],
-                "discoveries": ["Agriculture", "Tools"],
-                "impact_on_present": "Foundation of current world",
-                "lasting_legacy": "Basic knowledge",
-                "mysteries": ["Lost origins"]
-            }]
+            return [
+                {
+                    "era_name": "Ancient Times",
+                    "time_period": "Long ago",
+                    "major_events": ["World creation", "First civilizations"],
+                    "key_figures": ["Legendary heroes"],
+                    "technological_level": "Basic",
+                    "political_situation": "Tribal societies",
+                    "cultural_developments": ["Basic traditions"],
+                    "catastrophes": ["Natural disasters"],
+                    "discoveries": ["Agriculture", "Tools"],
+                    "impact_on_present": "Foundation of current world",
+                    "lasting_legacy": "Basic knowledge",
+                    "mysteries": ["Lost origins"],
+                }
+            ]
+
 
 # Global flow instance
 world_building_flow = WorldBuildingFlow()

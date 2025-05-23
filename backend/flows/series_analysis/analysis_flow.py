@@ -1,15 +1,19 @@
 import json
 import logging
-from typing import Dict, List, Any, Optional
-from utils.gemini_client import gemini_client
+from typing import Any, Dict, List, Optional
+
 from models.scenario_models import SeriesMetadata, SeriesType
+from utils.gemini_client import gemini_client
 
 logger = logging.getLogger(__name__)
 
+
 class SeriesAnalysisFlow:
     """Genkit-style flow for comprehensive series analysis"""
-    
-    async def series_identification_flow(self, series_title: str, series_type: str) -> Dict[str, Any]:
+
+    async def series_identification_flow(
+        self, series_title: str, series_type: str
+    ) -> Dict[str, Any]:
         """Flow: Identify and validate series information"""
         prompt = f"""
         Identify and validate information about the {series_type} titled "{series_title}".
@@ -29,18 +33,18 @@ class SeriesAnalysisFlow:
         
         Be accurate and include reliability scores for the information provided.
         """
-        
+
         system_instruction = """You are a comprehensive media database expert. 
         Provide accurate identification and validation of series information.
         Always respond in valid JSON format."""
-        
+
         response = await gemini_client.generate_text(
             prompt,
             system_instruction=system_instruction,
             temperature=0.2,
-            response_format="json"
+            response_format="json",
         )
-        
+
         try:
             return json.loads(response)
         except json.JSONDecodeError:
@@ -54,10 +58,12 @@ class SeriesAnalysisFlow:
                 "volumes_episodes": "Unknown",
                 "popularity_score": 0.5,
                 "is_mainstream": False,
-                "source_reliability": 0.1
+                "source_reliability": 0.1,
             }
-    
-    async def metadata_enrichment_flow(self, series_title: str, series_type: str) -> SeriesMetadata:
+
+    async def metadata_enrichment_flow(
+        self, series_title: str, series_type: str
+    ) -> SeriesMetadata:
         """Flow: Extract comprehensive metadata"""
         prompt = f"""
         Analyze "{series_title}" ({series_type}) and extract comprehensive metadata.
@@ -84,18 +90,18 @@ class SeriesAnalysisFlow:
             "confidence_score": 0.95
         }}
         """
-        
+
         system_instruction = """You are an expert media analyst specializing in world-building and narrative structure.
         Provide comprehensive, accurate analysis focusing on elements useful for game scenario generation.
         Always respond in valid JSON format."""
-        
+
         response = await gemini_client.generate_text(
             prompt,
             system_instruction=system_instruction,
             temperature=0.3,
-            response_format="json"
+            response_format="json",
         )
-        
+
         try:
             data = json.loads(response)
             return SeriesMetadata(
@@ -108,7 +114,7 @@ class SeriesAnalysisFlow:
                 power_system=data.get("power_system"),
                 time_period=data.get("time_period"),
                 source_urls=data.get("source_urls", []),
-                confidence_score=data.get("confidence_score", 0.5)
+                confidence_score=data.get("confidence_score", 0.5),
             )
         except (json.JSONDecodeError, ValueError) as e:
             logger.error(f"Failed to parse metadata JSON: {response}, Error: {e}")
@@ -119,10 +125,12 @@ class SeriesAnalysisFlow:
                 themes=["adventure"],
                 setting="Unknown setting",
                 tone="neutral",
-                confidence_score=0.1
+                confidence_score=0.1,
             )
-    
-    async def canonical_source_validation_flow(self, series_metadata: SeriesMetadata) -> Dict[str, Any]:
+
+    async def canonical_source_validation_flow(
+        self, series_metadata: SeriesMetadata
+    ) -> Dict[str, Any]:
         """Flow: Validate information against canonical sources"""
         prompt = f"""
         Validate the accuracy of this series information for "{series_metadata.title}":
@@ -145,18 +153,18 @@ class SeriesAnalysisFlow:
             "recommendation": "use/modify/regenerate"
         }}
         """
-        
+
         system_instruction = """You are a fact-checking expert for media information.
         Validate accuracy and provide corrections where necessary.
         Always respond in valid JSON format."""
-        
+
         response = await gemini_client.generate_text(
             prompt,
             system_instruction=system_instruction,
             temperature=0.2,
-            response_format="json"
+            response_format="json",
         )
-        
+
         try:
             return json.loads(response)
         except json.JSONDecodeError:
@@ -168,10 +176,12 @@ class SeriesAnalysisFlow:
                 "corrections": {},
                 "additional_context": "Unable to validate information",
                 "source_quality": "unknown",
-                "recommendation": "regenerate"
+                "recommendation": "regenerate",
             }
-    
-    async def knowledge_graph_creation_flow(self, series_metadata: SeriesMetadata) -> Dict[str, Any]:
+
+    async def knowledge_graph_creation_flow(
+        self, series_metadata: SeriesMetadata
+    ) -> Dict[str, Any]:
         """Flow: Create relationship mappings between series elements"""
         prompt = f"""
         Create a knowledge graph for "{series_metadata.title}" showing relationships between key elements.
@@ -207,18 +217,18 @@ class SeriesAnalysisFlow:
             }}
         }}
         """
-        
+
         system_instruction = """You are an expert in narrative structure and world-building analysis.
         Create comprehensive relationship mappings that will help in scenario generation.
         Always respond in valid JSON format."""
-        
+
         response = await gemini_client.generate_text(
             prompt,
             system_instruction=system_instruction,
             temperature=0.4,
-            response_format="json"
+            response_format="json",
         )
-        
+
         try:
             return json.loads(response)
         except json.JSONDecodeError:
@@ -230,19 +240,20 @@ class SeriesAnalysisFlow:
                     "world": ["unknown world"],
                     "societies": ["unknown society"],
                     "individuals": ["protagonist", "antagonist"],
-                    "systems": ["unknown system"]
+                    "systems": ["unknown system"],
                 },
                 "influence_map": {
                     "setting_influences": ["unknown"],
                     "power_influences": ["unknown"],
-                    "theme_influences": ["unknown"]
+                    "theme_influences": ["unknown"],
                 },
                 "narrative_weight": {
                     "primary_elements": ["main story"],
                     "secondary_elements": ["subplots"],
-                    "background_elements": ["world details"]
-                }
+                    "background_elements": ["world details"],
+                },
             }
+
 
 # Global flow instance
 series_analysis_flow = SeriesAnalysisFlow()
