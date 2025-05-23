@@ -13,7 +13,17 @@ import {
   Menu,
   User,
   Home,
-  Settings
+  Settings,
+  Zap,
+  Download,
+  Upload,
+  Check,
+  X,
+  Clock,
+  AlertCircle,
+  Search,
+  Filter,
+  RefreshCw
 } from 'lucide-react';
 
 // Navigation Component
