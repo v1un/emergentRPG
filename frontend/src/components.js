@@ -36,9 +36,38 @@ export const Navigation = ({ currentView, setCurrentView }) => {
               <Home size={18} />
               <span>Home</span>
             </button>
-            <button className="flex items-center space-x-2 px-3 py-2 rounded-lg text-dungeon-text-secondary hover:text-dungeon-text transition-colors">
+            <button 
+              onClick={() => setCurrentView('generator')}
+              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
+                currentView === 'generator' 
+                  ? 'bg-dungeon-orange text-dungeon-dark' 
+                  : 'text-dungeon-text-secondary hover:text-dungeon-text'
+              }`}
+            >
+              <Wand2 size={18} />
+              <span>Generate</span>
+            </button>
+            <button 
+              onClick={() => setCurrentView('lorebooks')}
+              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
+                currentView === 'lorebooks' 
+                  ? 'bg-dungeon-orange text-dungeon-dark' 
+                  : 'text-dungeon-text-secondary hover:text-dungeon-text'
+              }`}
+            >
               <ScrollText size={18} />
-              <span>Updates</span>
+              <span>Lorebooks</span>
+            </button>
+            <button 
+              onClick={() => setCurrentView('config')}
+              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
+                currentView === 'config' 
+                  ? 'bg-dungeon-orange text-dungeon-dark' 
+                  : 'text-dungeon-text-secondary hover:text-dungeon-text'
+              }`}
+            >
+              <Settings size={18} />
+              <span>Settings</span>
             </button>
           </div>
         </div>
