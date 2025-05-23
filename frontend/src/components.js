@@ -12,7 +12,8 @@ import {
   Send,
   Menu,
   User,
-  Home
+  Home,
+  Settings
 } from 'lucide-react';
 
 // Navigation Component
