@@ -21,7 +21,7 @@ import {
   Clock,
   AlertCircle,
   Search,
-  RefreshCw
+  RefreshCw,
 } from 'lucide-react';
 
 // Navigation Component
@@ -249,10 +249,10 @@ export const LandingPage = ({ onStartGame }) => {
           id: template.id,
           title: template.title,
           description: template.description,
-          image: "https://images.unsplash.com/photo-1598205542984-6720bbcf74f1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzd8MHwxfHNlYXJjaHwxfHxmYW50YXN5JTIwbGFuZHNjYXBlfGVufDB8fHx0ZWFsfDE3NDgwMTQ3NjZ8MA&ixlib=rb-4.1.0&q=85",
+          image: 'https://images.unsplash.com/photo-1598205542984-6720bbcf74f1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzd8MHwxfHNlYXJjaHwxfHxmYW50YXN5JTIwbGFuZHNjYXBlfGVufDB8fHx0ZWFsfDE3NDgwMTQ3NjZ8MA&ixlib=rb-4.1.0&q=85',
           lorebook_id: template.lorebook_id,
           has_characters: template.has_playable_characters,
-          character_count: template.playable_character_count
+          character_count: template.playable_character_count,
         })));
       }
     } catch (error) {
@@ -276,7 +276,7 @@ export const LandingPage = ({ onStartGame }) => {
     // Start game with selected character and scenario
     onStartGame({
       ...selectedTemplate,
-      character: character
+      character: character,
     });
   };
 
@@ -284,25 +284,25 @@ export const LandingPage = ({ onStartGame }) => {
   const fallbackScenarios = [
     {
       id: 1,
-      title: "Fantasy Adventure",
-      description: "Embark on a magical quest in a world of dragons and wizards",
-      image: "https://images.unsplash.com/photo-1598205542984-6720bbcf74f1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzd8MHwxfHNlYXJjaHwxfHxmYW50YXN5JTIwbGFuZHNjYXBlfGVufDB8fHx0ZWFsfDE3NDgwMTQ3NjZ8MA&ixlib=rb-4.1.0&q=85",
-      intro: "You awaken in a mystical forest, ancient magic flowing through your veins. Your destiny as a hero begins now..."
+      title: 'Fantasy Adventure',
+      description: 'Embark on a magical quest in a world of dragons and wizards',
+      image: 'https://images.unsplash.com/photo-1598205542984-6720bbcf74f1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzd8MHwxfHNlYXJjaHwxfHxmYW50YXN5JTIwbGFuZHNjYXBlfGVufDB8fHx0ZWFsfDE3NDgwMTQ3NjZ8MA&ixlib=rb-4.1.0&q=85',
+      intro: 'You awaken in a mystical forest, ancient magic flowing through your veins. Your destiny as a hero begins now...',
     },
     {
       id: 2,
-      title: "Sci-Fi Odyssey",
-      description: "Explore the cosmos and encounter alien civilizations",
-      image: "https://images.pexels.com/photos/9002742/pexels-photo-9002742.jpeg",
-      intro: "The year is 2387. You're aboard a starship entering uncharted space when alarms begin blaring throughout the vessel..."
+      title: 'Sci-Fi Odyssey',
+      description: 'Explore the cosmos and encounter alien civilizations',
+      image: 'https://images.pexels.com/photos/9002742/pexels-photo-9002742.jpeg',
+      intro: 'The year is 2387. You\'re aboard a starship entering uncharted space when alarms begin blaring throughout the vessel...',
     },
     {
       id: 3,
-      title: "Medieval Kingdom",
-      description: "Rule a kingdom in an age of knights and castles",
-      image: "https://images.pexels.com/photos/32166318/pexels-photo-32166318.jpeg",
-      intro: "The crown weighs heavy on your head as you survey your kingdom from the castle walls. Dark times approach..."
-    }
+      title: 'Medieval Kingdom',
+      description: 'Rule a kingdom in an age of knights and castles',
+      image: 'https://images.pexels.com/photos/32166318/pexels-photo-32166318.jpeg',
+      intro: 'The crown weighs heavy on your head as you survey your kingdom from the castle walls. Dark times approach...',
+    },
   ];
 
   // Use fallback scenarios if API call failed and no scenarios loaded
@@ -314,9 +314,9 @@ export const LandingPage = ({ onStartGame }) => {
       <div 
         className="relative h-screen flex items-center justify-center"
         style={{
-          backgroundImage: `url('https://images.unsplash.com/photo-1598205542984-6720bbcf74f1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzd8MHwxfHNlYXJjaHwxfHxmYW50YXN5JTIwbGFuZHNjYXBlfGVufDB8fHx0ZWFsfDE3NDgwMTQ3NjZ8MA&ixlib=rb-4.1.0&q=85')`,
+          backgroundImage: 'url(\'https://images.unsplash.com/photo-1598205542984-6720bbcf74f1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzd8MHwxfHNlYXJjaHwxfHxmYW50YXN5JTIwbGFuZHNjYXBlfGVufDB8fHx0ZWFsfDE3NDgwMTQ3NjZ8MA&ixlib=rb-4.1.0&q=85\')',
           backgroundSize: 'cover',
-          backgroundPosition: 'center'
+          backgroundPosition: 'center',
         }}
       >
         <div className="absolute inset-0 hero-gradient"></div>
@@ -448,19 +448,19 @@ export const LandingPage = ({ onStartGame }) => {
             {[
               {
                 icon: <Wand2 size={48} />,
-                title: "AI Game Master",
-                description: "Experience dynamic storytelling powered by advanced AI that adapts to your choices"
+                title: 'AI Game Master',
+                description: 'Experience dynamic storytelling powered by advanced AI that adapts to your choices',
               },
               {
                 icon: <User size={48} />,
-                title: "Character Progression",
-                description: "Level up your character, gain skills, and customize your abilities as you adventure"
+                title: 'Character Progression',
+                description: 'Level up your character, gain skills, and customize your abilities as you adventure',
               },
               {
                 icon: <ScrollText size={48} />,
-                title: "Unlimited Stories",
-                description: "Every playthrough is unique with procedurally generated content and branching narratives"
-              }
+                title: 'Unlimited Stories',
+                description: 'Every playthrough is unique with procedurally generated content and branching narratives',
+              },
             ].map((feature, index) => (
               <motion.div
                 key={index}
@@ -484,7 +484,7 @@ export const LandingPage = ({ onStartGame }) => {
 };
 
 // Game Interface Component
-export const GameInterface = ({ gameState, setGameState, onAction }) => {
+export const GameInterface = ({ gameState, setGameState: _setGameState, onAction }) => {
   const [inputValue, setInputValue] = useState('');
   const [activePanel, setActivePanel] = useState('character');
   const chatRef = useRef(null);
@@ -504,10 +504,10 @@ export const GameInterface = ({ gameState, setGameState, onAction }) => {
   };
 
   const quickActions = [
-    { text: "Look around", icon: <Star size={16} /> },
-    { text: "Attack", icon: <Sword size={16} /> },
-    { text: "Defend", icon: <Shield size={16} /> },
-    { text: "Cast spell", icon: <Wand2 size={16} /> },
+    { text: 'Look around', icon: <Star size={16} /> },
+    { text: 'Attack', icon: <Sword size={16} /> },
+    { text: 'Defend', icon: <Shield size={16} /> },
+    { text: 'Cast spell', icon: <Wand2 size={16} /> },
   ];
 
   return (
@@ -519,10 +519,10 @@ export const GameInterface = ({ gameState, setGameState, onAction }) => {
           ref={chatRef}
           className="flex-1 overflow-y-auto p-6 space-y-4 relative min-h-0"
           style={{
-            backgroundImage: `url('https://images.unsplash.com/photo-1598205542984-6720bbcf74f1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzd8MHwxfHNlYXJjaHwxfHxmYW50YXN5JTIwbGFuZHNjYXBlfGVufDB8fHx0ZWFsfDE3NDgwMTQ3NjZ8MA&ixlib=rb-4.1.0&q=85')`,
+            backgroundImage: 'url(\'https://images.unsplash.com/photo-1598205542984-6720bbcf74f1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzd8MHwxfHNlYXJjaHwxfHxmYW50YXN5JTIwbGFuZHNjYXBlfGVufDB8fHx0ZWFsfDE3NDgwMTQ3NjZ8MA&ixlib=rb-4.1.0&q=85\')',
             backgroundSize: 'cover',
             backgroundAttachment: 'fixed',
-            backgroundPosition: 'center'
+            backgroundPosition: 'center',
           }}
         >
           <div className="absolute inset-0 bg-gradient-to-b from-dungeon-dark/90 via-dungeon-dark/80 to-dungeon-dark/90"></div>
@@ -704,7 +704,7 @@ const InventoryPanel = ({ inventory }) => {
       uncommon: 'border-green-400',
       rare: 'border-blue-400',
       epic: 'border-purple-400',
-      legendary: 'border-orange-400'
+      legendary: 'border-orange-400',
     };
     return colors[rarity] || colors.common;
   };
@@ -774,7 +774,7 @@ const QuestsPanel = ({ quests }) => {
   const [activeTab, setActiveTab] = useState('active');
 
   const filteredQuests = quests.filter(quest => 
-    activeTab === 'all' || quest.status === activeTab
+    activeTab === 'all' || quest.status === activeTab,
   );
 
   return (
@@ -788,7 +788,7 @@ const QuestsPanel = ({ quests }) => {
         {[
           { id: 'active', label: 'Active' },
           { id: 'completed', label: 'Done' },
-          { id: 'all', label: 'All' }
+          { id: 'all', label: 'All' },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -850,7 +850,7 @@ export const ScenarioGeneratorPage = () => {
     { value: 'movie', label: 'Movie' },
     { value: 'tv_show', label: 'TV Show' },
     { value: 'book', label: 'Book' },
-    { value: 'comic', label: 'Comic' }
+    { value: 'comic', label: 'Comic' },
   ];
 
   const startGeneration = async () => {
@@ -864,7 +864,7 @@ export const ScenarioGeneratorPage = () => {
         body: JSON.stringify({
           series_title: seriesTitle,
           series_type: seriesType,
-          additional_context: additionalContext
+          additional_context: additionalContext,
         }),
       });
 
@@ -876,7 +876,7 @@ export const ScenarioGeneratorPage = () => {
           status: 'started',
           progress: 0,
           current_step: 'Initializing...',
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
         };
         setGenerationTasks(prev => [newTask, ...prev]);
         
@@ -901,7 +901,7 @@ export const ScenarioGeneratorPage = () => {
         const result = await response.json();
         
         setGenerationTasks(prev => prev.map(task => 
-          task.task_id === taskId ? { ...task, ...result } : task
+          task.task_id === taskId ? { ...task, ...result } : task,
         ));
 
         // Continue polling if not completed
@@ -916,23 +916,23 @@ export const ScenarioGeneratorPage = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'completed': return 'text-green-400';
-      case 'failed': return 'text-red-400';
-      case 'analyzing': return 'text-blue-400';
-      case 'generating': return 'text-yellow-400';
-      case 'validating': return 'text-purple-400';
-      default: return 'text-gray-400';
+    case 'completed': return 'text-green-400';
+    case 'failed': return 'text-red-400';
+    case 'analyzing': return 'text-blue-400';
+    case 'generating': return 'text-yellow-400';
+    case 'validating': return 'text-purple-400';
+    default: return 'text-gray-400';
     }
   };
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case 'completed': return <Check size={16} className="text-green-400" />;
-      case 'failed': return <X size={16} className="text-red-400" />;
-      case 'analyzing': 
-      case 'generating': 
-      case 'validating': return <RefreshCw size={16} className="animate-spin text-blue-400" />;
-      default: return <Clock size={16} className="text-gray-400" />;
+    case 'completed': return <Check size={16} className="text-green-400" />;
+    case 'failed': return <X size={16} className="text-red-400" />;
+    case 'analyzing': 
+    case 'generating': 
+    case 'validating': return <RefreshCw size={16} className="animate-spin text-blue-400" />;
+    default: return <Clock size={16} className="text-gray-400" />;
     }
   };
 
@@ -966,9 +966,9 @@ export const ScenarioGeneratorPage = () => {
             <Wand2 className="inline-block mr-4 text-dungeon-orange" size={48} />
             AI Scenario Generator
           </h1>
-            <p className="text-xl text-dungeon-text-secondary max-w-3xl mx-auto">
+          <p className="text-xl text-dungeon-text-secondary max-w-3xl mx-auto">
               Transform any series into a playable adventure! Our AI analyzes your favorite anime, manga, games, or books to create comprehensive worlds with playable characters that match the power systems and lore.
-            </p>
+          </p>
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -1123,7 +1123,7 @@ export const ConfigurationPage = () => {
     maxTokens: 2048,
     mongoUrl: '',
     autoSave: true,
-    maxStoryLength: 100
+    maxStoryLength: 100,
   });
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState('');
@@ -1505,8 +1505,8 @@ export const LorebooksPage = () => {
             <h3 className="text-2xl font-bold text-white mb-4">No Lorebooks Found</h3>
             <p className="text-dungeon-text-secondary mb-8">
               {searchTerm || filterGenre 
-                ? "Try adjusting your search or filters" 
-                : "Start by generating your first scenario!"}
+                ? 'Try adjusting your search or filters' 
+                : 'Start by generating your first scenario!'}
             </p>
             <button 
               onClick={() => window.location.href = '#generator'}

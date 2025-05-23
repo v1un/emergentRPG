@@ -6,8 +6,8 @@ import {
   Navigation,
   ScenarioGeneratorPage,
   ConfigurationPage,
-  LorebooksPage
-} from './components';
+  LorebooksPage,
+} from './components.js';
 
 function App() {
   const [currentView, setCurrentView] = useState('landing');
@@ -27,8 +27,8 @@ function App() {
         intelligence: 14,
         constitution: 13,
         wisdom: 11,
-        charisma: 9
-      }
+        charisma: 9,
+      },
     },
     inventory: [
       { id: 1, name: 'Iron Sword', type: 'weapon', rarity: 'common', equipped: true },
@@ -44,7 +44,7 @@ function App() {
       { type: 'narration', text: 'You stand at the edge of a dark forest, the wind whispering ancient secrets through the trees. Your adventure begins here...' },
       { type: 'action', text: 'I examine the forest entrance carefully.' },
       { type: 'narration', text: 'As you peer into the shadows between the towering oaks, you notice strange markings carved into the bark. They seem to glow faintly with an otherworldly light...' },
-    ]
+    ],
   });
 
   const startGame = async (scenario) => {
@@ -59,7 +59,7 @@ function App() {
           scenario_template_id: scenario.id,
           lorebook_id: scenario.lorebook_id,
           character_name: scenario.character ? scenario.character.name : 'Adventurer',
-          scenario_type: 'fantasy'
+          scenario_type: 'fantasy',
         }),
       });
 
@@ -77,8 +77,8 @@ function App() {
           world_state: result.world_state,
           scenario: scenario,
           story: result.story.length > 0 ? result.story : [
-            { type: 'narration', text: scenario.intro || `Welcome to the world of ${scenario.title}. Your adventure begins now...` }
-          ]
+            { type: 'narration', text: scenario.intro || `Welcome to the world of ${scenario.title}. Your adventure begins now...` },
+          ],
         }));
       } else {
         throw new Error('Failed to create game session');
@@ -104,10 +104,10 @@ function App() {
           intelligence: 10,
           constitution: 10,
           wisdom: 10,
-          charisma: 10
+          charisma: 10,
         },
         class_name: 'Adventurer',
-        background: 'A mysterious adventurer'
+        background: 'A mysterious adventurer',
       };
       
       const character = scenario.character ? {
@@ -120,7 +120,7 @@ function App() {
         experience: scenario.character.experience || 0,
         stats: scenario.character.stats || defaultCharacter.stats,
         class_name: scenario.character.class_name || 'Adventurer',
-        background: scenario.character.background || 'A mysterious adventurer'
+        background: scenario.character.background || 'A mysterious adventurer',
       } : defaultCharacter;
       
       setGameState(prev => ({
@@ -129,8 +129,8 @@ function App() {
         scenario: scenario,
         character: character,
         story: [
-          { type: 'narration', text: scenario.intro || `Welcome to the world of ${scenario.title}. Your adventure begins now...` }
-        ]
+          { type: 'narration', text: scenario.intro || `Welcome to the world of ${scenario.title}. Your adventure begins now...` },
+        ],
       }));
     }
   };
@@ -157,8 +157,8 @@ function App() {
             story: [
               ...prev.story,
               { type: 'action', text: action },
-              { type: 'narration', text: result.fallback_response || "Something unexpected happened. Please try again." }
-            ]
+              { type: 'narration', text: result.fallback_response || 'Something unexpected happened. Please try again.' },
+            ],
           }));
         }
       } else {
@@ -170,43 +170,43 @@ function App() {
       // Fallback to enhanced local AI responses
       const responses = {
         attack: [
-          "Your weapon strikes true, but the enemy counters with unexpected skill.",
-          "The clash of steel echoes through the area as you engage in combat.",
-          "Your attack lands, but your opponent seems unfazed by the blow.",
-          "You strike with precision, gaining the upper hand in this battle.",
-          "The enemy dodges your attack and retaliates with a swift counter-strike."
+          'Your weapon strikes true, but the enemy counters with unexpected skill.',
+          'The clash of steel echoes through the area as you engage in combat.',
+          'Your attack lands, but your opponent seems unfazed by the blow.',
+          'You strike with precision, gaining the upper hand in this battle.',
+          'The enemy dodges your attack and retaliates with a swift counter-strike.',
         ],
         defend: [
-          "You raise your guard just in time, deflecting the incoming attack.",
-          "Your defensive stance proves effective against the enemy's assault.",
-          "You successfully block the attack, creating an opening for a counter.",
-          "Your careful defense allows you to study your opponent's patterns.",
-          "You weather the storm of attacks, waiting for the perfect moment to strike back."
+          'You raise your guard just in time, deflecting the incoming attack.',
+          'Your defensive stance proves effective against the enemy\'s assault.',
+          'You successfully block the attack, creating an opening for a counter.',
+          'Your careful defense allows you to study your opponent\'s patterns.',
+          'You weather the storm of attacks, waiting for the perfect moment to strike back.',
         ],
         look: [
-          "You notice ancient runes carved into the nearby surfaces, glowing faintly with magic.",
-          "The area reveals hidden details that weren't visible before.",
-          "Your careful observation reveals a secret passage behind the stone wall.",
-          "Strange shadows dance at the edge of your vision, hinting at hidden dangers.",
-          "You spot something glinting in the distance that might be valuable."
+          'You notice ancient runes carved into the nearby surfaces, glowing faintly with magic.',
+          'The area reveals hidden details that weren\'t visible before.',
+          'Your careful observation reveals a secret passage behind the stone wall.',
+          'Strange shadows dance at the edge of your vision, hinting at hidden dangers.',
+          'You spot something glinting in the distance that might be valuable.',
         ],
         spell: [
-          "Your spell crackles with energy, illuminating the dark surroundings.",
-          "Magical energy surges through you as the spell takes effect.",
-          "The incantation echoes through the air, causing reality to shimmer.",
-          "Your magic weaves through the air, creating unexpected effects.",
-          "The spell succeeds, but you sense something responding to your magical energy."
+          'Your spell crackles with energy, illuminating the dark surroundings.',
+          'Magical energy surges through you as the spell takes effect.',
+          'The incantation echoes through the air, causing reality to shimmer.',
+          'Your magic weaves through the air, creating unexpected effects.',
+          'The spell succeeds, but you sense something responding to your magical energy.',
         ],
         general: [
-          "The wind whispers secrets of ancient times as you continue your journey.",
-          "A mysterious figure watches you from the shadows before disappearing.",
-          "You discover clues that hint at a larger mystery unfolding around you.",
-          "The ground beneath your feet tells a story of countless adventures before yours.",
-          "Something in the distance catches your attention, beckoning you forward.",
-          "The air shimmers with possibility as new paths reveal themselves.",
-          "You sense that your actions have set greater events into motion.",
-          "The world around you seems to respond to your presence in subtle ways."
-        ]
+          'The wind whispers secrets of ancient times as you continue your journey.',
+          'A mysterious figure watches you from the shadows before disappearing.',
+          'You discover clues that hint at a larger mystery unfolding around you.',
+          'The ground beneath your feet tells a story of countless adventures before yours.',
+          'Something in the distance catches your attention, beckoning you forward.',
+          'The air shimmers with possibility as new paths reveal themselves.',
+          'You sense that your actions have set greater events into motion.',
+          'The world around you seems to respond to your presence in subtle ways.',
+        ],
       };
       
       // Determine response category based on action
@@ -232,8 +232,8 @@ function App() {
         story: [
           ...prev.story,
           { type: 'action', text: action },
-          { type: 'narration', text: randomResponse }
-        ]
+          { type: 'narration', text: randomResponse },
+        ],
       }));
     }
   };

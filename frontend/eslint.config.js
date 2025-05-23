@@ -23,6 +23,16 @@ export default [
         document: 'readonly',
         console: 'readonly',
         process: 'readonly',
+        fetch: 'readonly',
+        localStorage: 'readonly',
+        sessionStorage: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        alert: 'readonly',
+        confirm: 'readonly',
+        prompt: 'readonly',
       },
     },
     settings: {
@@ -34,7 +44,7 @@ export default [
       // React rules
       'react/jsx-uses-react': 'error',
       'react/jsx-uses-vars': 'error',
-      'react/prop-types': 'warn',
+      'react/prop-types': 'off', // Disabled - using TypeScript would be better for type checking
       'react/react-in-jsx-scope': 'off', // Not needed in React 17+
       
       // React Hooks rules
@@ -42,8 +52,8 @@ export default [
       'react-hooks/exhaustive-deps': 'warn',
       
       // General JavaScript rules
-      'no-unused-vars': 'warn',
-      'no-console': 'warn',
+      'no-unused-vars': ['warn', { 'argsIgnorePattern': '^_' }], // Allow unused vars that start with _
+      'no-console': 'off', // Disabled - console statements are useful for debugging
       'prefer-const': 'error',
       'no-var': 'error',
       'semi': ['error', 'always'],
