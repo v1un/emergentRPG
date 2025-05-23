@@ -143,7 +143,13 @@ export const LandingPage = ({ onStartGame }) => {
             transition={{ duration: 1, delay: 0.6 }}
           >
             <button 
-              onClick={() => onStartGame(scenarios[0])}
+              onClick={() => onStartGame({
+                id: 1,
+                title: "Fantasy Adventure",
+                description: "Embark on a magical quest in a world of dragons and wizards",
+                image: "https://images.unsplash.com/photo-1598205542984-6720bbcf74f1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzd8MHwxfHNlYXJjaHwxfHxmYW50YXN5JTIwbGFuZHNjYXBlfGVufDB8fHx0ZWFsfDE3NDgwMTQ3NjZ8MA&ixlib=rb-4.1.0&q=85",
+                intro: "You awaken in a mystical forest, ancient magic flowing through your veins. Your destiny as a hero begins now..."
+              })}
               className="flex items-center space-x-3 px-8 py-4 bg-dungeon-orange text-dungeon-dark rounded-lg font-bold text-lg hover:bg-dungeon-orange-dark transition-colors glow-orange"
             >
               <Play size={24} />
