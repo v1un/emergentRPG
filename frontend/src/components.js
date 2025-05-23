@@ -16,13 +16,11 @@ import {
   Settings,
   Zap,
   Download,
-  Upload,
   Check,
   X,
   Clock,
   AlertCircle,
   Search,
-  Filter,
   RefreshCw
 } from 'lucide-react';
 
@@ -938,6 +936,23 @@ export const ScenarioGeneratorPage = () => {
     }
   };
 
+  const viewGeneratedScenario = async (lorebookId) => {
+    try {
+      // Fetch scenario templates for this lorebook
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/scenarios/templates?lorebook_id=${lorebookId}`);
+      if (response.ok) {
+        const result = await response.json();
+        if (result.templates && result.templates.length > 0) {
+          // Navigate to the scenario or show details
+          console.log('Generated scenario templates:', result.templates);
+          alert(`Successfully generated ${result.templates.length} scenario(s) with ${result.templates[0].playable_character_count || 0} playable characters!`);
+        }
+      }
+    } catch (error) {
+      console.error('Error viewing generated scenario:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-dungeon-dark py-20 px-6">
       <div className="max-w-6xl mx-auto">
@@ -951,9 +966,9 @@ export const ScenarioGeneratorPage = () => {
             <Wand2 className="inline-block mr-4 text-dungeon-orange" size={48} />
             AI Scenario Generator
           </h1>
-          <p className="text-xl text-dungeon-text-secondary max-w-3xl mx-auto">
-            Transform any series into a playable adventure! Our AI analyzes your favorite anime, manga, games, or books to create comprehensive worlds and characters.
-          </p>
+            <p className="text-xl text-dungeon-text-secondary max-w-3xl mx-auto">
+              Transform any series into a playable adventure! Our AI analyzes your favorite anime, manga, games, or books to create comprehensive worlds with playable characters that match the power systems and lore.
+            </p>
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -1076,9 +1091,17 @@ export const ScenarioGeneratorPage = () => {
                     </div>
                     
                     {task.status === 'completed' && task.lorebook_id && (
-                      <button className="mt-2 text-sm text-dungeon-orange hover:text-dungeon-orange-dark transition-colors">
-                        View Generated Lorebook →
-                      </button>
+                      <div className="mt-2 space-y-2">
+                        <button 
+                          onClick={() => viewGeneratedScenario(task.lorebook_id)}
+                          className="block text-sm text-dungeon-orange hover:text-dungeon-orange-dark transition-colors"
+                        >
+                          View Generated Scenario →
+                        </button>
+                        <div className="text-xs text-green-400">
+                          ✓ Characters and world generated successfully
+                        </div>
+                      </div>
                     )}
                   </div>
                 ))
@@ -1152,7 +1175,7 @@ export const ConfigurationPage = () => {
     // Load saved configuration
     const savedConfig = localStorage.getItem('ai_dungeon_config');
     if (savedConfig) {
-      setConfig({ ...config, ...JSON.parse(savedConfig) });
+      setConfig(prevConfig => ({ ...prevConfig, ...JSON.parse(savedConfig) }));
     }
   }, []);
 
@@ -1376,7 +1399,6 @@ export const LorebooksPage = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterGenre, setFilterGenre] = useState('');
-  const [selectedLorebook, setSelectedLorebook] = useState(null);
 
   useEffect(() => {
     fetchLorebooks();
@@ -1503,7 +1525,6 @@ export const LorebooksPage = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
                 whileHover={{ scale: 1.02 }}
-                onClick={() => setSelectedLorebook(lorebook)}
               >
                 <div className="h-48 bg-gradient-to-br from-dungeon-orange/20 to-blue-600/20 relative flex items-center justify-center">
                   <ScrollText size={48} className="text-dungeon-orange" />

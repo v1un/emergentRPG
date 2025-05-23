@@ -45,12 +45,17 @@ class CharacterGenerationFlow:
                     "reputation": "how others see them",
                     "moral_alignment": "ethical stance and values",
                     "combat_style": "how they fight or solve conflicts",
-                    "weaknesses": ["physical limitations", "emotional vulnerabilities"]
+                    "weaknesses": ["physical limitations", "emotional vulnerabilities"],
+                    "playable_potential": "high/medium/low - suitability as player character",
+                    "starting_power_level": "beginner/intermediate/advanced",
+                    "growth_potential": "how much they can develop as a character"
                 }}
             ]
         }}
         
         Create 4-6 main characters with complex, interconnected relationships.
+        Ensure at least 2-3 characters have "high" playable_potential for interactive gameplay.
+        Focus on characters that would be engaging to play as protagonists in an adventure.
         """
         
         system_instruction = """You are an expert character designer and narrative specialist.

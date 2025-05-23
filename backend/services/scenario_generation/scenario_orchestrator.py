@@ -106,8 +106,8 @@ class ScenarioOrchestrator:
             task.progress = 0.9
             await db_service.update_task_progress(task_id, 0.9, task.current_step)
             
-            # Step 5: Generate Playable Characters
-            task.current_step = "Creating playable characters"
+            # Step 5: Generate Scenario Templates with Playable Characters
+            task.current_step = "Creating scenario templates with playable characters"
             task.progress = 0.95
             await db_service.update_task_progress(task_id, 0.95, task.current_step)
             
@@ -275,38 +275,67 @@ class ScenarioOrchestrator:
             
             # Generate playable characters from main characters in lorebook
             playable_characters = []
-            main_character_names = [char.name for char in lorebook.characters[:3] if char.role in ["protagonist", "main character", "hero"]]
             
-            # If no protagonists found, use first 2 characters
+            # Prioritize characters with high playable potential or protagonist roles
+            suitable_characters = []
+            for char in lorebook.characters:
+                # Check if character has high playable potential (from enhanced character generation)
+                if hasattr(char, 'playable_potential') and 'high' in str(getattr(char, 'playable_potential', '')).lower():
+                    suitable_characters.append(char.name)
+                # Fallback to role-based selection
+                elif char.role in ["protagonist", "main character", "hero", "deuteragonist"]:
+                    suitable_characters.append(char.name)
+            
+            # Select up to 3 characters for playability
+            main_character_names = suitable_characters[:3]
+            
+            # If no suitable characters found, use first 2 characters as fallback
             if not main_character_names and lorebook.characters:
                 main_character_names = [char.name for char in lorebook.characters[:2]]
             
-            # Generate playable characters
+            # Generate playable characters with enhanced context
             logger.info(f"Generating playable characters for scenario: {main_character_names}")
             for char_name in main_character_names:
                 try:
-                    # Create character using character creation flow
+                    # Create character using character creation flow with world context
                     character = await character_creation_flow.create_character_from_series(
                         char_name, lorebook, scenario_context
                     )
+                    
+                    # Enhance character with world-specific abilities based on power systems
+                    character_dict = character.model_dump()
+                    
+                    # Add world-specific metadata for consistency
+                    character_dict["world_context"] = {
+                        "power_system": lorebook.series_metadata.power_system,
+                        "setting": lorebook.series_metadata.setting,
+                        "series_title": lorebook.series_metadata.title
+                    }
+                    
                     # Add to playable characters list
-                    playable_characters.append(character.model_dump())
+                    playable_characters.append(character_dict)
+                    logger.info(f"Successfully generated character: {char_name}")
+                    
                 except Exception as char_error:
                     logger.error(f"Error generating character {char_name}: {str(char_error)}")
+                    # Continue with other characters even if one fails
+            
+            # Generate character-aware quest paths based on abilities
+            available_paths = await self._generate_character_aware_paths(playable_characters, lorebook)
             
             beginning_template = ScenarioTemplate(
                 id=template_id,
                 title=f"Beginning Adventure in {lorebook.series_metadata.title}",
-                description=f"Start your journey in the world of {lorebook.series_metadata.title}",
+                description=f"Start your journey in the world of {lorebook.series_metadata.title}. Choose from {len(playable_characters)} unique characters, each with abilities tailored to this world.",
                 lorebook_id=lorebook.id,
                 setting_location=lorebook.locations[0].name if lorebook.locations else "Unknown Location",
                 time_period="Present day",
-                starting_situation=f"You find yourself at the beginning of an adventure in {lorebook.series_metadata.setting}",
+                starting_situation=f"You find yourself at the beginning of an adventure in {lorebook.series_metadata.setting}. The world's {lorebook.series_metadata.power_system or 'unique systems'} await your exploration.",
                 key_characters=[char.name for char in lorebook.characters[:3]],
                 playable_characters=playable_characters,
-                available_paths=["Explore the area", "Seek allies", "Investigate mysteries"],
+                available_paths=available_paths,
                 difficulty_level="medium",
-                tags=["beginner", "exploration", lorebook.series_metadata.type.value]
+                tags=["beginner", "exploration", lorebook.series_metadata.type.value, "character-driven"]
             )
             templates.append(beginning_template)
             
@@ -319,6 +348,76 @@ class ScenarioOrchestrator:
         except Exception as e:
             logger.error(f"Error generating scenario templates: {str(e)}")
             raise
+    
+    async def _generate_character_aware_paths(self, playable_characters: List[Dict[str, Any]], lorebook: Lorebook) -> List[str]:
+        """Generate quest paths that consider character capabilities"""
+        try:
+            # Default paths
+            default_paths = ["Explore the area", "Seek allies", "Investigate mysteries"]
+            
+            if not playable_characters:
+                return default_paths
+            
+            # Analyze character capabilities to generate appropriate paths
+            character_abilities = []
+            for char in playable_characters:
+                stats = char.get("stats", {})
+                class_name = char.get("class_name", "Adventurer")
+                character_abilities.append({
+                    "name": char.get("name", "Unknown"),
+                    "class": class_name,
+                    "strength": stats.get("strength", 10),
+                    "intelligence": stats.get("intelligence", 10),
+                    "charisma": stats.get("charisma", 10),
+                    "dexterity": stats.get("dexterity", 10)
+                })
+            
+            # Generate paths based on character strengths
+            paths = []
+            
+            # Combat-oriented paths for high strength characters
+            if any(char["strength"] >= 14 for char in character_abilities):
+                paths.append("Challenge local threats with combat prowess")
+                paths.append("Seek out dangerous creatures to test your might")
+            
+            # Intelligence-based paths for smart characters
+            if any(char["intelligence"] >= 14 for char in character_abilities):
+                paths.append("Research ancient mysteries and magical phenomena")
+                paths.append("Solve complex puzzles and uncover hidden knowledge")
+            
+            # Social paths for charismatic characters
+            if any(char["charisma"] >= 14 for char in character_abilities):
+                paths.append("Build alliances with local factions and leaders")
+                paths.append("Negotiate peaceful solutions to conflicts")
+            
+            # Stealth/exploration paths for dexterous characters
+            if any(char["dexterity"] >= 14 for char in character_abilities):
+                paths.append("Scout ahead and gather intelligence stealthily")
+                paths.append("Navigate treacherous terrain and hidden passages")
+            
+            # Add world-specific paths based on power system
+            if lorebook.series_metadata.power_system:
+                paths.append(f"Master the {lorebook.series_metadata.power_system} of this world")
+                paths.append(f"Seek training in {lorebook.series_metadata.power_system} techniques")
+            
+            # Add location-specific paths
+            if lorebook.locations:
+                for location in lorebook.locations[:2]:  # Use first 2 locations
+                    paths.append(f"Journey to {location.name} to {location.description.split('.')[0].lower()}")
+            
+            # Ensure we have at least 3 paths, add defaults if needed
+            if len(paths) < 3:
+                paths.extend(default_paths)
+            
+            # Return unique paths, limited to 6 for UI purposes
+            unique_paths = list(dict.fromkeys(paths))[:6]
+            
+            logger.info(f"Generated {len(unique_paths)} character-aware quest paths")
+            return unique_paths
+            
+        except Exception as e:
+            logger.error(f"Error generating character-aware paths: {str(e)}")
+            return ["Explore the area", "Seek allies", "Investigate mysteries"]
 
 # Global orchestrator instance
 scenario_orchestrator = ScenarioOrchestrator()
