@@ -208,6 +208,18 @@ function App() {
         <LandingPage onStartGame={startGame} />
       )}
       
+      {currentView === 'generator' && (
+        <ScenarioGeneratorPage />
+      )}
+      
+      {currentView === 'lorebooks' && (
+        <LorebooksPage />
+      )}
+      
+      {currentView === 'config' && (
+        <ConfigurationPage />
+      )}
+      
       {currentView === 'game' && (
         <div className="h-[calc(100vh-72px)] overflow-hidden">
           <GameInterface 
