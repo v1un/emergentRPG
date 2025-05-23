@@ -12,7 +12,18 @@ import {
   Send,
   Menu,
   User,
-  Home
+  Home,
+  Settings,
+  Zap,
+  Download,
+  Upload,
+  Check,
+  X,
+  Clock,
+  AlertCircle,
+  Search,
+  Filter,
+  RefreshCw
 } from 'lucide-react';
 
 // Navigation Component
@@ -36,9 +47,38 @@ export const Navigation = ({ currentView, setCurrentView }) => {
               <Home size={18} />
               <span>Home</span>
             </button>
-            <button className="flex items-center space-x-2 px-3 py-2 rounded-lg text-dungeon-text-secondary hover:text-dungeon-text transition-colors">
+            <button 
+              onClick={() => setCurrentView('generator')}
+              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
+                currentView === 'generator' 
+                  ? 'bg-dungeon-orange text-dungeon-dark' 
+                  : 'text-dungeon-text-secondary hover:text-dungeon-text'
+              }`}
+            >
+              <Wand2 size={18} />
+              <span>Generate</span>
+            </button>
+            <button 
+              onClick={() => setCurrentView('lorebooks')}
+              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
+                currentView === 'lorebooks' 
+                  ? 'bg-dungeon-orange text-dungeon-dark' 
+                  : 'text-dungeon-text-secondary hover:text-dungeon-text'
+              }`}
+            >
               <ScrollText size={18} />
-              <span>Updates</span>
+              <span>Lorebooks</span>
+            </button>
+            <button 
+              onClick={() => setCurrentView('config')}
+              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
+                currentView === 'config' 
+                  ? 'bg-dungeon-orange text-dungeon-dark' 
+                  : 'text-dungeon-text-secondary hover:text-dungeon-text'
+              }`}
+            >
+              <Settings size={18} />
+              <span>Settings</span>
             </button>
           </div>
         </div>
@@ -609,6 +649,708 @@ const QuestsPanel = ({ quests }) => {
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+};
+
+// Scenario Generator Page Component
+export const ScenarioGeneratorPage = () => {
+  const [seriesTitle, setSeriesTitle] = useState('');
+  const [seriesType, setSeriesType] = useState('anime');
+  const [additionalContext, setAdditionalContext] = useState('');
+  const [generationTasks, setGenerationTasks] = useState([]);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const seriesTypes = [
+    { value: 'anime', label: 'Anime' },
+    { value: 'manga', label: 'Manga' },
+    { value: 'game', label: 'Video Game' },
+    { value: 'novel', label: 'Light Novel' },
+    { value: 'movie', label: 'Movie' },
+    { value: 'tv_show', label: 'TV Show' },
+    { value: 'book', label: 'Book' },
+    { value: 'comic', label: 'Comic' }
+  ];
+
+  const startGeneration = async () => {
+    if (!seriesTitle.trim()) return;
+
+    setIsGenerating(true);
+    try {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/scenarios/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          series_title: seriesTitle,
+          series_type: seriesType,
+          additional_context: additionalContext
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const newTask = {
+          task_id: result.task_id,
+          series_title: seriesTitle,
+          status: 'started',
+          progress: 0,
+          current_step: 'Initializing...',
+          created_at: new Date().toISOString()
+        };
+        setGenerationTasks(prev => [newTask, ...prev]);
+        
+        // Clear form
+        setSeriesTitle('');
+        setAdditionalContext('');
+        
+        // Start polling for updates
+        pollTaskStatus(result.task_id);
+      }
+    } catch (error) {
+      console.error('Error starting generation:', error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const pollTaskStatus = async (taskId) => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/scenarios/generate/${taskId}`);
+      if (response.ok) {
+        const result = await response.json();
+        
+        setGenerationTasks(prev => prev.map(task => 
+          task.task_id === taskId ? { ...task, ...result } : task
+        ));
+
+        // Continue polling if not completed
+        if (result.status !== 'completed' && result.status !== 'failed') {
+          setTimeout(() => pollTaskStatus(taskId), 2000);
+        }
+      }
+    } catch (error) {
+      console.error('Error polling task status:', error);
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'completed': return 'text-green-400';
+      case 'failed': return 'text-red-400';
+      case 'analyzing': return 'text-blue-400';
+      case 'generating': return 'text-yellow-400';
+      case 'validating': return 'text-purple-400';
+      default: return 'text-gray-400';
+    }
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'completed': return <Check size={16} className="text-green-400" />;
+      case 'failed': return <X size={16} className="text-red-400" />;
+      case 'analyzing': 
+      case 'generating': 
+      case 'validating': return <RefreshCw size={16} className="animate-spin text-blue-400" />;
+      default: return <Clock size={16} className="text-gray-400" />;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-dungeon-dark py-20 px-6">
+      <div className="max-w-6xl mx-auto">
+        <motion.div 
+          className="text-center mb-16"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+        >
+          <h1 className="text-5xl font-fantasy font-bold mb-6 text-white">
+            <Wand2 className="inline-block mr-4 text-dungeon-orange" size={48} />
+            AI Scenario Generator
+          </h1>
+          <p className="text-xl text-dungeon-text-secondary max-w-3xl mx-auto">
+            Transform any series into a playable adventure! Our AI analyzes your favorite anime, manga, games, or books to create comprehensive worlds and characters.
+          </p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Generation Form */}
+          <motion.div 
+            className="scenario-card rounded-xl p-8"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <h2 className="text-2xl font-bold text-white mb-6">Create New Scenario</h2>
+            
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-dungeon-text mb-2">
+                  Series Title *
+                </label>
+                <input
+                  type="text"
+                  value={seriesTitle}
+                  onChange={(e) => setSeriesTitle(e.target.value)}
+                  placeholder="e.g., Naruto, Attack on Titan, Final Fantasy..."
+                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-dungeon-orange"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-dungeon-text mb-2">
+                  Content Type
+                </label>
+                <select
+                  value={seriesType}
+                  onChange={(e) => setSeriesType(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-dungeon-orange"
+                >
+                  {seriesTypes.map(type => (
+                    <option key={type.value} value={type.value}>{type.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-dungeon-text mb-2">
+                  Additional Context (Optional)
+                </label>
+                <textarea
+                  value={additionalContext}
+                  onChange={(e) => setAdditionalContext(e.target.value)}
+                  placeholder="Focus areas, specific characters, time periods, or themes you want emphasized..."
+                  rows={4}
+                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-dungeon-orange resize-none"
+                />
+              </div>
+
+              <button
+                onClick={startGeneration}
+                disabled={!seriesTitle.trim() || isGenerating}
+                className="w-full flex items-center justify-center space-x-3 px-6 py-4 bg-dungeon-orange text-dungeon-dark rounded-lg font-bold hover:bg-dungeon-orange-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isGenerating ? (
+                  <>
+                    <RefreshCw size={20} className="animate-spin" />
+                    <span>Starting Generation...</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap size={20} />
+                    <span>Generate AI Scenario</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </motion.div>
+
+          {/* Generation Tasks */}
+          <motion.div 
+            className="scenario-card rounded-xl p-8"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
+            <h2 className="text-2xl font-bold text-white mb-6">Generation Progress</h2>
+            
+            <div className="space-y-4 max-h-96 overflow-y-auto">
+              {generationTasks.length === 0 ? (
+                <div className="text-center py-8 text-dungeon-text-secondary">
+                  <Wand2 size={48} className="mx-auto mb-4 opacity-50" />
+                  <p>No generations yet. Start creating your first scenario!</p>
+                </div>
+              ) : (
+                generationTasks.map((task) => (
+                  <div key={task.task_id} className="bg-slate-700/50 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-semibold text-white truncate">{task.series_title}</h3>
+                      <div className="flex items-center space-x-2">
+                        {getStatusIcon(task.status)}
+                        <span className={`text-sm font-medium ${getStatusColor(task.status)}`}>
+                          {task.status.charAt(0).toUpperCase() + task.status.slice(1)}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {task.progress !== undefined && (
+                      <div className="mb-2">
+                        <div className="flex justify-between text-xs text-dungeon-text-secondary mb-1">
+                          <span>{task.current_step}</span>
+                          <span>{Math.round(task.progress * 100)}%</span>
+                        </div>
+                        <div className="w-full bg-slate-800 rounded-full h-2">
+                          <div 
+                            className="bg-dungeon-orange h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${task.progress * 100}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="text-xs text-dungeon-text-secondary">
+                      Started: {new Date(task.created_at).toLocaleTimeString()}
+                    </div>
+                    
+                    {task.status === 'completed' && task.lorebook_id && (
+                      <button className="mt-2 text-sm text-dungeon-orange hover:text-dungeon-orange-dark transition-colors">
+                        View Generated Lorebook →
+                      </button>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Configuration Page Component
+export const ConfigurationPage = () => {
+  const [config, setConfig] = useState({
+    googleApiKey: '',
+    model: 'gemini-2.5-flash-preview-05-20',
+    temperature: 0.7,
+    maxTokens: 2048,
+    mongoUrl: '',
+    autoSave: true,
+    maxStoryLength: 100
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState('');
+
+  const availableModels = [
+    { value: 'gemini-2.5-flash-preview-05-20', label: 'Gemini 2.5 Flash (Preview)', recommended: true },
+    { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
+    { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
+  ];
+
+  const saveConfiguration = async () => {
+    setIsSaving(true);
+    try {
+      // For now, save to localStorage since we don't have user auth
+      localStorage.setItem('ai_dungeon_config', JSON.stringify(config));
+      setSaveStatus('Configuration saved successfully!');
+      setTimeout(() => setSaveStatus(''), 3000);
+    } catch (error) {
+      setSaveStatus('Error saving configuration');
+      setTimeout(() => setSaveStatus(''), 3000);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const testConnection = async () => {
+    if (!config.googleApiKey) {
+      setSaveStatus('Please enter your Google API key first');
+      setTimeout(() => setSaveStatus(''), 3000);
+      return;
+    }
+
+    try {
+      // Test API connection
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/health`);
+      if (response.ok) {
+        setSaveStatus('Backend connection successful!');
+      } else {
+        setSaveStatus('Backend connection failed');
+      }
+      setTimeout(() => setSaveStatus(''), 3000);
+    } catch (error) {
+      setSaveStatus('Error testing connection');
+      setTimeout(() => setSaveStatus(''), 3000);
+    }
+  };
+
+  useEffect(() => {
+    // Load saved configuration
+    const savedConfig = localStorage.getItem('ai_dungeon_config');
+    if (savedConfig) {
+      setConfig({ ...config, ...JSON.parse(savedConfig) });
+    }
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-dungeon-dark py-20 px-6">
+      <div className="max-w-4xl mx-auto">
+        <motion.div 
+          className="text-center mb-16"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+        >
+          <h1 className="text-5xl font-fantasy font-bold mb-6 text-white">
+            <Settings className="inline-block mr-4 text-dungeon-orange" size={48} />
+            Configuration
+          </h1>
+          <p className="text-xl text-dungeon-text-secondary max-w-3xl mx-auto">
+            Configure your AI models, API keys, and system preferences for the best gaming experience.
+          </p>
+        </motion.div>
+
+        <motion.div 
+          className="scenario-card rounded-xl p-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <div className="space-y-8">
+            {/* API Configuration */}
+            <div>
+              <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
+                <Zap className="mr-3 text-dungeon-orange" size={24} />
+                AI Model Configuration
+              </h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-dungeon-text mb-2">
+                    Google AI Studio API Key *
+                  </label>
+                  <input
+                    type="password"
+                    value={config.googleApiKey}
+                    onChange={(e) => setConfig(prev => ({ ...prev, googleApiKey: e.target.value }))}
+                    placeholder="Enter your Google AI Studio API key"
+                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-dungeon-orange"
+                  />
+                  <p className="text-xs text-dungeon-text-secondary mt-1">
+                    Get your key from <a href="https://makersuite.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-dungeon-orange hover:underline">Google AI Studio</a>
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-dungeon-text mb-2">
+                    AI Model
+                  </label>
+                  <select
+                    value={config.model}
+                    onChange={(e) => setConfig(prev => ({ ...prev, model: e.target.value }))}
+                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-dungeon-orange"
+                  >
+                    {availableModels.map(model => (
+                      <option key={model.value} value={model.value}>
+                        {model.label} {model.recommended ? '(Recommended)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-dungeon-text mb-2">
+                    Temperature: {config.temperature}
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    value={config.temperature}
+                    onChange={(e) => setConfig(prev => ({ ...prev, temperature: parseFloat(e.target.value) }))}
+                    className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+                  />
+                  <p className="text-xs text-dungeon-text-secondary mt-1">
+                    Higher values = more creative, Lower values = more consistent
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-dungeon-text mb-2">
+                    Max Tokens
+                  </label>
+                  <input
+                    type="number"
+                    value={config.maxTokens}
+                    onChange={(e) => setConfig(prev => ({ ...prev, maxTokens: parseInt(e.target.value) }))}
+                    min="256"
+                    max="4096"
+                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-dungeon-orange"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Game Configuration */}
+            <div>
+              <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
+                <Settings className="mr-3 text-dungeon-orange" size={24} />
+                Game Settings
+              </h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-dungeon-text mb-2">
+                    Max Story Length
+                  </label>
+                  <input
+                    type="number"
+                    value={config.maxStoryLength}
+                    onChange={(e) => setConfig(prev => ({ ...prev, maxStoryLength: parseInt(e.target.value) }))}
+                    min="50"
+                    max="1000"
+                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-dungeon-orange"
+                  />
+                  <p className="text-xs text-dungeon-text-secondary mt-1">
+                    Maximum number of story entries before cleanup
+                  </p>
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    id="autoSave"
+                    checked={config.autoSave}
+                    onChange={(e) => setConfig(prev => ({ ...prev, autoSave: e.target.checked }))}
+                    className="w-4 h-4 text-dungeon-orange bg-slate-700 border-slate-600 rounded focus:ring-dungeon-orange"
+                  />
+                  <label htmlFor="autoSave" className="text-dungeon-text">
+                    Enable Auto-Save
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Database Configuration */}
+            <div>
+              <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
+                <Download className="mr-3 text-dungeon-orange" size={24} />
+                Database Settings
+              </h2>
+              
+              <div>
+                <label className="block text-sm font-medium text-dungeon-text mb-2">
+                  MongoDB URL (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={config.mongoUrl}
+                  onChange={(e) => setConfig(prev => ({ ...prev, mongoUrl: e.target.value }))}
+                  placeholder="mongodb://localhost:27017 or MongoDB Atlas URL"
+                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-dungeon-orange"
+                />
+                <p className="text-xs text-dungeon-text-secondary mt-1">
+                  Leave empty to use default local MongoDB
+                </p>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-slate-700">
+              <button
+                onClick={saveConfiguration}
+                disabled={isSaving}
+                className="flex items-center justify-center space-x-2 px-6 py-3 bg-dungeon-orange text-dungeon-dark rounded-lg font-medium hover:bg-dungeon-orange-dark transition-colors disabled:opacity-50"
+              >
+                {isSaving ? (
+                  <>
+                    <RefreshCw size={18} className="animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <Download size={18} />
+                    <span>Save Configuration</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={testConnection}
+                className="flex items-center justify-center space-x-2 px-6 py-3 border border-dungeon-orange text-dungeon-orange rounded-lg font-medium hover:bg-dungeon-orange hover:text-dungeon-dark transition-colors"
+              >
+                <Zap size={18} />
+                <span>Test Connection</span>
+              </button>
+
+              {saveStatus && (
+                <div className={`flex items-center space-x-2 px-4 py-3 rounded-lg ${
+                  saveStatus.includes('Error') || saveStatus.includes('failed') 
+                    ? 'bg-red-900/50 text-red-300' 
+                    : 'bg-green-900/50 text-green-300'
+                }`}>
+                  {saveStatus.includes('Error') || saveStatus.includes('failed') ? (
+                    <AlertCircle size={18} />
+                  ) : (
+                    <Check size={18} />
+                  )}
+                  <span>{saveStatus}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </div>
+  );
+};
+
+// Lorebooks Browser Page Component
+export const LorebooksPage = () => {
+  const [lorebooks, setLorebooks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterGenre, setFilterGenre] = useState('');
+  const [selectedLorebook, setSelectedLorebook] = useState(null);
+
+  useEffect(() => {
+    fetchLorebooks();
+  }, []);
+
+  const fetchLorebooks = async () => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/lorebooks`);
+      if (response.ok) {
+        const result = await response.json();
+        setLorebooks(result.lorebooks);
+      }
+    } catch (error) {
+      console.error('Error fetching lorebooks:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredLorebooks = lorebooks.filter(lorebook => {
+    const matchesSearch = lorebook.title.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesGenre = !filterGenre || lorebook.genre.includes(filterGenre);
+    return matchesSearch && matchesGenre;
+  });
+
+  const genres = [...new Set(lorebooks.flatMap(lb => lb.genre))];
+
+  return (
+    <div className="min-h-screen bg-dungeon-dark py-20 px-6">
+      <div className="max-w-7xl mx-auto">
+        <motion.div 
+          className="text-center mb-16"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+        >
+          <h1 className="text-5xl font-fantasy font-bold mb-6 text-white">
+            <ScrollText className="inline-block mr-4 text-dungeon-orange" size={48} />
+            Lorebook Library
+          </h1>
+          <p className="text-xl text-dungeon-text-secondary max-w-3xl mx-auto">
+            Browse your collection of AI-generated worlds and scenarios. Each lorebook contains rich lore, characters, and adventures ready to explore.
+          </p>
+        </motion.div>
+
+        {/* Search and Filters */}
+        <motion.div 
+          className="scenario-card rounded-xl p-6 mb-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search lorebooks..."
+                  className="w-full pl-10 pr-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-dungeon-orange"
+                />
+              </div>
+            </div>
+            
+            <div className="sm:w-48">
+              <select
+                value={filterGenre}
+                onChange={(e) => setFilterGenre(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-dungeon-orange"
+              >
+                <option value="">All Genres</option>
+                {genres.map(genre => (
+                  <option key={genre} value={genre}>{genre}</option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              onClick={fetchLorebooks}
+              className="flex items-center space-x-2 px-4 py-3 border border-dungeon-orange text-dungeon-orange rounded-lg hover:bg-dungeon-orange hover:text-dungeon-dark transition-colors"
+            >
+              <RefreshCw size={18} />
+              <span>Refresh</span>
+            </button>
+          </div>
+        </motion.div>
+
+        {/* Lorebooks Grid */}
+        {loading ? (
+          <div className="text-center py-20">
+            <RefreshCw size={48} className="animate-spin text-dungeon-orange mx-auto mb-4" />
+            <p className="text-dungeon-text-secondary">Loading lorebooks...</p>
+          </div>
+        ) : filteredLorebooks.length === 0 ? (
+          <motion.div 
+            className="text-center py-20"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6 }}
+          >
+            <ScrollText size={64} className="text-slate-600 mx-auto mb-4" />
+            <h3 className="text-2xl font-bold text-white mb-4">No Lorebooks Found</h3>
+            <p className="text-dungeon-text-secondary mb-8">
+              {searchTerm || filterGenre 
+                ? "Try adjusting your search or filters" 
+                : "Start by generating your first scenario!"}
+            </p>
+            <button 
+              onClick={() => window.location.href = '#generator'}
+              className="px-6 py-3 bg-dungeon-orange text-dungeon-dark rounded-lg font-medium hover:bg-dungeon-orange-dark transition-colors"
+            >
+              Generate First Scenario
+            </button>
+          </motion.div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredLorebooks.map((lorebook, index) => (
+              <motion.div
+                key={lorebook.id}
+                className="scenario-card rounded-xl overflow-hidden cursor-pointer"
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: index * 0.1 }}
+                whileHover={{ scale: 1.02 }}
+                onClick={() => setSelectedLorebook(lorebook)}
+              >
+                <div className="h-48 bg-gradient-to-br from-dungeon-orange/20 to-blue-600/20 relative flex items-center justify-center">
+                  <ScrollText size={48} className="text-dungeon-orange" />
+                  <div className="absolute top-4 right-4 flex flex-wrap gap-1">
+                    {lorebook.genre.slice(0, 2).map(genre => (
+                      <span key={genre} className="px-2 py-1 bg-dungeon-orange/20 text-dungeon-orange text-xs rounded">
+                        {genre}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="p-6">
+                  <h3 className="text-xl font-bold text-white mb-2">{lorebook.title}</h3>
+                  <p className="text-dungeon-text-secondary text-sm mb-4">{lorebook.setting}</p>
+                  
+                  <div className="flex justify-between text-sm text-dungeon-text-secondary">
+                    <span>{lorebook.characters_count} Characters</span>
+                    <span>{lorebook.locations_count} Locations</span>
+                  </div>
+                  
+                  <div className="mt-4 text-xs text-dungeon-text-secondary">
+                    Created: {new Date(lorebook.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
