@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { 
   Sword, 
   Shield, 
@@ -8,15 +8,11 @@ import {
   Star, 
   Backpack, 
   ScrollText, 
-  Settings, 
   Play, 
   Send,
-  Plus,
-  X,
   Menu,
   User,
-  Home,
-  Zap
+  Home
 } from 'lucide-react';
 
 // Navigation Component
