@@ -56,8 +56,10 @@ function App() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          scenario_type: 'fantasy',
-          character_name: 'Adventurer'
+          scenario_template_id: scenario.id,
+          lorebook_id: scenario.lorebook_id,
+          character_name: scenario.character ? scenario.character.name : 'Adventurer',
+          scenario_type: 'fantasy'
         }),
       });
 
@@ -75,7 +77,7 @@ function App() {
           world_state: result.world_state,
           scenario: scenario,
           story: result.story.length > 0 ? result.story : [
-            { type: 'narration', text: scenario.intro }
+            { type: 'narration', text: scenario.intro || `Welcome to the world of ${scenario.title}. Your adventure begins now...` }
           ]
         }));
       } else {
@@ -86,12 +88,48 @@ function App() {
       
       // Fallback to local game state
       setCurrentView('game');
+      
+      // Use character from scenario if available
+      const defaultCharacter = {
+        name: 'Adventurer',
+        level: 1,
+        health: 100,
+        maxHealth: 100,
+        mana: 50,
+        maxMana: 50,
+        experience: 0,
+        stats: {
+          strength: 10,
+          dexterity: 10,
+          intelligence: 10,
+          constitution: 10,
+          wisdom: 10,
+          charisma: 10
+        },
+        class_name: 'Adventurer',
+        background: 'A mysterious adventurer'
+      };
+      
+      const character = scenario.character ? {
+        name: scenario.character.name,
+        level: scenario.character.level || 1,
+        health: scenario.character.health || 100,
+        maxHealth: scenario.character.max_health || 100,
+        mana: scenario.character.mana || 50,
+        maxMana: scenario.character.max_mana || 50,
+        experience: scenario.character.experience || 0,
+        stats: scenario.character.stats || defaultCharacter.stats,
+        class_name: scenario.character.class_name || 'Adventurer',
+        background: scenario.character.background || 'A mysterious adventurer'
+      } : defaultCharacter;
+      
       setGameState(prev => ({
         ...prev,
         session_id: `local_${Date.now()}`,
         scenario: scenario,
+        character: character,
         story: [
-          { type: 'narration', text: scenario.intro }
+          { type: 'narration', text: scenario.intro || `Welcome to the world of ${scenario.title}. Your adventure begins now...` }
         ]
       }));
     }

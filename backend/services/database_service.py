@@ -285,6 +285,18 @@ class DatabaseService:
         except Exception as e:
             logger.error(f"Error searching scenario templates: {str(e)}")
             return []
+    
+    async def get_scenario_template(self, template_id: str) -> Optional[ScenarioTemplate]:
+        """Get scenario template by ID"""
+        try:
+            template_data = await self.db.scenario_templates.find_one({"id": template_id})
+            if template_data:
+                return ScenarioTemplate(**template_data)
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error retrieving scenario template: {str(e)}")
+            return None
 
 # Global database service instance
 db_service = DatabaseService()

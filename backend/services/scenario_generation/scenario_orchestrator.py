@@ -8,9 +8,11 @@ from models.scenario_models import (
     GenerationRequest, GenerationTask, GenerationStatus, 
     Lorebook, SeriesMetadata, ScenarioTemplate
 )
+from models.game_models import Character
 from flows.series_analysis.analysis_flow import series_analysis_flow
 from flows.lorebook_generation.world_building_flow import world_building_flow
 from flows.lorebook_generation.character_generation_flow import character_generation_flow
+from flows.character_generation.character_creation_flow import character_creation_flow
 from services.database_service import db_service
 
 logger = logging.getLogger(__name__)
@@ -94,13 +96,18 @@ class ScenarioOrchestrator:
             # Step 3: Validation
             task.status = GenerationStatus.VALIDATING
             task.current_step = "Validating generated content"
-            task.progress = 0.9
-            await db_service.update_task_progress(task_id, 0.9, task.current_step, "validating")
+            task.progress = 0.85
+            await db_service.update_task_progress(task_id, 0.85, task.current_step, "validating")
             
             validated_lorebook = await self._validate_lorebook(lorebook)
             
-            # Step 4: Generate Scenario Templates
+            # Step 4: Generate Scenario Templates with Characters
             task.current_step = "Creating scenario templates"
+            task.progress = 0.9
+            await db_service.update_task_progress(task_id, 0.9, task.current_step)
+            
+            # Step 5: Generate Playable Characters
+            task.current_step = "Creating playable characters"
             task.progress = 0.95
             await db_service.update_task_progress(task_id, 0.95, task.current_step)
             
@@ -253,7 +260,7 @@ class ScenarioOrchestrator:
             raise
     
     async def _generate_scenario_templates(self, lorebook: Lorebook):
-        """Step 4: Generate scenario templates"""
+        """Step 4: Generate scenario templates with playable characters"""
         logger.info(f"Generating scenario templates for: {lorebook.series_metadata.title}")
         
         try:
@@ -262,6 +269,31 @@ class ScenarioOrchestrator:
             
             # Beginning adventure template
             template_id = str(uuid.uuid4())
+            
+            # Generate scenario context
+            scenario_context = f"Beginning adventure in the world of {lorebook.series_metadata.title}. {lorebook.series_metadata.setting}"
+            
+            # Generate playable characters from main characters in lorebook
+            playable_characters = []
+            main_character_names = [char.name for char in lorebook.characters[:3] if char.role in ["protagonist", "main character", "hero"]]
+            
+            # If no protagonists found, use first 2 characters
+            if not main_character_names and lorebook.characters:
+                main_character_names = [char.name for char in lorebook.characters[:2]]
+            
+            # Generate playable characters
+            logger.info(f"Generating playable characters for scenario: {main_character_names}")
+            for char_name in main_character_names:
+                try:
+                    # Create character using character creation flow
+                    character = await character_creation_flow.create_character_from_series(
+                        char_name, lorebook, scenario_context
+                    )
+                    # Add to playable characters list
+                    playable_characters.append(character.model_dump())
+                except Exception as char_error:
+                    logger.error(f"Error generating character {char_name}: {str(char_error)}")
+            
             beginning_template = ScenarioTemplate(
                 id=template_id,
                 title=f"Beginning Adventure in {lorebook.series_metadata.title}",
@@ -271,6 +303,7 @@ class ScenarioOrchestrator:
                 time_period="Present day",
                 starting_situation=f"You find yourself at the beginning of an adventure in {lorebook.series_metadata.setting}",
                 key_characters=[char.name for char in lorebook.characters[:3]],
+                playable_characters=playable_characters,
                 available_paths=["Explore the area", "Seek allies", "Investigate mysteries"],
                 difficulty_level="medium",
                 tags=["beginner", "exploration", lorebook.series_metadata.type.value]
@@ -281,7 +314,7 @@ class ScenarioOrchestrator:
             for template in templates:
                 await db_service.save_scenario_template(template)
             
-            logger.info(f"Generated {len(templates)} scenario templates")
+            logger.info(f"Generated {len(templates)} scenario templates with {len(playable_characters)} playable characters")
             
         except Exception as e:
             logger.error(f"Error generating scenario templates: {str(e)}")
