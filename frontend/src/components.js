@@ -289,7 +289,7 @@ export const GameInterface = ({ gameState, setGameState, onAction }) => {
   ];
 
   return (
-    <div className="h-screen flex overflow-hidden bg-dungeon-dark">
+    <div className="h-full flex overflow-hidden bg-dungeon-dark">
       {/* Main Game Area */}
       <div className="flex-1 flex flex-col min-h-0">
         {/* Story Display */}
