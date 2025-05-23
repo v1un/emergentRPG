@@ -1,0 +1,112 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    needs: []  # Add CI workflow as dependency when ready
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+    
+    - name: Install dependencies
+      run: |
+        # Backend dependencies
+        cd backend
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        cd ..
+        
+        # Frontend dependencies
+        cd frontend
+        npm ci
+        npm run build
+        cd ..
+    
+    - name: Create deployment package
+      run: |
+        mkdir -p deploy
+        
+        # Copy backend files
+        cp -r backend deploy/
+        
+        # Copy frontend build
+        cp -r frontend/build deploy/frontend
+        
+        # Copy necessary files
+        cp start_app.sh deploy/
+        cp README.md deploy/
+        
+        # Create production requirements.txt
+        echo "fastapi==0.104.1" > deploy/requirements.txt
+        echo "uvicorn==0.24.0" >> deploy/requirements.txt
+        echo "pymongo==4.6.0" >> deploy/requirements.txt
+        echo "motor==3.3.2" >> deploy/requirements.txt
+        echo "google-generativeai==0.3.0" >> deploy/requirements.txt
+        echo "python-dotenv==1.0.0" >> deploy/requirements.txt
+    
+    - name: Upload deployment artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: production-build
+        path: deploy/
+        retention-days: 30
+    
+    # Uncomment and configure these sections when you have a deployment target
+    
+    # - name: Deploy to VPS/Server
+    #   uses: appleboy/ssh-action@v0.1.5
+    #   with:
+    #     host: ${{ secrets.HOST }}
+    #     username: ${{ secrets.USERNAME }}
+    #     key: ${{ secrets.KEY }}
+    #     script: |
+    #       cd /path/to/your/app
+    #       git pull origin main
+    #       # Add your deployment commands here
+    
+    # - name: Deploy to Heroku
+    #   uses: akhileshns/heroku-deploy@v3.12.12
+    #   with:
+    #     heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
+    #     heroku_app_name: "your-app-name"
+    #     heroku_email: "your-email@example.com"
+    
+    # - name: Deploy to AWS/GCP/Azure
+    #   # Add your cloud deployment configuration here
+    
+    - name: Create GitHub Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        body: |
+          Changes in this Release:
+          - Auto-generated release from CI/CD pipeline
+          
+          ## Installation
+          1. Download the production-build artifact
+          2. Extract and configure your environment variables
+          3. Run `./start_app.sh` to start the application
+        draft: false
+        prerelease: false

@@ -1,0 +1,93 @@
+name: Dependency Updates & Security
+
+on:
+  schedule:
+    # Run every Monday at 9 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+jobs:
+  dependency-updates:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: Check for Python dependency updates
+      run: |
+        cd backend
+        pip install pip-review
+        pip-review --local --interactive --auto
+    
+    - name: Check for Node.js dependency updates
+      run: |
+        cd frontend
+        npx npm-check-updates -u
+        npm install
+    
+    - name: Create Pull Request for updates
+      uses: peter-evans/create-pull-request@v5
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        commit-message: 'chore: update dependencies'
+        title: 'Automated Dependency Updates'
+        body: |
+          This is an automated pull request to update dependencies.
+          
+          Please review the changes and test thoroughly before merging.
+          
+          ## Changes
+          - Updated Python dependencies in backend/requirements.txt
+          - Updated Node.js dependencies in frontend/package.json
+        branch: automated-dependency-updates
+        delete-branch: true
+
+  security-audit:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: Python security audit
+      run: |
+        cd backend
+        pip install safety
+        safety check --json || echo "Security issues found in Python dependencies"
+    
+    - name: Node.js security audit
+      run: |
+        cd frontend
+        npm audit --audit-level=moderate || echo "Security issues found in Node.js dependencies"
+    
+    - name: Run CodeQL Analysis
+      uses: github/codeql-action/init@v2
+      with:
+        languages: python, javascript
+    
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v2
+    
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v2

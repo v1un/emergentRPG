@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: emergentRPG-backend-dev
+    ports:
+      - "8001:8001"
+    environment:
+      - MONGO_URL=mongodb://mongodb:27017/emergentRPG_dev
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - BACKEND_PORT=8001
+      - BACKEND_HOST=0.0.0.0
+      - ENVIRONMENT=development
+    depends_on:
+      - mongodb
+    volumes:
+      - ./backend:/app/backend
+      - ./backend/tests:/app/backend/tests
+    networks:
+      - emergentRPG-network
+    command: ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      target: build
+    container_name: emergentRPG-frontend-dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - emergentRPG-network
+    command: ["npm", "start"]
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+
+  mongodb:
+    image: mongo:7.0
+    container_name: emergentRPG-mongodb-dev
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=emergentRPG_dev
+    volumes:
+      - mongodb_dev_data:/data/db
+    networks:
+      - emergentRPG-network
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: emergentRPG-mongo-express-dev
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_URL=mongodb://mongodb:27017/
+      - ME_CONFIG_BASICAUTH_USERNAME=admin
+      - ME_CONFIG_BASICAUTH_PASSWORD=pass
+    depends_on:
+      - mongodb
+    networks:
+      - emergentRPG-network
+
+volumes:
+  mongodb_dev_data:
+
+networks:
+  emergentRPG-network:
+    driver: bridge
