@@ -654,9 +654,6 @@ const QuestsPanel = ({ quests }) => {
   );
 };
 
-// Global flow instance
-character_creation_flow = CharacterCreationFlow();
-
 // Scenario Generator Page Component
 export const ScenarioGeneratorPage = () => {
   const [seriesTitle, setSeriesTitle] = useState('');
