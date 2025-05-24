@@ -24,73 +24,130 @@ import {
   RefreshCw
 } from 'lucide-react';
 
-// Navigation Component
+// Enhanced Navigation Component with Mobile Support
 export const Navigation = ({ currentView, setCurrentView }) => {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const navItems = [
+    { id: 'landing', label: 'Home', icon: Home },
+    { id: 'generator', label: 'Generate', icon: Wand2 },
+    { id: 'lorebooks', label: 'Lorebooks', icon: ScrollText },
+    { id: 'config', label: 'Settings', icon: Settings },
+  ];
+
   return (
-    <nav className="bg-dungeon-darker border-b border-slate-700 px-6 py-4">
+    <nav className="glass-panel border-b border-dungeon-stone/30 px-4 md:px-6 py-4 relative z-50">
       <div className="max-w-7xl mx-auto flex justify-between items-center">
+        {/* Logo */}
         <div className="flex items-center space-x-8">
-          <h1 className="text-2xl font-fantasy font-bold text-dungeon-orange">
-            AI DUNGEON
-          </h1>
-          <div className="hidden md:flex space-x-6">
-            <button 
-              onClick={() => setCurrentView('landing')}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
-                currentView === 'landing' 
-                  ? 'bg-dungeon-orange text-dungeon-dark' 
-                  : 'text-dungeon-text-secondary hover:text-dungeon-text'
-              }`}
-            >
-              <Home size={18} />
-              <span>Home</span>
-            </button>
-            <button 
-              onClick={() => setCurrentView('generator')}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
-                currentView === 'generator' 
-                  ? 'bg-dungeon-orange text-dungeon-dark' 
-                  : 'text-dungeon-text-secondary hover:text-dungeon-text'
-              }`}
-            >
-              <Wand2 size={18} />
-              <span>Generate</span>
-            </button>
-            <button 
-              onClick={() => setCurrentView('lorebooks')}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
-                currentView === 'lorebooks' 
-                  ? 'bg-dungeon-orange text-dungeon-dark' 
-                  : 'text-dungeon-text-secondary hover:text-dungeon-text'
-              }`}
-            >
-              <ScrollText size={18} />
-              <span>Lorebooks</span>
-            </button>
-            <button 
-              onClick={() => setCurrentView('config')}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
-                currentView === 'config' 
-                  ? 'bg-dungeon-orange text-dungeon-dark' 
-                  : 'text-dungeon-text-secondary hover:text-dungeon-text'
-              }`}
-            >
-              <Settings size={18} />
-              <span>Settings</span>
-            </button>
+          <motion.h1 
+            className="text-2xl md:text-3xl font-fantasy font-bold text-mystical-amber magical-text text-shadow-glow"
+            whileHover={{ scale: 1.05 }}
+            transition={{ type: "spring", stiffness: 300 }}
+          >
+            ⚔️ AI DUNGEON
+          </motion.h1>
+          
+          {/* Desktop Navigation */}
+          <div className="hidden lg:flex space-x-2">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = currentView === item.id;
+              
+              return (
+                <motion.button
+                  key={item.id}
+                  onClick={() => setCurrentView(item.id)}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-xl font-medium transition-all duration-300 ${
+                    isActive
+                      ? 'bg-mystical-amber text-dungeon-dark shadow-glow-sm'
+                      : 'text-dungeon-pearl hover:text-dungeon-snow hover:bg-dungeon-stone/20 hover:shadow-glow-sm'
+                  }`}
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                >
+                  <Icon size={18} />
+                  <span className="hidden xl:inline">{item.label}</span>
+                </motion.button>
+              );
+            })}
           </div>
         </div>
         
+        {/* Right Side Actions */}
         <div className="flex items-center space-x-4">
-          <button className="hidden md:flex items-center space-x-2 px-4 py-2 bg-dungeon-orange text-dungeon-dark rounded-lg font-medium hover:bg-dungeon-orange-dark transition-colors">
+          {/* Sign In Button - Desktop */}
+          <motion.button 
+            className="hidden md:flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-mystical-amber to-mystical-gold text-dungeon-dark rounded-xl font-medium shadow-glow transition-all duration-300 hover:shadow-glow-lg"
+            whileHover={{ scale: 1.05, y: -2 }}
+            whileTap={{ scale: 0.95 }}
+          >
             <User size={18} />
             <span>Sign In</span>
-          </button>
-          <button className="md:hidden">
-            <Menu size={24} className="text-dungeon-text" />
-          </button>
+          </motion.button>
+          
+          {/* Mobile Menu Button */}
+          <motion.button 
+            className="lg:hidden p-2 rounded-xl text-dungeon-pearl hover:text-dungeon-snow hover:bg-dungeon-stone/20 transition-colors"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            whileTap={{ scale: 0.95 }}
+          >
+            <Menu size={24} />
+          </motion.button>
         </div>
       </div>
+
+      {/* Mobile Menu */}
+      <motion.div
+        className={`lg:hidden absolute top-full left-0 right-0 glass-panel border-t border-dungeon-stone/30 ${
+          isMobileMenuOpen ? 'block' : 'hidden'
+        }`}
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ 
+          opacity: isMobileMenuOpen ? 1 : 0, 
+          y: isMobileMenuOpen ? 0 : -20 
+        }}
+        transition={{ duration: 0.3 }}
+      >
+        <div className="px-4 py-6 space-y-4">
+          {/* Mobile Navigation Items */}
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = currentView === item.id;
+            
+            return (
+              <motion.button
+                key={item.id}
+                onClick={() => {
+                  setCurrentView(item.id);
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-all duration-300 ${
+                  isActive
+                    ? 'bg-mystical-amber text-dungeon-dark shadow-glow-sm'
+                    : 'text-dungeon-pearl hover:text-dungeon-snow hover:bg-dungeon-stone/20'
+                }`}
+                whileHover={{ scale: 1.02, x: 4 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <Icon size={20} />
+                <span>{item.label}</span>
+              </motion.button>
+            );
+          })}
+          
+          {/* Mobile Sign In */}
+          <motion.button 
+            className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-mystical-amber to-mystical-gold text-dungeon-dark rounded-xl font-medium shadow-glow mt-4"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <User size={20} />
+            <span>Sign In</span>
+          </motion.button>
+        </div>
+      </motion.div>
     </nav>
   );
 };
@@ -487,6 +544,8 @@ export const LandingPage = ({ onStartGame }) => {
 export const GameInterface = ({ gameState, setGameState, onAction }) => {
   const [inputValue, setInputValue] = useState('');
   const [activePanel, setActivePanel] = useState('character');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const chatRef = useRef(null);
 
   useEffect(() => {
@@ -495,340 +554,819 @@ export const GameInterface = ({ gameState, setGameState, onAction }) => {
     }
   }, [gameState.story]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (inputValue.trim()) {
-      onAction(inputValue);
+      setIsTyping(true);
+      await onAction(inputValue);
       setInputValue('');
+      setIsTyping(false);
     }
   };
 
   const quickActions = [
-    { text: "Look around", icon: <Star size={16} /> },
-    { text: "Attack", icon: <Sword size={16} /> },
-    { text: "Defend", icon: <Shield size={16} /> },
-    { text: "Cast spell", icon: <Wand2 size={16} /> },
+    { text: "Look around", icon: <Star size={16} />, color: "mystical-sapphire" },
+    { text: "Attack", icon: <Sword size={16} />, color: "mystical-crimson" },
+    { text: "Defend", icon: <Shield size={16} />, color: "mystical-emerald" },
+    { text: "Cast spell", icon: <Wand2 size={16} />, color: "mystical-amethyst" },
+  ];
+
+  const panelTabs = [
+    { id: 'character', label: 'Character', icon: User, color: 'mystical-amber' },
+    { id: 'inventory', label: 'Inventory', icon: Backpack, color: 'mystical-emerald' },
+    { id: 'quests', label: 'Quests', icon: ScrollText, color: 'mystical-sapphire' },
   ];
 
   return (
-    <div className="h-full flex overflow-hidden bg-dungeon-dark">
+    <div className="h-full flex overflow-hidden bg-void-gradient relative">
       {/* Main Game Area */}
-      <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex-1 flex flex-col min-h-0 relative">
         {/* Story Display */}
         <div 
           ref={chatRef}
-          className="flex-1 overflow-y-auto p-6 space-y-4 relative min-h-0"
+          className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 relative min-h-0 magical-particles"
           style={{
-            backgroundImage: `url('https://images.unsplash.com/photo-1598205542984-6720bbcf74f1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzd8MHwxfHNlYXJjaHwxfHxmYW50YXN5JTIwbGFuZHNjYXBlfGVufDB8fHx0ZWFsfDE3NDgwMTQ3NjZ8MA&ixlib=rb-4.1.0&q=85')`,
+            backgroundImage: `url('https://images.unsplash.com/photo-1598205542984-6720bbcf74f1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzd8MHwxfHNlYXJjaHwxfHxmYW50YXN5JTIwbGFuZHNjYXBlfGVufDB8fHx8ZWFsfDE3NDgwMTQ3NjZ8MA&ixlib=rb-4.1.0&q=85')`,
             backgroundSize: 'cover',
             backgroundAttachment: 'fixed',
             backgroundPosition: 'center'
           }}
         >
-          <div className="absolute inset-0 bg-gradient-to-b from-dungeon-dark/90 via-dungeon-dark/80 to-dungeon-dark/90"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-dungeon-dark/95 via-dungeon-dark/85 to-dungeon-dark/95"></div>
           <div className="relative z-10 max-w-4xl mx-auto space-y-4">
             {gameState.story.map((entry, index) => (
               <motion.div
                 key={index}
-                className={`p-4 rounded-lg chat-message shadow-xl ${
+                className={`p-4 md:p-6 rounded-2xl chat-message shadow-depth backdrop-blur-sm ${
                   entry.type === 'narration' 
-                    ? 'bg-slate-900 border-l-4 border-dungeon-orange border border-slate-700' 
-                    : 'bg-blue-900 border-l-4 border-blue-400 border border-blue-700 ml-8'
+                    ? 'chat-message narration' 
+                    : 'chat-message action ml-4 md:ml-8'
                 }`}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
+                initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ 
+                  duration: 0.6, 
+                  delay: index * 0.1,
+                  type: "spring",
+                  stiffness: 100
+                }}
               >
-                <div className="flex items-start space-x-3">
-                  <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
-                    entry.type === 'narration' ? 'bg-dungeon-orange' : 'bg-blue-400'
+                <div className="flex items-start space-x-4">
+                  <div className={`w-3 h-3 rounded-full mt-2 flex-shrink-0 shadow-glow ${
+                    entry.type === 'narration' ? 'bg-mystical-amber' : 'bg-mystical-sapphire'
                   }`}></div>
-                  <p className="text-white leading-relaxed font-medium">{entry.text}</p>
+                  <p className="text-dungeon-snow leading-relaxed font-medium text-shadow">
+                    {entry.text}
+                  </p>
                 </div>
               </motion.div>
             ))}
+            
+            {/* Typing Indicator */}
+            {isTyping && (
+              <motion.div
+                className="p-4 md:p-6 rounded-2xl chat-message narration backdrop-blur-sm"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <div className="flex items-center space-x-4">
+                  <div className="w-3 h-3 rounded-full bg-mystical-amber animate-pulse"></div>
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-mystical-amber rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-mystical-amber rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                    <div className="w-2 h-2 bg-mystical-amber rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
           </div>
         </div>
 
         {/* Input Area */}
-        <div className="bg-dungeon-darker border-t border-slate-600 p-6 flex-shrink-0">
+        <div className="glass-panel border-t border-dungeon-stone/30 p-4 md:p-6 flex-shrink-0">
           <div className="max-w-4xl mx-auto">
             {/* Quick Actions */}
             <div className="flex flex-wrap gap-2 mb-4">
               {quickActions.map((action, index) => (
-                <button
+                <motion.button
                   key={index}
                   onClick={() => onAction(action.text)}
-                  className="flex items-center space-x-2 px-3 py-2 bg-slate-700/90 hover:bg-slate-600 rounded-lg text-sm transition-all hover:scale-105 border border-slate-600"
+                  className={`flex items-center space-x-2 px-3 py-2 glass-panel-light rounded-xl text-sm font-medium transition-all duration-300 hover:shadow-glow-sm border border-${action.color}/30 hover:border-${action.color}/60`}
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ type: "spring", stiffness: 300 }}
                 >
                   {action.icon}
-                  <span>{action.text}</span>
-                </button>
+                  <span className="hidden sm:inline">{action.text}</span>
+                </motion.button>
               ))}
             </div>
 
             {/* Input Form */}
-            <form onSubmit={handleSubmit} className="flex space-x-4">
-              <input
-                type="text"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                placeholder="What do you do next?"
-                className="flex-1 px-4 py-3 bg-slate-700/90 border border-slate-600 rounded-lg text-dungeon-text placeholder-slate-400 focus:outline-none focus:border-dungeon-orange focus:ring-1 focus:ring-dungeon-orange"
-              />
-              <button
+            <form onSubmit={handleSubmit} className="flex space-x-3">
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder="What do you do next?"
+                  className="w-full px-4 py-3 glass-panel-light rounded-xl text-dungeon-snow placeholder-dungeon-light focus:outline-none focus:border-mystical-amber/60 focus:shadow-glow-sm transition-all duration-300"
+                  disabled={isTyping}
+                />
+                {isTyping && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <div className="loading-spinner w-5 h-5"></div>
+                  </div>
+                )}
+              </div>
+              <motion.button
                 type="submit"
-                className="px-6 py-3 bg-dungeon-orange text-dungeon-dark rounded-lg font-medium hover:bg-dungeon-orange-dark transition-colors flex items-center space-x-2 shadow-lg hover:shadow-xl"
+                disabled={isTyping || !inputValue.trim()}
+                className="px-4 md:px-6 py-3 bg-gradient-to-r from-mystical-amber to-mystical-gold text-dungeon-dark rounded-xl font-medium shadow-glow transition-all duration-300 hover:shadow-glow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                whileHover={{ scale: 1.05, y: -2 }}
+                whileTap={{ scale: 0.95 }}
               >
                 <Send size={18} />
-                <span>Send</span>
-              </button>
+                <span className="hidden sm:inline">Send</span>
+              </motion.button>
             </form>
           </div>
         </div>
       </div>
 
+      {/* Mobile Sidebar Toggle */}
+      <motion.button
+        className="lg:hidden fixed top-20 right-4 z-50 p-3 glass-panel rounded-xl shadow-glow"
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+      >
+        <Menu size={20} className="text-mystical-amber" />
+      </motion.button>
+
       {/* Right Sidebar */}
-      <div className="w-80 bg-dungeon-darker border-l border-slate-600 flex flex-col flex-shrink-0">
+      <motion.div 
+        className={`w-80 lg:w-96 glass-panel border-l border-dungeon-stone/30 flex flex-col flex-shrink-0 ${
+          isSidebarOpen ? 'fixed' : 'hidden'
+        } lg:flex right-0 top-0 h-full z-40`}
+        initial={{ x: '100%' }}
+        animate={{ x: isSidebarOpen || window.innerWidth >= 1024 ? 0 : '100%' }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      >
         {/* Panel Tabs */}
-        <div className="flex border-b border-slate-600">
-          {[
-            { id: 'character', label: 'Character', icon: <User size={16} /> },
-            { id: 'inventory', label: 'Inventory', icon: <Backpack size={16} /> },
-            { id: 'quests', label: 'Quests', icon: <ScrollText size={16} /> },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActivePanel(tab.id)}
-              className={`flex-1 flex items-center justify-center space-x-2 px-4 py-3 transition-colors ${
-                activePanel === tab.id
-                  ? 'bg-dungeon-orange text-dungeon-dark font-medium'
-                  : 'text-dungeon-text-secondary hover:text-dungeon-text hover:bg-slate-700/50'
-              }`}
-            >
-              {tab.icon}
-              <span className="text-sm font-medium">{tab.label}</span>
-            </button>
-          ))}
+        <div className="flex border-b border-dungeon-stone/30">
+          {panelTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activePanel === tab.id;
+            
+            return (
+              <motion.button
+                key={tab.id}
+                onClick={() => setActivePanel(tab.id)}
+                className={`flex-1 flex items-center justify-center space-x-2 px-3 py-4 transition-all duration-300 ${
+                  isActive
+                    ? `bg-${tab.color} text-dungeon-dark font-medium shadow-glow-sm`
+                    : 'text-dungeon-pearl hover:text-dungeon-snow hover:bg-dungeon-stone/20'
+                }`}
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Icon size={18} />
+                <span className="text-sm font-medium hidden xl:inline">{tab.label}</span>
+              </motion.button>
+            );
+          })}
         </div>
 
         {/* Panel Content */}
         <div className="flex-1 overflow-y-auto p-4">
-          {activePanel === 'character' && <CharacterPanel character={gameState.character} />}
-          {activePanel === 'inventory' && <InventoryPanel inventory={gameState.inventory} />}
-          {activePanel === 'quests' && <QuestsPanel quests={gameState.quests} />}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Character Panel Component
-const CharacterPanel = ({ character }) => {
-  return (
-    <div className="space-y-6">
-      {/* Character Info */}
-      <div className="text-center">
-        <div className="w-20 h-20 bg-gradient-to-br from-dungeon-orange to-dungeon-orange-dark rounded-full mx-auto mb-3 flex items-center justify-center">
-          <User size={32} className="text-dungeon-dark" />
-        </div>
-        <h3 className="text-xl font-bold text-white">{character.name}</h3>
-        <p className="text-sm text-dungeon-text-secondary">Level {character.level} Adventurer</p>
-      </div>
-
-      {/* Health and Mana */}
-      <div className="space-y-4">
-        <div>
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-dungeon-text-secondary">Health</span>
-            <span className="text-white">{character.health}/{character.maxHealth}</span>
-          </div>
-          <div className="w-full bg-slate-700 rounded-full h-2">
-            <div 
-              className="bg-red-500 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${(character.health / character.maxHealth) * 100}%` }}
-            ></div>
-          </div>
-        </div>
-
-        <div>
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-dungeon-text-secondary">Mana</span>
-            <span className="text-white">{character.mana}/{character.maxMana}</span>
-          </div>
-          <div className="w-full bg-slate-700 rounded-full h-2">
-            <div 
-              className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${(character.mana / character.maxMana) * 100}%` }}
-            ></div>
-          </div>
-        </div>
-
-        <div>
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-dungeon-text-secondary">Experience</span>
-            <span className="text-white">{character.experience}/100</span>
-          </div>
-          <div className="w-full bg-slate-700 rounded-full h-2">
-            <div 
-              className="bg-dungeon-orange h-2 rounded-full transition-all duration-300"
-              style={{ width: `${(character.experience / 100) * 100}%` }}
-            ></div>
-          </div>
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div>
-        <h4 className="font-bold text-white mb-3">Attributes</h4>
-        <div className="grid grid-cols-2 gap-3">
-          {Object.entries(character.stats).map(([stat, value]) => (
-            <div key={stat} className="bg-slate-700 rounded-lg p-3 text-center">
-              <div className="text-xs text-dungeon-text-secondary capitalize mb-1">{stat}</div>
-              <div className="text-lg font-bold text-white">{value}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Inventory Panel Component
-const InventoryPanel = ({ inventory }) => {
-  const [selectedItem, setSelectedItem] = useState(null);
-
-  const getRarityColor = (rarity) => {
-    const colors = {
-      common: 'border-gray-400',
-      uncommon: 'border-green-400',
-      rare: 'border-blue-400',
-      epic: 'border-purple-400',
-      legendary: 'border-orange-400'
-    };
-    return colors[rarity] || colors.common;
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h4 className="font-bold text-white">Inventory</h4>
-        <span className="text-sm text-dungeon-text-secondary">{inventory.length}/20</span>
-      </div>
-
-      <div className="grid grid-cols-4 gap-2">
-        {inventory.map((item) => (
-          <div
-            key={item.id}
-            className={`inventory-item p-2 rounded-lg cursor-pointer ${getRarityColor(item.rarity)}`}
-            onClick={() => setSelectedItem(item)}
+          <motion.div
+            key={activePanel}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
           >
-            <div className="w-8 h-8 bg-slate-600 rounded mb-1 flex items-center justify-center">
-              {item.type === 'weapon' && <Sword size={16} className="text-dungeon-orange" />}
-              {item.type === 'armor' && <Shield size={16} className="text-blue-400" />}
-              {item.type === 'consumable' && <Heart size={16} className="text-red-400" />}
-            </div>
-            <div className="text-xs text-white truncate">{item.name}</div>
-            {item.quantity && (
-              <div className="text-xs text-dungeon-text-secondary">{item.quantity}</div>
-            )}
-            {item.equipped && (
-              <div className="text-xs text-dungeon-orange">E</div>
-            )}
-          </div>
-        ))}
-        
-        {/* Empty slots */}
-        {Array.from({ length: Math.max(0, 20 - inventory.length) }).map((_, index) => (
-          <div key={`empty-${index}`} className="inventory-slot p-2 rounded-lg h-16">
-          </div>
-        ))}
-      </div>
-
-      {selectedItem && (
-        <div className="bg-slate-700 p-4 rounded-lg">
-          <h5 className="font-bold text-white mb-2">{selectedItem.name}</h5>
-          <p className="text-sm text-dungeon-text-secondary mb-2 capitalize">
-            {selectedItem.type} • {selectedItem.rarity}
-          </p>
-          <div className="flex space-x-2">
-            {!selectedItem.equipped && (
-              <button className="px-3 py-1 bg-dungeon-orange text-dungeon-dark rounded text-sm font-medium">
-                Equip
-              </button>
-            )}
-            {selectedItem.type === 'consumable' && (
-              <button className="px-3 py-1 bg-green-600 text-white rounded text-sm font-medium">
-                Use
-              </button>
-            )}
-          </div>
+            {activePanel === 'character' && <CharacterPanel character={gameState.character} />}
+            {activePanel === 'inventory' && <InventoryPanel inventory={gameState.inventory} />}
+            {activePanel === 'quests' && <QuestsPanel quests={gameState.quests} />}
+          </motion.div>
         </div>
+      </motion.div>
+
+      {/* Mobile Sidebar Overlay */}
+      {isSidebarOpen && (
+        <motion.div
+          className="lg:hidden fixed inset-0 bg-dungeon-void/50 backdrop-blur-sm z-30"
+          onClick={() => setIsSidebarOpen(false)}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        />
       )}
     </div>
   );
 };
 
-// Quests Panel Component
+// Enhanced Character Panel Component
+const CharacterPanel = ({ character }) => {
+  const getHealthColor = (percentage) => {
+    if (percentage > 75) return 'health-bar';
+    if (percentage > 50) return 'bg-mystical-topaz';
+    if (percentage > 25) return 'bg-mystical-amber';
+    return 'bg-mystical-crimson';
+  };
+
+  const getManaColor = (percentage) => {
+    if (percentage > 75) return 'mana-bar';
+    if (percentage > 50) return 'bg-mystical-sapphire';
+    if (percentage > 25) return 'bg-mystical-amethyst';
+    return 'bg-elemental-air';
+  };
+
+  const healthPercentage = (character.health / character.maxHealth) * 100;
+  const manaPercentage = (character.mana / character.maxMana) * 100;
+  const expPercentage = (character.experience / 100) * 100;
+
+  return (
+    <div className="space-y-6">
+      {/* Character Avatar & Info */}
+      <motion.div 
+        className="text-center"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <motion.div 
+          className="w-24 h-24 bg-gradient-to-br from-mystical-amber via-mystical-gold to-mystical-amber-dark rounded-full mx-auto mb-4 flex items-center justify-center shadow-magical floating-element"
+          whileHover={{ scale: 1.1, rotate: 5 }}
+          transition={{ type: "spring", stiffness: 300 }}
+        >
+          <User size={36} className="text-dungeon-dark" />
+        </motion.div>
+        <h3 className="text-xl font-fantasy font-bold text-dungeon-snow text-shadow-glow">
+          {character.name}
+        </h3>
+        <p className="text-sm text-mystical-amber font-medium">
+          Level {character.level} • {character.class_name || 'Adventurer'}
+        </p>
+      </motion.div>
+
+      {/* Vital Stats */}
+      <div className="space-y-4">
+        {/* Health Bar */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+        >
+          <div className="flex justify-between text-sm mb-2">
+            <span className="text-dungeon-pearl font-medium flex items-center">
+              <Heart size={14} className="mr-1 text-mystical-crimson" />
+              Health
+            </span>
+            <span className="text-dungeon-snow font-bold">
+              {character.health}/{character.maxHealth}
+            </span>
+          </div>
+          <div className="w-full bg-dungeon-stone/50 rounded-full h-3 overflow-hidden">
+            <motion.div 
+              className={`${getHealthColor(healthPercentage)} h-3 rounded-full transition-all duration-500 relative overflow-hidden`}
+              style={{ width: `${healthPercentage}%` }}
+              initial={{ width: 0 }}
+              animate={{ width: `${healthPercentage}%` }}
+              transition={{ duration: 1, delay: 0.2 }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
+            </motion.div>
+          </div>
+        </motion.div>
+
+        {/* Mana Bar */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          <div className="flex justify-between text-sm mb-2">
+            <span className="text-dungeon-pearl font-medium flex items-center">
+              <Zap size={14} className="mr-1 text-mystical-sapphire" />
+              Mana
+            </span>
+            <span className="text-dungeon-snow font-bold">
+              {character.mana}/{character.maxMana}
+            </span>
+          </div>
+          <div className="w-full bg-dungeon-stone/50 rounded-full h-3 overflow-hidden">
+            <motion.div 
+              className={`${getManaColor(manaPercentage)} h-3 rounded-full transition-all duration-500 relative overflow-hidden`}
+              style={{ width: `${manaPercentage}%` }}
+              initial={{ width: 0 }}
+              animate={{ width: `${manaPercentage}%` }}
+              transition={{ duration: 1, delay: 0.3 }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
+            </motion.div>
+          </div>
+        </motion.div>
+
+        {/* Experience Bar */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+        >
+          <div className="flex justify-between text-sm mb-2">
+            <span className="text-dungeon-pearl font-medium flex items-center">
+              <Star size={14} className="mr-1 text-mystical-amber" />
+              Experience
+            </span>
+            <span className="text-dungeon-snow font-bold">
+              {character.experience}/100
+            </span>
+          </div>
+          <div className="w-full bg-dungeon-stone/50 rounded-full h-3 overflow-hidden">
+            <motion.div 
+              className="experience-bar h-3 rounded-full transition-all duration-500 relative overflow-hidden"
+              style={{ width: `${expPercentage}%` }}
+              initial={{ width: 0 }}
+              animate={{ width: `${expPercentage}%` }}
+              transition={{ duration: 1, delay: 0.4 }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
+            </motion.div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Attributes */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.4 }}
+      >
+        <h4 className="font-fantasy font-bold text-dungeon-snow mb-4 text-shadow">
+          Attributes
+        </h4>
+        <div className="grid grid-cols-2 gap-3">
+          {Object.entries(character.stats).map(([stat, value], index) => (
+            <motion.div 
+              key={stat} 
+              className="glass-panel-light rounded-xl p-3 text-center hover:shadow-glow-sm transition-all duration-300"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3, delay: 0.5 + index * 0.1 }}
+              whileHover={{ scale: 1.05, y: -2 }}
+            >
+              <div className="text-xs text-mystical-amber capitalize mb-1 font-medium">
+                {stat}
+              </div>
+              <div className="text-lg font-bold text-dungeon-snow">
+                {value}
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </motion.div>
+
+      {/* Character Background */}
+      {character.background && (
+        <motion.div
+          className="glass-panel-light rounded-xl p-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.6 }}
+        >
+          <h5 className="font-fantasy font-bold text-dungeon-snow mb-2 text-shadow">
+            Background
+          </h5>
+          <p className="text-sm text-dungeon-pearl leading-relaxed">
+            {character.background}
+          </p>
+        </motion.div>
+      )}
+    </div>
+  );
+};
+
+// Enhanced Inventory Panel Component
+const InventoryPanel = ({ inventory }) => {
+  const [selectedItem, setSelectedItem] = useState(null);
+
+  const getRarityConfig = (rarity) => {
+    const configs = {
+      common: { 
+        border: 'border-dungeon-silver/50', 
+        glow: 'hover:shadow-glow-sm',
+        bg: 'bg-dungeon-stone/20'
+      },
+      uncommon: { 
+        border: 'border-mystical-emerald/50', 
+        glow: 'hover:shadow-glow-green',
+        bg: 'bg-mystical-emerald/10'
+      },
+      rare: { 
+        border: 'border-mystical-sapphire/50', 
+        glow: 'hover:shadow-glow-blue',
+        bg: 'bg-mystical-sapphire/10'
+      },
+      epic: { 
+        border: 'border-mystical-amethyst/50', 
+        glow: 'hover:shadow-glow-purple',
+        bg: 'bg-mystical-amethyst/10'
+      },
+      legendary: { 
+        border: 'border-mystical-amber/50', 
+        glow: 'hover:shadow-glow animate-magical-pulse',
+        bg: 'bg-mystical-amber/10'
+      }
+    };
+    return configs[rarity] || configs.common;
+  };
+
+  const getItemIcon = (type) => {
+    const icons = {
+      weapon: { icon: Sword, color: 'text-mystical-crimson' },
+      armor: { icon: Shield, color: 'text-mystical-sapphire' },
+      consumable: { icon: Heart, color: 'text-mystical-emerald' },
+      accessory: { icon: Star, color: 'text-mystical-amethyst' },
+      material: { icon: Wand2, color: 'text-mystical-amber' }
+    };
+    return icons[type] || icons.weapon;
+  };
+
+  const handleDragStart = (e, item) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', item.id);
+  };
+
+  const handleDragEnd = () => {
+    // Handle drag end logic here
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <motion.div 
+        className="flex justify-between items-center"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        <h4 className="font-fantasy font-bold text-dungeon-snow text-shadow">
+          Inventory
+        </h4>
+        <span className="text-sm text-mystical-amber font-medium px-3 py-1 glass-panel-light rounded-lg">
+          {inventory.length}/20
+        </span>
+      </motion.div>
+
+      {/* Inventory Grid */}
+      <div className="grid grid-cols-4 gap-3">
+        {inventory.map((item, index) => {
+          const rarityConfig = getRarityConfig(item.rarity);
+          const itemIcon = getItemIcon(item.type);
+          const IconComponent = itemIcon.icon;
+          
+          return (
+            <motion.div
+              key={item.id}
+              className={`inventory-item ${item.rarity} ${rarityConfig.border} ${rarityConfig.glow} p-3 rounded-xl cursor-pointer relative overflow-hidden`}
+              onClick={() => setSelectedItem(selectedItem?.id === item.id ? null : item)}
+              draggable
+              onDragStart={(e) => handleDragStart(e, item)}
+              onDragEnd={handleDragEnd}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3, delay: index * 0.05 }}
+              whileHover={{ scale: 1.05, y: -2 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              {/* Rarity Background */}
+              <div className={`absolute inset-0 ${rarityConfig.bg} opacity-50`}></div>
+              
+              {/* Item Icon */}
+              <div className="relative z-10 w-10 h-10 glass-panel-light rounded-lg mb-2 flex items-center justify-center">
+                <IconComponent size={20} className={itemIcon.color} />
+              </div>
+              
+              {/* Item Name */}
+              <div className="relative z-10 text-xs text-dungeon-snow font-medium truncate mb-1">
+                {item.name}
+              </div>
+              
+              {/* Item Details */}
+              <div className="relative z-10 flex justify-between items-center">
+                {item.quantity && (
+                  <span className="text-xs text-mystical-amber font-bold bg-dungeon-dark/50 px-1 rounded">
+                    {item.quantity}
+                  </span>
+                )}
+                {item.equipped && (
+                  <span className="text-xs text-mystical-amber font-bold bg-mystical-amber/20 px-1 rounded">
+                    E
+                  </span>
+                )}
+              </div>
+              
+              {/* Selection Indicator */}
+              {selectedItem?.id === item.id && (
+                <motion.div
+                  className="absolute inset-0 border-2 border-mystical-amber rounded-xl"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                />
+              )}
+            </motion.div>
+          );
+        })}
+        
+        {/* Empty Slots */}
+        {Array.from({ length: Math.max(0, 20 - inventory.length) }).map((_, index) => (
+          <motion.div 
+            key={`empty-${index}`} 
+            className="inventory-slot h-20 rounded-xl"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3, delay: (inventory.length + index) * 0.05 }}
+          />
+        ))}
+      </div>
+
+      {/* Selected Item Details */}
+      {selectedItem && (
+        <motion.div
+          className="glass-panel rounded-xl p-4 border border-mystical-amber/30"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <h5 className="font-fantasy font-bold text-dungeon-snow mb-1 text-shadow">
+                {selectedItem.name}
+              </h5>
+              <p className="text-sm text-mystical-amber capitalize font-medium">
+                {selectedItem.type} • {selectedItem.rarity}
+              </p>
+            </div>
+            <motion.button
+              onClick={() => setSelectedItem(null)}
+              className="p-1 hover:bg-dungeon-stone/20 rounded-lg transition-colors"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+            >
+              <X size={16} className="text-dungeon-light" />
+            </motion.button>
+          </div>
+          
+          {selectedItem.description && (
+            <p className="text-sm text-dungeon-pearl mb-4 leading-relaxed">
+              {selectedItem.description}
+            </p>
+          )}
+          
+          <div className="flex flex-wrap gap-2">
+            {!selectedItem.equipped && selectedItem.type !== 'consumable' && (
+              <motion.button 
+                className="px-4 py-2 bg-gradient-to-r from-mystical-amber to-mystical-gold text-dungeon-dark rounded-lg text-sm font-medium shadow-glow-sm hover:shadow-glow transition-all duration-300"
+                whileHover={{ scale: 1.05, y: -1 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                Equip
+              </motion.button>
+            )}
+            {selectedItem.equipped && (
+              <motion.button 
+                className="px-4 py-2 bg-gradient-to-r from-dungeon-stone to-dungeon-mist text-dungeon-snow rounded-lg text-sm font-medium hover:bg-dungeon-light/20 transition-all duration-300"
+                whileHover={{ scale: 1.05, y: -1 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                Unequip
+              </motion.button>
+            )}
+            {selectedItem.type === 'consumable' && (
+              <motion.button 
+                className="px-4 py-2 bg-gradient-to-r from-mystical-emerald to-mystical-emerald-dark text-dungeon-dark rounded-lg text-sm font-medium shadow-glow-green hover:shadow-glow-green transition-all duration-300"
+                whileHover={{ scale: 1.05, y: -1 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                Use
+              </motion.button>
+            )}
+            <motion.button 
+              className="px-4 py-2 bg-gradient-to-r from-mystical-crimson to-mystical-crimson-dark text-dungeon-snow rounded-lg text-sm font-medium hover:shadow-glow-red transition-all duration-300"
+              whileHover={{ scale: 1.05, y: -1 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              Drop
+            </motion.button>
+          </div>
+        </motion.div>
+      )}
+    </div>
+  );
+};
+
+// Enhanced Quests Panel Component
 const QuestsPanel = ({ quests }) => {
   const [activeTab, setActiveTab] = useState('active');
+  const [selectedQuest, setSelectedQuest] = useState(null);
 
   const filteredQuests = quests.filter(quest => 
     activeTab === 'all' || quest.status === activeTab
   );
 
+  const getQuestStatusConfig = (status) => {
+    const configs = {
+      active: {
+        bg: 'bg-mystical-sapphire/20',
+        border: 'border-mystical-sapphire/50',
+        badge: 'bg-mystical-sapphire text-dungeon-dark',
+        icon: Clock,
+        iconColor: 'text-mystical-sapphire'
+      },
+      completed: {
+        bg: 'bg-mystical-emerald/20',
+        border: 'border-mystical-emerald/50',
+        badge: 'bg-mystical-emerald text-dungeon-dark',
+        icon: Check,
+        iconColor: 'text-mystical-emerald'
+      },
+      failed: {
+        bg: 'bg-mystical-crimson/20',
+        border: 'border-mystical-crimson/50',
+        badge: 'bg-mystical-crimson text-dungeon-snow',
+        icon: X,
+        iconColor: 'text-mystical-crimson'
+      }
+    };
+    return configs[status] || configs.active;
+  };
+
+  const questTabs = [
+    { id: 'active', label: 'Active', count: quests.filter(q => q.status === 'active').length },
+    { id: 'completed', label: 'Done', count: quests.filter(q => q.status === 'completed').length },
+    { id: 'all', label: 'All', count: quests.length }
+  ];
+
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h4 className="font-bold text-white">Quests</h4>
-      </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <motion.div 
+        className="flex justify-between items-center"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        <h4 className="font-fantasy font-bold text-dungeon-snow text-shadow">
+          Quests
+        </h4>
+        <span className="text-sm text-mystical-amber font-medium px-3 py-1 glass-panel-light rounded-lg">
+          {filteredQuests.length}
+        </span>
+      </motion.div>
 
       {/* Quest Tabs */}
-      <div className="flex space-x-1">
-        {[
-          { id: 'active', label: 'Active' },
-          { id: 'completed', label: 'Done' },
-          { id: 'all', label: 'All' }
-        ].map((tab) => (
-          <button
+      <div className="flex space-x-2">
+        {questTabs.map((tab) => (
+          <motion.button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+            className={`flex-1 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
               activeTab === tab.id
-                ? 'bg-dungeon-orange text-dungeon-dark'
-                : 'bg-slate-700 text-dungeon-text-secondary hover:text-dungeon-text'
+                ? 'bg-mystical-sapphire text-dungeon-dark shadow-glow-blue'
+                : 'glass-panel-light text-dungeon-pearl hover:text-dungeon-snow hover:bg-dungeon-stone/20'
             }`}
+            whileHover={{ scale: 1.02, y: -1 }}
+            whileTap={{ scale: 0.98 }}
           >
-            {tab.label}
-          </button>
+            <span>{tab.label}</span>
+            {tab.count > 0 && (
+              <span className={`ml-1 px-1.5 py-0.5 rounded-full text-xs ${
+                activeTab === tab.id ? 'bg-dungeon-dark/20' : 'bg-mystical-amber/20 text-mystical-amber'
+              }`}>
+                {tab.count}
+              </span>
+            )}
+          </motion.button>
         ))}
       </div>
 
       {/* Quest List */}
-      <div className="space-y-3">
-        {filteredQuests.map((quest) => (
-          <div key={quest.id} className="bg-slate-700 p-4 rounded-lg">
-            <div className="flex justify-between items-start mb-2">
-              <h5 className="font-bold text-white text-sm">{quest.title}</h5>
-              <span className={`px-2 py-1 rounded text-xs font-medium ${
-                quest.status === 'active' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-green-600 text-white'
-              }`}>
-                {quest.status === 'active' ? 'Active' : 'Done'}
-              </span>
-            </div>
-            <p className="text-xs text-dungeon-text-secondary mb-2">{quest.description}</p>
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-dungeon-orange">{quest.progress}</span>
-              {quest.status === 'active' && (
-                <button className="text-xs text-blue-400 hover:text-blue-300">
-                  Track
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
+      <div className="space-y-3 max-h-96 overflow-y-auto">
+        {filteredQuests.length === 0 ? (
+          <motion.div
+            className="text-center py-8"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            <ScrollText size={48} className="mx-auto text-dungeon-mist mb-4" />
+            <p className="text-dungeon-pearl">No quests found</p>
+          </motion.div>
+        ) : (
+          filteredQuests.map((quest, index) => {
+            const statusConfig = getQuestStatusConfig(quest.status);
+            const StatusIcon = statusConfig.icon;
+            
+            return (
+              <motion.div
+                key={quest.id}
+                className={`glass-panel-light rounded-xl p-4 cursor-pointer transition-all duration-300 ${statusConfig.border} hover:shadow-glow-sm ${
+                  selectedQuest?.id === quest.id ? 'ring-2 ring-mystical-amber/50' : ''
+                }`}
+                onClick={() => setSelectedQuest(selectedQuest?.id === quest.id ? null : quest)}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                {/* Quest Header */}
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-start space-x-3 flex-1">
+                    <div className={`p-2 rounded-lg ${statusConfig.bg}`}>
+                      <StatusIcon size={16} className={statusConfig.iconColor} />
+                    </div>
+                    <div className="flex-1">
+                      <h5 className="font-fantasy font-bold text-dungeon-snow text-sm mb-1 text-shadow">
+                        {quest.title}
+                      </h5>
+                      <span className={`px-2 py-1 rounded-lg text-xs font-medium ${statusConfig.badge}`}>
+                        {quest.status === 'active' ? 'Active' : quest.status === 'completed' ? 'Completed' : 'Failed'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quest Description */}
+                <p className="text-sm text-dungeon-pearl mb-3 leading-relaxed">
+                  {quest.description}
+                </p>
+
+                {/* Quest Progress */}
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs text-mystical-amber font-medium">Progress:</span>
+                    <span className="text-xs text-dungeon-snow font-bold">{quest.progress}</span>
+                  </div>
+                  
+                  {quest.status === 'active' && (
+                    <motion.button 
+                      className="text-xs text-mystical-sapphire hover:text-mystical-sapphire-dark font-medium px-2 py-1 rounded-lg hover:bg-mystical-sapphire/10 transition-all duration-300"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Handle quest tracking
+                      }}
+                    >
+                      Track
+                    </motion.button>
+                  )}
+                </div>
+
+                {/* Expanded Quest Details */}
+                {selectedQuest?.id === quest.id && (
+                  <motion.div
+                    className="mt-4 pt-4 border-t border-dungeon-stone/30"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    {quest.objectives && (
+                      <div className="mb-3">
+                        <h6 className="text-xs font-bold text-mystical-amber mb-2">Objectives:</h6>
+                        <ul className="space-y-1">
+                          {quest.objectives.map((objective, idx) => (
+                            <li key={idx} className="text-xs text-dungeon-pearl flex items-center space-x-2">
+                              <div className={`w-1.5 h-1.5 rounded-full ${objective.completed ? 'bg-mystical-emerald' : 'bg-dungeon-mist'}`}></div>
+                              <span className={objective.completed ? 'line-through opacity-75' : ''}>{objective.text}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    {quest.rewards && (
+                      <div>
+                        <h6 className="text-xs font-bold text-mystical-amber mb-2">Rewards:</h6>
+                        <div className="flex flex-wrap gap-1">
+                          {quest.rewards.map((reward, idx) => (
+                            <span key={idx} className="text-xs bg-mystical-amber/20 text-mystical-amber px-2 py-1 rounded-lg">
+                              {reward}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+              </motion.div>
+            );
+          })
+        )}
       </div>
     </div>
   );

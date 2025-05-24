@@ -239,7 +239,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-dungeon-dark">
+    <div className="min-h-screen bg-void-gradient magical-particles">
       <Navigation currentView={currentView} setCurrentView={setCurrentView} />
       
       {currentView === 'landing' && (
@@ -259,7 +259,7 @@ function App() {
       )}
       
       {currentView === 'game' && (
-        <div className="h-[calc(100vh-72px)] overflow-hidden">
+        <div className="h-[calc(100vh-88px)] overflow-hidden">
           <GameInterface 
             gameState={gameState} 
             setGameState={setGameState}
