@@ -62,4 +62,19 @@ export default [
       'comma-dangle': ['error', 'always-multiline'],
     },
   },
+  // Configuration for Node.js config files (excluding ESLint config)
+  {
+    files: ['**/tailwind.config.js', '**/postcss.config.js', '**/webpack.config.js', '**/vite.config.js'],
+    languageOptions: {
+      globals: {
+        module: 'readonly',
+        exports: 'readonly',
+        require: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        process: 'readonly',
+      },
+      sourceType: 'script',
+    },
+  },
 ];

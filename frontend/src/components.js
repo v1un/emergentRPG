@@ -532,8 +532,8 @@ export const GameInterface = ({ gameState, setGameState: _setGameState, onAction
                 key={index}
                 className={`p-4 rounded-lg chat-message shadow-xl ${
                   entry.type === 'narration' 
-                    ? 'bg-slate-900 border-l-4 border-dungeon-orange border border-slate-700' 
-                    : 'bg-blue-900 border-l-4 border-blue-400 border border-blue-700 ml-8'
+                    ? 'bg-slate-900 border-l-4 border-l-dungeon-orange border border-slate-700' 
+                    : 'bg-blue-900 border-l-4 border-l-blue-400 border border-blue-700 ml-8'
                 }`}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
