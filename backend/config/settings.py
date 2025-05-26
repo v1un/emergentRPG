@@ -30,5 +30,9 @@ class Settings:
     MAX_STORY_LENGTH = int(os.getenv("MAX_STORY_LENGTH", "100"))
     AUTO_SAVE_INTERVAL = int(os.getenv("AUTO_SAVE_INTERVAL", "30"))
 
+    # Redis Configuration
+    REDIS_ENABLED = os.getenv("REDIS_ENABLED", "false")
+    REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+
 
 settings = Settings()

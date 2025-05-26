@@ -2,13 +2,17 @@ fastapi==0.104.1
 uvicorn==0.24.0
 pymongo==4.6.0
 motor==3.3.2
-pydantic==2.5.0
+pydantic==2.5.2
+starlette==0.27.0
 python-dotenv==1.0.0
 google-ai-generativelanguage==0.4.0
 google-generativeai==0.3.2
 httpx==0.25.2
 aiofiles==23.2.1
 python-multipart==0.0.6
+cachetools
+redis
+redis.asyncio
 
 # Development dependencies
 flake8==6.1.0

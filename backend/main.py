@@ -1,11 +1,12 @@
 import asyncio
+import json
 import logging
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -17,6 +18,7 @@ from models.game_models import (
     Character,
     CharacterStats,
     GameSession,
+    InventoryItem,
     StoryEntry,
     WorldState,
 )
@@ -33,6 +35,13 @@ from services.scenario_generation.scenario_orchestrator import scenario_orchestr
 from services.config.configuration_manager import config_manager
 from services.config.feature_flags import feature_flag_manager
 from services.config.content_manager import content_manager
+from services.quest.quest_manager import quest_manager, GameContext
+from services.inventory.inventory_manager import inventory_manager, LootContext
+from services.world.world_manager import world_manager, WorldChanges
+from services.ai.response_manager import ai_response_manager
+from services.cache.cache_manager import cache_manager
+from services.websocket.game_websocket import game_websocket, GameUpdate, WorldEvent
+from services.database.migration_tools import data_migrator
 
 # Configure logging
 logging.basicConfig(
@@ -49,6 +58,7 @@ async def lifespan(app: FastAPI):
     logger.info("Starting AI Dungeon Backend...")
     try:
         await db_service.connect()
+        await cache_manager.initialize()
         logger.info("Application startup complete")
     except Exception as e:
         logger.error(f"Failed to start application: {str(e)}")
@@ -937,6 +947,779 @@ async def get_content_by_category(category: str):
         }
     except Exception as e:
         logger.error(f"Error getting content by category: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== QUEST MANAGEMENT ENDPOINTS =====
+
+@app.get("/api/quests/{session_id}")
+async def get_session_quests(session_id: str):
+    """Get all quests for a game session"""
+    try:
+        quests = quest_manager.get_active_quests_for_session(session_id)
+        return {
+            "success": True,
+            "session_id": session_id,
+            "quests": [quest.model_dump() for quest in quests]
+        }
+    except Exception as e:
+        logger.error(f"Error getting session quests: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/quests/{session_id}/generate")
+async def generate_quest(session_id: str, quest_params: Dict[str, Any]):
+    """Generate a new quest for the session"""
+    try:
+        # Get game context
+        session = await db_service.get_game_session(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Game session not found")
+        
+        # Get lorebook if available
+        lorebook = None
+        if session.lorebook_id:
+            lorebook = await db_service.get_lorebook(session.lorebook_id)
+        
+        # Create game context
+        context = GameContext(
+            character=session.character,
+            world_state=session.world_state,
+            lorebook=lorebook,
+            active_quests=session.quests
+        )
+        
+        # Generate quest
+        quest = await quest_manager.generate_quest(context)
+        
+        # Cache quest data
+        await cache_manager.cache_quest_data(session_id, {"quests": [quest.model_dump()]})
+        
+        # Send WebSocket update
+        await game_websocket.notify_quest_update(session_id, {
+            "action": "quest_generated",
+            "quest": quest.model_dump()
+        })
+        
+        return {
+            "success": True,
+            "quest": quest.model_dump(),
+            "message": f"Generated quest: {quest.title}"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating quest: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/quests/{session_id}/{quest_id}/progress")
+async def update_quest_progress(session_id: str, quest_id: str, progress_data: Dict[str, Any]):
+    """Update quest progress"""
+    try:
+        quest = await quest_manager.update_quest_progress(quest_id, progress_data)
+        
+        # Update cached data
+        await cache_manager.cache_quest_data(session_id, {"updated_quest": quest.model_dump()})
+        
+        # Send WebSocket update
+        await game_websocket.notify_quest_update(session_id, {
+            "action": "quest_progress_updated",
+            "quest_id": quest_id,
+            "progress": quest.progress
+        })
+        
+        return {
+            "success": True,
+            "quest": quest.model_dump(),
+            "message": "Quest progress updated"
+        }
+    except Exception as e:
+        logger.error(f"Error updating quest progress: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/quests/{session_id}/{quest_id}/complete")
+async def complete_quest(session_id: str, quest_id: str):
+    """Complete a quest"""
+    try:
+        completion = await quest_manager.complete_quest(quest_id, session_id)
+        
+        # Update cached data
+        await cache_manager.cache_quest_data(session_id, {"completed_quest": completion})
+        
+        # Send WebSocket update
+        await game_websocket.notify_quest_update(session_id, {
+            "action": "quest_completed",
+            "quest_id": quest_id,
+            "completion": completion
+        })
+        
+        return {
+            "success": True,
+            "completion": completion,
+            "message": "Quest completed successfully"
+        }
+    except Exception as e:
+        logger.error(f"Error completing quest: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== INVENTORY MANAGEMENT ENDPOINTS =====
+
+@app.get("/api/inventory/{session_id}")
+async def get_session_inventory(session_id: str):
+    """Get inventory for a game session"""
+    try:
+        # Try cache first
+        cached_inventory = await cache_manager.get_inventory_data(session_id)
+        if cached_inventory:
+            return {
+                "success": True,
+                "session_id": session_id,
+                "inventory": cached_inventory,
+                "source": "cache"
+            }
+        
+        # Get from database
+        session = await db_service.get_game_session(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Game session not found")
+        
+        inventory_data = {
+            "items": [item.model_dump() for item in session.inventory] if session.inventory else [],
+            "equipment": getattr(session.character, 'equipment', {}),
+            "stats": session.character.stats.model_dump() if session.character.stats else {}
+        }
+        
+        # Cache inventory data
+        await cache_manager.cache_inventory_data(session_id, inventory_data)
+        
+        return {
+            "success": True,
+            "session_id": session_id,
+            "inventory": inventory_data,
+            "source": "database"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting session inventory: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/inventory/{session_id}/add")
+async def add_inventory_item(session_id: str, item_data: Dict[str, Any]):
+    """Add item to inventory"""
+    try:
+        session = await db_service.get_game_session(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Game session not found")
+        
+        # Create InventoryItem from item_data
+        item = InventoryItem(**item_data)
+        
+        # Add item using inventory manager
+        update_result = await inventory_manager.add_item(session_id, item, session.inventory)
+        
+        # Update session inventory with result
+        session.inventory = update_result.inventory
+        
+        # Save updated session
+        await db_service.save_game_session(session)
+        
+        # Update cache
+        inventory_data = {
+            "items": [item.model_dump() for item in session.inventory],
+            "equipment": getattr(session.character, 'equipment', {}),
+            "stats": session.character.stats.model_dump()
+        }
+        await cache_manager.cache_inventory_data(session_id, inventory_data)
+        
+        # Send WebSocket update
+        await game_websocket.notify_inventory_change(session_id, {
+            "action": "item_added",
+            "item": update_result.item.model_dump() if update_result.item else item_data,
+            "inventory_count": len(session.inventory)
+        })
+        
+        return {
+            "success": True,
+            "item": update_result.item.model_dump() if update_result.item else item_data,
+            "message": update_result.message,
+            "inventory_count": len(session.inventory)
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error adding inventory item: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/inventory/{session_id}/items/{item_id}")
+async def remove_inventory_item(session_id: str, item_id: str):
+    """Remove item from inventory"""
+    try:
+        session = await db_service.get_game_session(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Game session not found")
+        
+        # Remove item using inventory manager
+        update_result = await inventory_manager.remove_item(session_id, item_id, session.inventory)
+        
+        # Update session inventory with result
+        session.inventory = update_result.inventory
+        
+        # Save updated session
+        await db_service.save_game_session(session)
+        
+        # Update cache
+        inventory_data = {
+            "items": [item.model_dump() for item in session.inventory],
+            "equipment": getattr(session.character, 'equipment', {}),
+            "stats": session.character.stats.model_dump()
+        }
+        await cache_manager.cache_inventory_data(session_id, inventory_data)
+        
+        # Send WebSocket update
+        await game_websocket.notify_inventory_change(session_id, {
+            "action": "item_removed",
+            "item_id": item_id,
+            "inventory_count": len(session.inventory)
+        })
+        
+        return {
+            "success": True,
+            "message": update_result.message,
+            "inventory_count": len(session.inventory)
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error removing inventory item: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/inventory/{session_id}/equip/{item_id}")
+async def equip_item(session_id: str, item_id: str):
+    """Equip an item"""
+    try:
+        session = await db_service.get_game_session(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Game session not found")
+        
+        # Equip item using inventory manager
+        update_result = await inventory_manager.equip_item(session_id, item_id, session.inventory)
+        
+        # Save updated session (inventory is modified in place)
+        await db_service.save_game_session(session)
+        
+        # Update cache
+        inventory_data = {
+            "items": [item.model_dump() for item in session.inventory],
+            "equipment": getattr(session.character, 'equipment', {}),
+            "stats": session.character.stats.model_dump()
+        }
+        await cache_manager.cache_inventory_data(session_id, inventory_data)
+        
+        # Send WebSocket update
+        await game_websocket.notify_inventory_change(session_id, {
+            "action": "item_equipped",
+            "item_id": item_id,
+            "equipment": getattr(session.character, 'equipment', {})
+        })
+        
+        return {
+            "success": True,
+            "message": update_result.message,
+            "equipment": getattr(session.character, 'equipment', {}),
+            "stats": session.character.stats.model_dump()
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error equipping item: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/inventory/{session_id}/generate-loot")
+async def generate_loot(session_id: str, loot_params: Dict[str, Any]):
+    """Generate loot for the session"""
+    try:
+        session = await db_service.get_game_session(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Game session not found")
+        
+        # Create loot context
+        loot_context = LootContext(
+            character_level=session.character.level,
+            location=session.world_state.current_location,
+            encounter_type=loot_params.get("encounter_type", "exploration"),
+            difficulty=loot_params.get("difficulty", 1),
+            special_conditions=loot_params.get("special_conditions", [])
+        )
+        
+        # Generate loot using inventory manager
+        loot_result = await inventory_manager.generate_loot(loot_context)
+        
+        return {
+            "success": True,
+            "loot": [item.model_dump() for item in loot_result],
+            "generation_context": loot_context.to_dict(),
+            "message": f"Generated {len(loot_result)} items"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating loot: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== WORLD MANAGEMENT ENDPOINTS =====
+
+@app.get("/api/world/{session_id}")
+async def get_world_state(session_id: str):
+    """Get world state for a game session"""
+    try:
+        # Try cache first
+        cached_world = await cache_manager.get_world_state(session_id)
+        if cached_world:
+            return {
+                "success": True,
+                "session_id": session_id,
+                "world_state": cached_world,
+                "source": "cache"
+            }
+        
+        # Get from database
+        session = await db_service.get_game_session(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Game session not found")
+        
+        # Get enhanced world information
+        location_info = await world_manager.get_location_info(session.world_state.current_location)
+        
+        world_data = {
+            "world_state": session.world_state.model_dump(),
+            "location": session.world_state.current_location,
+            "time": session.world_state.time_of_day
+        }
+        
+        # Cache world data
+        await cache_manager.cache_world_state(session_id, world_data)
+        
+        return {
+            "success": True,
+            "session_id": session_id,
+            "world_state": world_data,
+            "source": "database"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting world state: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/world/{session_id}/update")
+async def update_world_state_endpoint(session_id: str, world_changes_data: Dict[str, Any]):
+    """Update world state"""
+    try:
+        session = await db_service.get_game_session(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Game session not found")
+        
+        world_changes = WorldChanges(**world_changes_data)
+        
+        # world_manager.update_world_state expects session_id (str) and changes (WorldChanges)
+        # and returns a WorldState object.
+        updated_world_state_obj = await world_manager.update_world_state(session_id, world_changes) # Pass session_id string
+        
+        # Update the session object with the new world state
+        session.world_state = updated_world_state_obj
+        session.updated_at = datetime.now()
+        await db_service.save_game_session(session)
+        
+        # For the response, we use the applied changes and the new world state
+        # We don't get triggered events directly from this specific function call in world_manager
+        # If events are needed, they might be part of updated_world_state_obj or require another call
+        changes_applied_dict = world_changes.to_dict() # The changes that were requested
+        triggered_world_events = [] # Assuming no direct event list from this call, adjust if world_manager changes
+
+        world_data_for_cache = {
+            "world_state": updated_world_state_obj.model_dump(),
+            "changes": changes_applied_dict,
+            "events": [event.to_dict() for event in triggered_world_events] # Will be empty if none returned
+        }
+        await cache_manager.cache_world_state(session_id, world_data_for_cache)
+        
+        await game_websocket.notify_world_state_change(session_id, {
+            "action": "world_state_updated",
+            "changes": changes_applied_dict,
+            "new_state": updated_world_state_obj.model_dump()
+        })
+        
+        return {
+            "success": True,
+            "updated_state": updated_world_state_obj.model_dump(),
+            "changes": changes_applied_dict,
+            "triggered_events": [event.to_dict() for event in triggered_world_events]
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating world state: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/world/{session_id}/advance-time")
+async def advance_time_endpoint(session_id: str, time_params: Dict[str, Any]):
+    """Advance time in the world"""
+    try:
+        session = await db_service.get_game_session(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Game session not found")
+        
+        current_time_str = session.world_state.time_of_day
+        # world_manager.advance_time expects session_id (str) and current_time (str)
+        # and returns the new_time (str). Events are handled internally by advance_time.
+        new_time_str = await world_manager.advance_time(session_id, current_time_str)
+        
+        # Update session with the new time
+        session.world_state.time_of_day = new_time_str
+        session.updated_at = datetime.now()
+        await db_service.save_game_session(session)
+
+        # Construct a WorldChanges object to represent the time change for response and cache
+        time_changes_obj = WorldChanges(time_change=new_time_str)       
+        time_changes_dict = time_changes_obj.to_dict()
+        
+        # Fetch any new events that might have been triggered by advancing time
+        # This might require a separate call or modification to advance_time to return events
+        triggered_events = world_manager.get_events_for_location(session.world_state.current_location) # Example: get current location events
+
+        world_data_for_cache = {
+            "world_state": session.world_state.model_dump(),
+            "time_changes": time_changes_dict,
+            "events": [event.to_dict() for event in triggered_events]
+        }
+        await cache_manager.cache_world_state(session_id, world_data_for_cache)
+        
+        await game_websocket.notify_world_state_change(session_id, {
+            "action": "time_advanced",
+            "time_changes": time_changes_dict,
+            "new_state": session.world_state.model_dump()
+        })
+        
+        return {
+            "success": True,
+            "time_changes": time_changes_dict,
+            "triggered_events": [event.to_dict() for event in triggered_events],
+            "new_world_state": session.world_state.model_dump()
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error advancing time: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/world/trigger-event")
+async def trigger_world_event_endpoint(event_data: Dict[str, Any]): # Renamed to avoid conflict
+    """Trigger a world event"""
+    try:
+        # Create world event
+        world_event = WorldEvent(
+            event_id=event_data.get("event_id", f"event_{datetime.now().strftime('%Y%m%d_%H%M%S')}"),
+            event_type=event_data.get("event_type", "custom"),
+            title=event_data.get("title", "World Event"),
+            description=event_data.get("description", "A significant event has occurred"),
+            data=event_data.get("data", {}),
+            affected_sessions=event_data.get("affected_sessions", []),
+            timestamp=datetime.now()
+        )
+        
+        # Broadcast to all affected sessions
+        broadcast_count = await game_websocket.broadcast_world_event(world_event)
+        
+        return {
+            "success": True,
+            "event": world_event.model_dump(),
+            "broadcast_count": broadcast_count,
+            "message": f"World event triggered and sent to {broadcast_count} sessions"
+        }
+    except Exception as e:
+        logger.error(f"Error triggering world event: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== AI RESPONSE MANAGEMENT ENDPOINTS =====
+
+@app.post("/api/ai/generate-response")
+async def generate_ai_response(request_data: Dict[str, Any]):
+    """Generate AI response with caching and fallbacks"""
+    try:
+        context = request_data.get("context", {})
+        action = request_data.get("action", "")
+        # session_id is not directly used by generate_narrative_response in ai_response_manager
+        # but can be part of the context if needed by the AI model or caching logic there.
+        
+        response = await ai_response_manager.generate_narrative_response(context, action)
+        
+        return {
+            "success": True,
+            "response": response.to_dict(),
+            # Ensure NarrativeResponse has from_cache attribute, or handle its absence
+            "cached": getattr(response, 'from_cache', False) 
+        }
+    except Exception as e:
+        logger.error(f"Error generating AI response: {str(e)}")
+        
+        fallback = await ai_response_manager.get_fallback_response(
+            request_data.get("action_type", "general"),
+            request_data.get("context", {})
+        )
+        
+        return {
+            "success": False,
+            "error": str(e),
+            "fallback_response": fallback,
+            "message": "AI generation failed, using fallback response"
+        }
+
+
+@app.post("/api/ai/validate-action")
+async def validate_action(validation_data: Dict[str, Any]):
+    """Validate a player action"""
+    try:
+        action = validation_data.get("action", "")
+        game_state = validation_data.get("game_state", {})
+        
+        # Validate action using AI response manager
+        is_valid = await ai_response_manager.validate_action(action, game_state)
+        
+        return {
+            "success": True,
+            "action": action,
+            "is_valid": is_valid,
+            "validation_details": {
+                "reason": "Action validated successfully" if is_valid else "Action may not be appropriate for current context"
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error validating action: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== WEBSOCKET ENDPOINTS =====
+
+@app.websocket("/ws/game/{session_id}")
+async def websocket_endpoint(websocket: WebSocket, session_id: str, user_id: Optional[str] = None):
+    """WebSocket endpoint for real-time game updates"""
+    await game_websocket.connect(websocket, session_id, user_id)
+    
+    try:
+        while True:
+            # Receive message from client
+            data = await websocket.receive_text()
+            message = json.loads(data)
+            
+            # Handle real-time action
+            result = await game_websocket.handle_real_time_action(session_id, message)
+            
+            # Send response back to client
+            await websocket.send_text(json.dumps({
+                "type": "action_response",
+                "result": result,
+                "timestamp": datetime.now().isoformat()
+            }))
+            
+    except WebSocketDisconnect:
+        await game_websocket.disconnect(session_id)
+    except Exception as e:
+        logger.error(f"WebSocket error for session {session_id}: {e}")
+        await game_websocket.disconnect(session_id)
+
+
+# ===== CACHE MANAGEMENT ENDPOINTS =====
+
+@app.get("/api/cache/stats")
+async def get_cache_stats():
+    """Get cache performance statistics"""
+    try:
+        stats = await cache_manager.get_cache_stats()
+        return {
+            "success": True,
+            "stats": stats.model_dump()
+        }
+    except Exception as e:
+        logger.error(f"Error getting cache stats: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/cache/clear")
+async def clear_cache():
+    """Clear all cache data (admin endpoint)"""
+    try:
+        result = await cache_manager.clear_all_cache()
+        return {
+            "success": True,
+            "cleared": result,
+            "message": "Cache cleared successfully"
+        }
+    except Exception as e:
+        logger.error(f"Error clearing cache: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/cache/invalidate/{pattern}")
+async def invalidate_cache_pattern(pattern: str):
+    """Invalidate cache entries matching pattern"""
+    try:
+        count = await cache_manager.invalidate_pattern(pattern)
+        return {
+            "success": True,
+            "invalidated_count": count,
+            "pattern": pattern,
+            "message": f"Invalidated {count} cache entries"
+        }
+    except Exception as e:
+        logger.error(f"Error invalidating cache pattern: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/cache/health")
+async def get_cache_health():
+    """Get cache system health status"""
+    try:
+        health = await cache_manager.health_check()
+        return {
+            "success": True,
+            "health": health
+        }
+    except Exception as e:
+        logger.error(f"Error getting cache health: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== DATABASE MIGRATION ENDPOINTS =====
+
+@app.get("/api/migrations/status")
+async def get_migration_status():
+    """Get database migration status"""
+    try:
+        current_version = await data_migrator.get_current_version()
+        pending_migrations = await data_migrator.get_pending_migrations()
+        
+        return {
+            "success": True,
+            "current_version": current_version,
+            "pending_migrations": [m.model_dump() for m in pending_migrations],
+            "migration_needed": len(pending_migrations) > 0
+        }
+    except Exception as e:
+        logger.error(f"Error getting migration status: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/migrations/run")
+async def run_migrations():
+    """Run all pending migrations"""
+    try:
+        results = await data_migrator.migrate_to_latest()
+        
+        successful_count = sum(1 for r in results if r.success)
+        
+        return {
+            "success": len(results) == 0 or successful_count == len(results),
+            "results": [r.model_dump() for r in results],
+            "summary": {
+                "total_migrations": len(results),
+                "successful": successful_count,
+                "failed": len(results) - successful_count
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error running migrations: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/migrations/migrate-hardcoded")
+async def migrate_hardcoded_data():
+    """Migrate hardcoded data to database"""
+    try:
+        await data_migrator.migrate_hardcoded_data()
+        return {
+            "success": True,
+            "message": "Hardcoded data migration completed"
+        }
+    except Exception as e:
+        logger.error(f"Error migrating hardcoded data: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/backup/create")
+async def create_backup(backup_data: Optional[Dict[str, Any]] = None):
+    """Create database backup"""
+    try:
+        backup_id = backup_data.get("backup_id") if backup_data else None
+        backup_info = await data_migrator.create_backup(backup_id)
+        
+        return {
+            "success": True,
+            "backup": backup_info.model_dump(),
+            "message": f"Backup created: {backup_info.backup_id}"
+        }
+    except Exception as e:
+        logger.error(f"Error creating backup: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/backup/list")
+async def list_backups():
+    """List available backups"""
+    try:
+        # Placeholder as data_migrator.list_backups() is not implemented
+        backups = []
+        return {
+            "success": True,
+            "backups": backups,
+            "count": len(backups)
+        }
+    except Exception as e:
+        logger.error(f"Error listing backups: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/backup/restore/{backup_id}")
+async def restore_backup(backup_id: str, restore_params: Optional[Dict[str, Any]] = None):
+    """Restore database from backup"""
+    try:
+        drop_existing = restore_params.get("drop_existing", False) if restore_params else False
+        await data_migrator.restore_from_backup(backup_id)
+        
+        return {
+            "success": True,
+            "message": "Restore completed"
+        }
+    except Exception as e:
+        logger.error(f"Error restoring backup: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== WEBSOCKET STATUS ENDPOINTS =====
+
+@app.get("/api/websocket/stats")
+async def get_websocket_stats():
+    """Get WebSocket connection statistics"""
+    try:
+        stats = await game_websocket.get_connection_stats()
+        return {
+            "success": True,
+            "websocket_stats": stats
+        }
+    except Exception as e:
+        logger.error(f"Error getting WebSocket stats: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

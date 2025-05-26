@@ -1,7 +1,25 @@
 #!/bin/bash
 
 # EmergentRPG Start Script for Arch Linux
-# This script handles Python virtual environments to avoid pip/pacman conflicts
+# This script handles Python virtual environments to     #install_python_deps() {
+    echo -e "${YELLOW}Installing Python dependencies...${NC}"
+    
+    # Upgrade pip first
+    pip install --upgrade pip
+    
+    # Install packages from requirements.txt
+    pip install -r "$PROJECT_ROOT/backend/requirements.txt"
+    
+    echo -e "${GREEN}✓ Python dependencies installed${NC}\n"
+}rst
+    pip install --upgrade pip
+    
+    # Install required packages with pinned versions
+    # Since there's no requirements.txt, we'll install the packages mentioned in the code
+    pip install fastapi==0.104.1 uvicorn==0.24.0 pymongo==4.6.0 motor==3.3.2 google-generativeai==0.3.0 python-dotenv==1.0.0 redis pydantic==2.5.2 starlette==0.27.0
+    
+    # Install linting dependencies for development
+    pip install flake8==6.1.0 black==23.11.0 isort==5.12.0/pacman conflicts
 
 set -euo pipefail  # Exit on error, undefined vars, and pipe failures
 
@@ -76,19 +94,28 @@ setup_python_env() {
     
     VENV_DIR="$PROJECT_ROOT/venv"
     
-    # Check if pyenv is active
+    # Check if pyenv is active and use it explicitly
     if command_exists pyenv; then
         echo -e "${YELLOW}Using pyenv Python version: $(pyenv version-name)${NC}"
+        # Get the full path to the pyenv Python executable
+        PYTHON_BIN=$(pyenv which python)
+        echo -e "${YELLOW}Python path: $PYTHON_BIN${NC}"
+    else
+        PYTHON_BIN=$(which python3)
+        echo -e "${YELLOW}Using system Python: $PYTHON_BIN${NC}"
     fi
     
     # Create virtual environment if it doesn't exist
     if [ ! -d "$VENV_DIR" ]; then
         echo -e "${YELLOW}Creating virtual environment...${NC}"
-        python3 -m venv "$VENV_DIR"
+        $PYTHON_BIN -m venv "$VENV_DIR"
     fi
     
     # Activate virtual environment
     source "$VENV_DIR/bin/activate"
+    
+    # Verify Python version
+    echo -e "${YELLOW}Virtual environment using Python $(python --version 2>&1)${NC}"
     
     echo -e "${GREEN}✓ Virtual environment activated${NC}\n"
 }
@@ -102,7 +129,7 @@ install_python_deps() {
     
     # Install required packages with pinned versions
     # Since there's no requirements.txt, we'll install the packages mentioned in the code
-    pip install fastapi==0.104.1 uvicorn==0.24.0 pymongo==4.6.0 motor==3.3.2 google-generativeai==0.3.0 python-dotenv==1.0.0
+    pip install fastapi==0.104.1 uvicorn==0.24.0 pymongo==4.6.0 motor==3.3.2 google-generativeai==0.3.0 python-dotenv==1.0.0 redis[hiredis]
     
     # Install linting dependencies for development
     pip install flake8==6.1.0 black==23.11.0 isort==5.12.0
@@ -123,7 +150,7 @@ setup_env_file() {
 GOOGLE_API_KEY=<YOUR_GOOGLE_API_KEY_HERE>
 
 # MongoDB Configuration
-MONGO_URL=<YOUR_MONGODB_URL_HERE>
+MONGO_URL=mongodb+srv://viunuvi:031310Bm@cluster0.omhvrhb.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
 
 # Backend Configuration
 BACKEND_PORT=8001
