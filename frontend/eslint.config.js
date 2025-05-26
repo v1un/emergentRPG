@@ -59,7 +59,7 @@ export default [
       'semi': ['error', 'always'],
       'quotes': ['error', 'single'],
       'indent': ['error', 2],
-      'comma-dangle': ['error', 'always-multiline'],
+      'comma-dangle': 'off', // Disabled - trailing commas are optional
     },
   },
   // Configuration for Node.js config files (excluding ESLint config)

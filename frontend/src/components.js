@@ -5,14 +5,11 @@ import {
   Shield, 
   Wand2, 
   Heart, 
-  Star, 
-  Backpack, 
   ScrollText, 
   Play, 
   Send,
   Menu,
   User,
-  Home,
   Settings,
   Zap,
   Download,
@@ -23,9 +20,21 @@ import {
   Search,
   RefreshCw,
 } from 'lucide-react';
+import { 
+  DynamicQuickActionsContainer, 
+  DynamicPanelContainer,
+  DynamicNavigationContainer,
+  getRarityColor
+} from './components/DynamicUI.js';
+import { useUIConfig } from './hooks/useUIConfig.js';
+import UIConfigurationPanel from './components/UIConfigurationPanel.js';
 
 // Navigation Component
 export const Navigation = ({ currentView, setCurrentView }) => {
+  // Use UI configuration hook
+  const { uiConfig } = useUIConfig();
+  const enabledNavItems = uiConfig?.navigation?.filter(item => item.enabled)?.sort((a, b) => a.position - b.position) || [];
+
   return (
     <nav className="bg-dungeon-darker border-b border-slate-700 px-6 py-4">
       <div className="max-w-7xl mx-auto flex justify-between items-center">
@@ -33,52 +42,11 @@ export const Navigation = ({ currentView, setCurrentView }) => {
           <h1 className="text-2xl font-fantasy font-bold text-dungeon-orange">
             AI DUNGEON
           </h1>
-          <div className="hidden md:flex space-x-6">
-            <button 
-              onClick={() => setCurrentView('landing')}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
-                currentView === 'landing' 
-                  ? 'bg-dungeon-orange text-dungeon-dark' 
-                  : 'text-dungeon-text-secondary hover:text-dungeon-text'
-              }`}
-            >
-              <Home size={18} />
-              <span>Home</span>
-            </button>
-            <button 
-              onClick={() => setCurrentView('generator')}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
-                currentView === 'generator' 
-                  ? 'bg-dungeon-orange text-dungeon-dark' 
-                  : 'text-dungeon-text-secondary hover:text-dungeon-text'
-              }`}
-            >
-              <Wand2 size={18} />
-              <span>Generate</span>
-            </button>
-            <button 
-              onClick={() => setCurrentView('lorebooks')}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
-                currentView === 'lorebooks' 
-                  ? 'bg-dungeon-orange text-dungeon-dark' 
-                  : 'text-dungeon-text-secondary hover:text-dungeon-text'
-              }`}
-            >
-              <ScrollText size={18} />
-              <span>Lorebooks</span>
-            </button>
-            <button 
-              onClick={() => setCurrentView('config')}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
-                currentView === 'config' 
-                  ? 'bg-dungeon-orange text-dungeon-dark' 
-                  : 'text-dungeon-text-secondary hover:text-dungeon-text'
-              }`}
-            >
-              <Settings size={18} />
-              <span>Settings</span>
-            </button>
-          </div>
+          <DynamicNavigationContainer
+            navItems={enabledNavItems}
+            currentView={currentView}
+            onViewChange={setCurrentView}
+          />
         </div>
         
         <div className="flex items-center space-x-4">
@@ -229,85 +197,7 @@ export const CharacterSelectionModal = ({ isOpen, onClose, templateId, onSelectC
   );
 };
 
-export const LandingPage = ({ onStartGame }) => {
-  const [scenarios, setScenarios] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedTemplate, setSelectedTemplate] = useState(null);
-  const [showCharacterModal, setShowCharacterModal] = useState(false);
-
-  useEffect(() => {
-    fetchScenarioTemplates();
-  }, []);
-
-  const fetchScenarioTemplates = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/scenarios/templates`);
-      if (response.ok) {
-        const result = await response.json();
-        setScenarios(result.templates.map(template => ({
-          id: template.id,
-          title: template.title,
-          description: template.description,
-          image: 'https://images.unsplash.com/photo-1598205542984-6720bbcf74f1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzd8MHwxfHNlYXJjaHwxfHxmYW50YXN5JTIwbGFuZHNjYXBlfGVufDB8fHx0ZWFsfDE3NDgwMTQ3NjZ8MA&ixlib=rb-4.1.0&q=85',
-          lorebook_id: template.lorebook_id,
-          has_characters: template.has_playable_characters,
-          character_count: template.playable_character_count,
-        })));
-      }
-    } catch (error) {
-      console.error('Error fetching scenario templates:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleScenarioSelect = (scenario) => {
-    setSelectedTemplate(scenario);
-    if (scenario.has_characters) {
-      setShowCharacterModal(true);
-    } else {
-      // Start game with default character if no characters available
-      onStartGame(scenario);
-    }
-  };
-
-  const handleCharacterSelect = (character) => {
-    // Start game with selected character and scenario
-    onStartGame({
-      ...selectedTemplate,
-      character: character,
-    });
-  };
-
-  // Fallback scenarios if API fails
-  const fallbackScenarios = [
-    {
-      id: 1,
-      title: 'Fantasy Adventure',
-      description: 'Embark on a magical quest in a world of dragons and wizards',
-      image: 'https://images.unsplash.com/photo-1598205542984-6720bbcf74f1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzd8MHwxfHNlYXJjaHwxfHxmYW50YXN5JTIwbGFuZHNjYXBlfGVufDB8fHx0ZWFsfDE3NDgwMTQ3NjZ8MA&ixlib=rb-4.1.0&q=85',
-      intro: 'You awaken in a mystical forest, ancient magic flowing through your veins. Your destiny as a hero begins now...',
-    },
-    {
-      id: 2,
-      title: 'Sci-Fi Odyssey',
-      description: 'Explore the cosmos and encounter alien civilizations',
-      image: 'https://images.pexels.com/photos/9002742/pexels-photo-9002742.jpeg',
-      intro: 'The year is 2387. You\'re aboard a starship entering uncharted space when alarms begin blaring throughout the vessel...',
-    },
-    {
-      id: 3,
-      title: 'Medieval Kingdom',
-      description: 'Rule a kingdom in an age of knights and castles',
-      image: 'https://images.pexels.com/photos/32166318/pexels-photo-32166318.jpeg',
-      intro: 'The crown weighs heavy on your head as you survey your kingdom from the castle walls. Dark times approach...',
-    },
-  ];
-
-  // Use fallback scenarios if API call failed and no scenarios loaded
-  const displayScenarios = scenarios.length > 0 ? scenarios : fallbackScenarios;
-
+export const LandingPage = ({ onNavigateToScenarios }) => {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -347,7 +237,7 @@ export const LandingPage = ({ onStartGame }) => {
             transition={{ duration: 1, delay: 0.6 }}
           >
             <button 
-              onClick={() => handleScenarioSelect(displayScenarios[0])}
+              onClick={onNavigateToScenarios}
               className="flex items-center space-x-3 px-8 py-4 bg-dungeon-orange text-dungeon-dark rounded-lg font-bold text-lg hover:bg-dungeon-orange-dark transition-colors glow-orange"
             >
               <Play size={24} />
@@ -360,75 +250,6 @@ export const LandingPage = ({ onStartGame }) => {
         </div>
       </div>
 
-      {/* Scenarios Section */}
-      <div className="py-20 px-6 bg-dungeon-darker">
-        <div className="max-w-7xl mx-auto">
-          <motion.div 
-            className="text-center mb-16"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-          >
-            <h2 className="text-4xl md:text-5xl font-fantasy font-bold mb-6 text-white">
-              Choose Your Adventure
-            </h2>
-            <p className="text-xl text-dungeon-text-secondary max-w-3xl mx-auto">
-              Select from our collection of immersive scenarios, or create your own unique world
-            </p>
-          </motion.div>
-
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <RefreshCw size={48} className="animate-spin text-dungeon-orange" />
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {displayScenarios.map((scenario, index) => (
-                <motion.div
-                  key={scenario.id}
-                  className="scenario-card rounded-xl overflow-hidden cursor-pointer"
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: index * 0.1 }}
-                  whileHover={{ scale: 1.02 }}
-                  onClick={() => handleScenarioSelect(scenario)}
-                >
-                  <div 
-                    className="h-48 bg-cover bg-center relative"
-                    style={{ backgroundImage: `url('${scenario.image}')` }}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-t from-dungeon-dark via-transparent to-transparent"></div>
-                  </div>
-                  <div className="p-6">
-                    <h3 className="text-xl font-bold mb-3 text-white">{scenario.title}</h3>
-                    <p className="text-dungeon-text-secondary mb-4">{scenario.description}</p>
-                    
-                    {scenario.has_characters && (
-                      <div className="flex items-center mb-4 text-sm text-dungeon-orange">
-                        <User size={16} className="mr-2" />
-                        <span>{scenario.character_count} playable {scenario.character_count === 1 ? 'character' : 'characters'}</span>
-                      </div>
-                    )}
-                    
-                    <button className="flex items-center space-x-2 text-dungeon-orange hover:text-dungeon-orange-dark transition-colors">
-                      <Play size={16} />
-                      <span>Start Adventure</span>
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Character Selection Modal */}
-      <CharacterSelectionModal 
-        isOpen={showCharacterModal}
-        onClose={() => setShowCharacterModal(false)}
-        templateId={selectedTemplate?.id}
-        onSelectCharacter={handleCharacterSelect}
-      />
       
       {/* Features Section */}
       <div className="py-20 px-6 bg-dungeon-dark">
@@ -488,6 +309,9 @@ export const GameInterface = ({ gameState, setGameState: _setGameState, onAction
   const [inputValue, setInputValue] = useState('');
   const [activePanel, setActivePanel] = useState('character');
   const chatRef = useRef(null);
+  
+  // Use UI configuration hook
+  const { getEnabledPanels, getEnabledQuickActions } = useUIConfig();
 
   useEffect(() => {
     if (chatRef.current) {
@@ -503,12 +327,9 @@ export const GameInterface = ({ gameState, setGameState: _setGameState, onAction
     }
   };
 
-  const quickActions = [
-    { text: 'Look around', icon: <Star size={16} /> },
-    { text: 'Attack', icon: <Sword size={16} /> },
-    { text: 'Defend', icon: <Shield size={16} /> },
-    { text: 'Cast spell', icon: <Wand2 size={16} /> },
-  ];
+  // Get dynamic UI elements
+  const enabledPanels = getEnabledPanels();
+  const enabledQuickActions = getEnabledQuickActions();
 
   return (
     <div className="h-full flex overflow-hidden bg-dungeon-dark">
@@ -554,18 +375,11 @@ export const GameInterface = ({ gameState, setGameState: _setGameState, onAction
         <div className="bg-dungeon-darker border-t border-slate-600 p-6 flex-shrink-0">
           <div className="max-w-4xl mx-auto">
             {/* Quick Actions */}
-            <div className="flex flex-wrap gap-2 mb-4">
-              {quickActions.map((action, index) => (
-                <button
-                  key={index}
-                  onClick={() => onAction(action.text)}
-                  className="flex items-center space-x-2 px-3 py-2 bg-slate-700/90 hover:bg-slate-600 rounded-lg text-sm transition-all hover:scale-105 border border-slate-600"
-                >
-                  {action.icon}
-                  <span>{action.text}</span>
-                </button>
-              ))}
-            </div>
+            <DynamicQuickActionsContainer
+              actions={enabledQuickActions}
+              onActionClick={onAction}
+              showHotkeys={true}
+            />
 
             {/* Input Form */}
             <form onSubmit={handleSubmit} className="flex space-x-4">
@@ -589,36 +403,16 @@ export const GameInterface = ({ gameState, setGameState: _setGameState, onAction
       </div>
 
       {/* Right Sidebar */}
-      <div className="w-80 bg-dungeon-darker border-l border-slate-600 flex flex-col flex-shrink-0">
-        {/* Panel Tabs */}
-        <div className="flex border-b border-slate-600">
-          {[
-            { id: 'character', label: 'Character', icon: <User size={16} /> },
-            { id: 'inventory', label: 'Inventory', icon: <Backpack size={16} /> },
-            { id: 'quests', label: 'Quests', icon: <ScrollText size={16} /> },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActivePanel(tab.id)}
-              className={`flex-1 flex items-center justify-center space-x-2 px-4 py-3 transition-colors ${
-                activePanel === tab.id
-                  ? 'bg-dungeon-orange text-dungeon-dark font-medium'
-                  : 'text-dungeon-text-secondary hover:text-dungeon-text hover:bg-slate-700/50'
-              }`}
-            >
-              {tab.icon}
-              <span className="text-sm font-medium">{tab.label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Panel Content */}
-        <div className="flex-1 overflow-y-auto p-4">
-          {activePanel === 'character' && <CharacterPanel character={gameState.character} />}
-          {activePanel === 'inventory' && <InventoryPanel inventory={gameState.inventory} />}
-          {activePanel === 'quests' && <QuestsPanel quests={gameState.quests} />}
-        </div>
-      </div>
+      <DynamicPanelContainer
+        panels={enabledPanels}
+        activePanel={activePanel}
+        onPanelChange={setActivePanel}
+        className="w-80"
+      >
+        {activePanel === 'character' && <CharacterPanel character={gameState.character} />}
+        {activePanel === 'inventory' && <InventoryPanel inventory={gameState.inventory} />}
+        {activePanel === 'quests' && <QuestsPanel quests={gameState.quests} />}
+      </DynamicPanelContainer>
     </div>
   );
 };
@@ -697,16 +491,10 @@ const CharacterPanel = ({ character }) => {
 // Inventory Panel Component
 const InventoryPanel = ({ inventory }) => {
   const [selectedItem, setSelectedItem] = useState(null);
+  const { uiConfig } = useUIConfig();
 
-  const getRarityColor = (rarity) => {
-    const colors = {
-      common: 'border-gray-400',
-      uncommon: 'border-green-400',
-      rare: 'border-blue-400',
-      epic: 'border-purple-400',
-      legendary: 'border-orange-400',
-    };
-    return colors[rarity] || colors.common;
+  const getItemRarityColor = (rarity) => {
+    return getRarityColor(rarity, uiConfig?.rarityColors || {});
   };
 
   return (
@@ -720,7 +508,7 @@ const InventoryPanel = ({ inventory }) => {
         {inventory.map((item) => (
           <div
             key={item.id}
-            className={`inventory-item p-2 rounded-lg cursor-pointer ${getRarityColor(item.rarity)}`}
+            className={`inventory-item p-2 rounded-lg cursor-pointer ${getItemRarityColor(item.rarity)}`}
             onClick={() => setSelectedItem(item)}
           >
             <div className="w-8 h-8 bg-slate-600 rounded mb-1 flex items-center justify-center">
@@ -1319,6 +1107,9 @@ export const ConfigurationPage = () => {
               </div>
             </div>
 
+            {/* UI Configuration */}
+            <UIConfigurationPanel />
+
             {/* Database Configuration */}
             <div>
               <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
@@ -1555,6 +1346,210 @@ export const LorebooksPage = () => {
           </div>
         )}
       </div>
+    </div>
+  );
+};
+
+// Scenario Selection Page Component
+export const ScenarioSelectionPage = ({ onStartGame }) => {
+  const [scenarios, setScenarios] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [showCharacterModal, setShowCharacterModal] = useState(false);
+
+  // Fallback scenarios if API fails
+  const fallbackScenarios = [
+    {
+      id: 1,
+      title: 'Fantasy Adventure',
+      description: 'Embark on a magical quest in a world of dragons and wizards',
+      image: 'https://images.unsplash.com/photo-1598205542984-6720bbcf74f1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzd8MHwxfHNlYXJjaHwxfHxmYW50YXN5JTIwbGFuZHNjYXBlfGVufDB8fHx8dGVhbHwxNzQ4MDE0NzY2fDA&ixlib=rb-4.1.0&q=85',
+      intro: 'You awaken in a mystical forest, ancient magic flowing through your veins. Your destiny as a hero begins now...',
+    },
+    {
+      id: 2,
+      title: 'Sci-Fi Odyssey',
+      description: 'Explore the cosmos and encounter alien civilizations',
+      image: 'https://images.pexels.com/photos/9002742/pexels-photo-9002742.jpeg',
+      intro: 'The year is 2387. You\'re aboard a starship entering uncharted space when alarms begin blaring throughout the vessel...',
+    },
+    {
+      id: 3,
+      title: 'Medieval Kingdom',
+      description: 'Rule a kingdom in an age of knights and castles',
+      image: 'https://images.pexels.com/photos/32166318/pexels-photo-32166318.jpeg',
+      intro: 'The crown weighs heavy on your head as you survey your kingdom from the castle walls. Dark times approach...',
+    },
+  ];
+
+  useEffect(() => {
+    fetchScenarios();
+  }, []);
+
+  const fetchScenarios = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/scenarios/templates`);
+      if (response.ok) {
+        const result = await response.json();
+        setScenarios(result.templates || []);
+      } else {
+        throw new Error('Failed to fetch scenarios');
+      }
+    } catch (error) {
+      console.error('Error fetching scenarios:', error);
+      setError('Failed to load scenarios. Using default scenarios.');
+      setScenarios([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleScenarioSelect = (scenario) => {
+    // Check if this is an API scenario that needs character selection
+    if (scenario.template_id) {
+      setSelectedTemplate(scenario);
+      setShowCharacterModal(true);
+    } else {
+      // This is a fallback scenario, start game directly
+      onStartGame(scenario);
+    }
+  };
+
+  const handleCharacterSelect = (character) => {
+    if (selectedTemplate) {
+      const scenarioWithCharacter = {
+        ...selectedTemplate,
+        selectedCharacter: character,
+      };
+      onStartGame(scenarioWithCharacter);
+    }
+  };
+
+  // Use fallback scenarios if API call failed and no scenarios loaded
+  const displayScenarios = scenarios.length > 0 ? scenarios : fallbackScenarios;
+
+  return (
+    <div className="min-h-screen bg-dungeon-dark py-20 px-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <motion.div 
+          className="text-center mb-16"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+        >
+          <h1 className="text-5xl font-fantasy font-bold mb-6 text-white">
+            <Wand2 className="inline-block mr-4 text-dungeon-orange" size={48} />
+            Choose Your Adventure
+          </h1>
+          <p className="text-xl text-dungeon-text-secondary max-w-3xl mx-auto">
+            Select a scenario to begin your epic journey. Each world offers unique characters, stories, and challenges waiting to be discovered.
+          </p>
+        </motion.div>
+
+        {/* Loading State */}
+        {loading && (
+          <div className="text-center py-20">
+            <RefreshCw size={48} className="animate-spin text-dungeon-orange mx-auto mb-4" />
+            <p className="text-dungeon-text-secondary">Loading adventures...</p>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <motion.div 
+            className="bg-orange-900/20 border border-dungeon-orange/50 rounded-lg p-4 mb-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="flex items-center space-x-2 text-dungeon-orange">
+              <AlertCircle size={20} />
+              <span>{error}</span>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Scenarios Grid */}
+        {!loading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {displayScenarios.map((scenario, index) => (
+              <motion.div
+                key={scenario.id || scenario.template_id || index}
+                className="scenario-card rounded-xl overflow-hidden cursor-pointer group"
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: index * 0.1 }}
+                onClick={() => handleScenarioSelect(scenario)}
+              >
+                <div className="relative h-48 overflow-hidden">
+                  <img 
+                    src={scenario.image || scenario.cover_image || fallbackScenarios[index % fallbackScenarios.length].image}
+                    alt={scenario.title}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                    onError={(e) => {
+                      e.target.src = fallbackScenarios[index % fallbackScenarios.length].image;
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                  <div className="absolute bottom-4 left-4 right-4">
+                    <h3 className="text-xl font-bold text-white mb-2 group-hover:text-dungeon-orange transition-colors">
+                      {scenario.title}
+                    </h3>
+                  </div>
+                </div>
+                
+                <div className="p-6">
+                  <p className="text-dungeon-text-secondary mb-4 line-clamp-3">
+                    {scenario.description || scenario.intro || 'An epic adventure awaits...'}
+                  </p>
+                  
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-dungeon-orange font-medium">
+                      {scenario.genre || 'Adventure'}
+                    </span>
+                    <button className="flex items-center space-x-2 px-4 py-2 bg-dungeon-orange text-dungeon-dark rounded-lg font-medium hover:bg-dungeon-orange-dark transition-colors">
+                      <Play size={16} />
+                      <span>Play</span>
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
+
+        {/* Refresh Button */}
+        {!loading && (
+          <motion.div 
+            className="text-center mt-12"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.8 }}
+          >
+            <button
+              onClick={fetchScenarios}
+              className="flex items-center space-x-2 px-6 py-3 border border-dungeon-orange text-dungeon-orange rounded-lg font-medium hover:bg-dungeon-orange hover:text-dungeon-dark transition-colors mx-auto"
+            >
+              <RefreshCw size={18} />
+              <span>Refresh Scenarios</span>
+            </button>
+          </motion.div>
+        )}
+      </div>
+
+      {/* Character Selection Modal */}
+      <CharacterSelectionModal
+        isOpen={showCharacterModal}
+        onClose={() => {
+          setShowCharacterModal(false);
+          setSelectedTemplate(null);
+        }}
+        templateId={selectedTemplate?.template_id}
+        onSelectCharacter={handleCharacterSelect}
+      />
     </div>
   );
 };
