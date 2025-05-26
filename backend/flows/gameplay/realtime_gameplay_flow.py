@@ -48,19 +48,19 @@ class RealtimeGameplayFlow:
 
         prompt = f"""
         Analyze this player action in the context of the ongoing adventure:
-        
+
         Player Action: "{player_action}"
-        
+
         Current Context:
         {world_context}
-        
+
         Recent Story:
         {story_context}
-        
+
         Character: {game_session.character.name} (Level {game_session.character.level})
         Current Location: {game_session.world_state.current_location}
         Health: {game_session.character.health}/{game_session.character.max_health}
-        
+
         Analyze the action and provide interpretation in JSON format:
         {{
             "action_type": "combat/exploration/social/magic/stealth/investigation/other",
@@ -147,13 +147,7 @@ class RealtimeGameplayFlow:
         }.get(difficulty, 5)
         game_session.character.experience += exp_gain
 
-        # Handle level up
-        if game_session.character.experience >= game_session.character.level * 100:
-            game_session.character.level += 1
-            game_session.character.max_health += 10
-            game_session.character.health = game_session.character.max_health
-            game_session.character.max_mana += 5
-            game_session.character.mana = game_session.character.max_mana
+        # Note: Level up handling is now centralized in GameStateManager._check_game_milestones
 
         # Update world state based on consequences
         consequences = selected_outcome.get("consequences", [])
@@ -204,24 +198,24 @@ class RealtimeGameplayFlow:
 
         prompt = f"""
         As the AI Game Master, respond to the player's action with a compelling narrative.
-        
+
         World Context:
         {world_context}
-        
+
         Recent Story:
         {story_context}
-        
+
         Player Action: "{player_action}"
         Action Analysis: {action_analysis.get('intent', 'unclear intent')}
         Outcome: {selected_outcome.get('description', 'uncertain result')}
-        
+
         Current Situation:
         - Location: {game_session.world_state.current_location}
         - Time: {game_session.world_state.time_of_day}
         - Weather: {game_session.world_state.weather}
         - NPCs Present: {game_session.world_state.npcs_present}
         - Character Health: {game_session.character.health}/{game_session.character.max_health}
-        
+
         Generate a response that:
         1. Acknowledges the player's action
         2. Describes what happens as a result
@@ -229,7 +223,7 @@ class RealtimeGameplayFlow:
         4. Maintains the series' tone and style
         5. Includes sensory details (sight, sound, smell, etc.)
         6. Advances the narrative meaningfully
-        
+
         Write a compelling 2-3 paragraph response that immerses the player in the world.
         Focus on showing rather than telling, and maintain appropriate pacing.
         """
@@ -267,17 +261,17 @@ class RealtimeGameplayFlow:
 
         prompt = f"""
         Check this AI GM response for consistency with the established world and story.
-        
+
         World Facts:
         {world_facts}
-        
+
         Current Game State:
         - Location: {game_session.world_state.current_location}
         - Character: {game_session.character.name} (Level {game_session.character.level})
         - Recent Events: {[entry.text for entry in game_session.story[-2:]] if game_session.story else []}
-        
+
         Generated Response: "{generated_response}"
-        
+
         Analyze consistency in JSON format:
         {{
             "consistency_score": 0.95,

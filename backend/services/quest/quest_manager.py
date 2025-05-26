@@ -10,9 +10,13 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
-from models.game_models import Character, Quest, WorldState
+from models.game_models import Character, Quest, WorldState, QuestProgress, QuestDependency
 from models.scenario_models import Lorebook
 from utils.gemini_client import gemini_client
+from utils.exceptions import (
+    QuestError, QuestNotFoundError, QuestDependencyNotMetError,
+    QuestAlreadyCompletedError, QuestTimeExpiredError, ValidationError
+)
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +34,7 @@ class QuestTemplate:
         self.difficulty_range = difficulty_range
         self.scenario_types = scenario_types
         self.created_at = datetime.now()
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "template_id": self.template_id,
@@ -57,7 +61,7 @@ class QuestRequirements:
         self.required_location = required_location
         self.required_npc = required_npc
         self.prerequisite_quests = prerequisite_quests or []
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "min_level": self.min_level,
@@ -80,7 +84,7 @@ class QuestRewards:
         self.items = items or []
         self.reputation = reputation or {}
         self.special_rewards = special_rewards or []
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "experience": self.experience,
@@ -100,7 +104,7 @@ class QuestCompletion:
         self.completion_time = completion_time
         self.rewards_granted = rewards_granted
         self.narrative_text = narrative_text
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "quest_id": self.quest_id,
@@ -122,7 +126,7 @@ class GameContext:
         self.location = world_state.current_location
         self.time_of_day = world_state.time_of_day
         self.weather = world_state.weather
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "character": self.character.model_dump(),
@@ -137,13 +141,13 @@ class GameContext:
 
 class QuestManager:
     """Manages dynamic quest generation, progress tracking, and completion"""
-    
+
     def __init__(self):
         self.quest_templates: Dict[str, QuestTemplate] = {}
         self.active_quests: Dict[str, Quest] = {}  # Stores Quest objects
         self.completed_quests: Dict[str, QuestCompletion] = {} # Stores QuestCompletion objects
         self._initialize_default_templates()
-    
+
     def _initialize_default_templates(self):
         """Initialize default quest templates"""
         templates = [
@@ -202,43 +206,43 @@ class QuestManager:
                 ["fantasy", "mystery", "investigation"]
             )
         ]
-        
+
         for template in templates:
             self.quest_templates[template.template_id] = template
-        
+
         logger.info(f"Initialized {len(templates)} default quest templates")
-    
+
     async def generate_quest(self, context: GameContext) -> Quest:
         """Generate a new quest based on game context"""
         try:
             # Select appropriate template based on character level and context
             suitable_templates = self._get_suitable_templates(context)
-            
+
             if not suitable_templates:
                 # Fallback to basic exploration quest
                 return self._create_fallback_quest(context)
-            
+
             # Choose random template
             template = random.choice(suitable_templates)
-            
+
             # Generate quest using AI
             quest = await self._generate_quest_from_template(template, context)
-            
+
             # Store quest
             self.active_quests[quest.id] = quest
-            
+
             logger.info(f"Generated quest '{quest.title}' for character level {context.character.level}")
             return quest
-            
+
         except Exception as e:
             logger.error(f"Error generating quest: {str(e)}")
             return self._create_fallback_quest(context)
-    
+
     def _get_suitable_templates(self, context: GameContext) -> List[QuestTemplate]:
         """Get quest templates suitable for the current context"""
         suitable = []
         character_level = context.character.level
-        
+
         for template in self.quest_templates.values():
             # Check level requirements
             # Ensure requirements is a dict and has min_level/max_level
@@ -247,27 +251,31 @@ class QuestManager:
 
             if req_min_level <= character_level <= req_max_level:
                 suitable.append(template)
-        
+
         return suitable
-    
+
     async def _generate_quest_from_template(self, template: QuestTemplate, context: GameContext) -> Quest:
         """Generate a specific quest from a template using AI"""
         try:
             # Prepare context for AI generation
             quest_prompt = self._build_quest_prompt(template, context)
-            
+
             # Generate quest details using AI
             response = await gemini_client.generate_text(quest_prompt)
-            
+
             # Parse AI response and create quest
             quest_data = self._parse_quest_response(response, template, context)
-            
+
             quest = Quest(
                 id=str(uuid.uuid4()),
                 title=quest_data["title"],
                 description=quest_data["description"],
                 status="active",
-                progress="0/1",
+                progress=QuestProgress(
+                    current=0,
+                    total=len(quest_data["objectives"]),
+                    completed_objectives=[False] * len(quest_data["objectives"])
+                ),
                 objectives=quest_data["objectives"],
                 rewards=quest_data["rewards"],
                 metadata={
@@ -278,13 +286,13 @@ class QuestManager:
                     "generated_at": datetime.now().isoformat()
                 }
             )
-            
+
             return quest
-            
+
         except Exception as e:
             logger.error(f"Error generating quest from template: {str(e)}")
             return self._create_quest_from_template_fallback(template, context)
-    
+
     def _build_quest_prompt(self, template: QuestTemplate, context: GameContext) -> str:
         """Build prompt for AI quest generation"""
         prompt = f"""Generate a quest based on the following template and context:
@@ -316,14 +324,14 @@ Generate a quest with:
 Format as JSON with keys: title, description, objectives, rewards, difficulty, estimated_time"""
 
         return prompt
-    
+
     def _parse_quest_response(self, response: str, template: QuestTemplate, context: GameContext) -> Dict[str, Any]:
         """Parse AI response and extract quest data"""
         try:
             # Try to parse JSON response
             import json
             quest_data = json.loads(response)
-            
+
             # Validate and set defaults
             return {
                 "title": quest_data.get("title", template.name_pattern.format(location=context.location)),
@@ -333,11 +341,11 @@ Format as JSON with keys: title, description, objectives, rewards, difficulty, e
                 "difficulty": quest_data.get("difficulty", template.difficulty_range[0]),
                 "estimated_time": quest_data.get("estimated_time", "30 minutes")
             }
-            
+
         except Exception as e:
             logger.warning(f"Failed to parse AI quest response, using fallback: {str(e)}")
             return self._create_fallback_quest_data(template, context)
-    
+
     def _create_fallback_quest_data(self, template: QuestTemplate, context: GameContext) -> Dict[str, Any]:
         """Create fallback quest data when AI generation fails"""
         return {
@@ -348,17 +356,21 @@ Format as JSON with keys: title, description, objectives, rewards, difficulty, e
             "difficulty": template.difficulty_range[0],
             "estimated_time": "30 minutes"
         }
-    
+
     def _create_quest_from_template_fallback(self, template: QuestTemplate, context: GameContext) -> Quest:
         """Create a quest from template when AI generation fails"""
         quest_data = self._create_fallback_quest_data(template, context)
-        
+
         return Quest(
             id=str(uuid.uuid4()),
             title=quest_data["title"],
             description=quest_data["description"],
             status="active",
-            progress="0/1",
+            progress=QuestProgress(
+                current=0,
+                total=len(quest_data["objectives"]),
+                completed_objectives=[False] * len(quest_data["objectives"])
+            ),
             objectives=quest_data["objectives"],
             rewards=quest_data["rewards"],
             metadata={
@@ -368,67 +380,81 @@ Format as JSON with keys: title, description, objectives, rewards, difficulty, e
                 "generated_at": datetime.now().isoformat()
             }
         )
-    
+
     def _create_fallback_quest(self, context: GameContext) -> Quest:
         """Create a basic fallback quest"""
+        objectives = ["Look around the area", "Find something interesting"]
         return Quest(
             id=str(uuid.uuid4()),
             title=f"Explore {context.location}",
             description=f"Take some time to explore {context.location} and see what you can discover.",
             status="active",
-            progress="0/1",
-            objectives=["Look around the area", "Find something interesting"],
+            progress=QuestProgress(
+                current=0,
+                total=len(objectives),
+                completed_objectives=[False] * len(objectives)
+            ),
+            objectives=objectives,
             rewards={"experience": 50, "gold": 25},
             metadata={
                 "fallback": True,
                 "generated_at": datetime.now().isoformat()
             }
         )
-    
+
     async def update_quest_progress(self, quest_id: str, progress: Dict[str, Any]) -> Quest:
         """Update quest progress"""
         try:
             if quest_id not in self.active_quests:
                 raise ValueError(f"Quest {quest_id} not found in active quests")
-            
+
             quest = self.active_quests[quest_id]
-            
-            # Update progress string
+
+            # Update progress using structured format
             if "current" in progress and "total" in progress:
-                quest.progress = f"{progress['current']}/{progress['total']}"
-            
+                quest.progress.current = progress["current"]
+                quest.progress.total = progress["total"]
+
             # Update objectives completion
             if "completed_objectives" in progress:
                 completed = progress["completed_objectives"]
+                quest.progress.completed_objectives = completed[:len(quest.objectives)]
+
+                # Update objective text to show completion
                 for i, objective in enumerate(quest.objectives):
                     if i < len(completed) and completed[i]:
-                        quest.objectives[i] = f"✓ {objective}"
-            
+                        if not objective.startswith("✓"):
+                            quest.objectives[i] = f"✓ {objective}"
+                    else:
+                        # Remove checkmark if objective is no longer completed
+                        if objective.startswith("✓"):
+                            quest.objectives[i] = objective[2:]  # Remove "✓ "
+
             # Check if quest is completed
-            if progress.get("completed", False):
+            if progress.get("completed", False) or quest.progress.is_complete:
                 quest.status = "completed"
             elif progress.get("failed", False):
                 quest.status = "failed"
-            
+
             logger.info(f"Updated progress for quest '{quest.title}': {quest.progress}")
             return quest
-            
+
         except Exception as e:
             logger.error(f"Error updating quest progress: {str(e)}")
             raise
-    
+
     async def complete_quest(self, quest_id: str, session_id: str) -> QuestCompletion:
         """Complete a quest and generate rewards"""
         try:
             if quest_id not in self.active_quests:
                 raise ValueError(f"Quest {quest_id} not found in active quests")
-            
+
             quest = self.active_quests[quest_id]
             quest.status = "completed"
-            
+
             # Generate completion narrative
             narrative_text = await self._generate_completion_narrative(quest)
-            
+
             # Create completion record
             completion = QuestCompletion(
                 quest_id=quest_id,
@@ -437,18 +463,18 @@ Format as JSON with keys: title, description, objectives, rewards, difficulty, e
                 rewards_granted=quest.rewards or {},
                 narrative_text=narrative_text
             )
-            
+
             # Move from active to completed
             del self.active_quests[quest_id]
             self.completed_quests[quest_id] = completion
-            
+
             logger.info(f"Completed quest '{quest.title}' for session {session_id}")
             return completion
-            
+
         except Exception as e:
             logger.error(f"Error completing quest: {str(e)}")
             raise
-    
+
     async def _generate_completion_narrative(self, quest: Quest) -> str:
         """Generate narrative text for quest completion"""
         try:
@@ -458,21 +484,21 @@ Title: {quest.title}
 Description: {quest.description}
 Objectives: {', '.join(quest.objectives)}
 
-Write a 1-2 sentence narrative describing the successful completion of this quest. 
+Write a 1-2 sentence narrative describing the successful completion of this quest.
 Make it engaging and rewarding for the player."""
 
             response = await gemini_client.generate_text(prompt)
             return response.strip()
-            
+
         except Exception as e:
             logger.warning(f"Failed to generate completion narrative: {str(e)}")
             return f"You have successfully completed '{quest.title}'! Well done, adventurer."
-    
+
     async def get_available_quests(self, character_level: int, location: str) -> List[Quest]:
         """Get available quests for character at specific location"""
         try:
             available = []
-            
+
             for quest in self.active_quests.values():
                 # Check if quest metadata exists before accessing it
                 if quest.metadata is None:
@@ -482,34 +508,34 @@ Make it engaging and rewarding for the player."""
                 # Check if quest is appropriate for character level
                 quest_min_level = quest.metadata.get("min_level", 1)
                 quest_max_level = quest.metadata.get("max_level", 20)
-                
+
                 if quest_min_level <= character_level <= quest_max_level:
                     # Check if quest is location-appropriate
                     quest_location = quest.metadata.get("location", "")
                     if not quest_location or quest_location == location:
                         available.append(quest)
-            
+
             logger.debug(f"Found {len(available)} available quests for level {character_level} at {location}")
             return available
-            
+
         except Exception as e:
             logger.error(f"Error getting available quests: {str(e)}")
             return []
-    
+
     def get_quest_by_id(self, quest_id: str) -> Optional[Quest]:
         """Get quest by ID from active quests"""
         return self.active_quests.get(quest_id)
-    
+
     def get_completed_quest(self, quest_id: str) -> Optional[QuestCompletion]:
         """Get completed quest by ID"""
         return self.completed_quests.get(quest_id)
-    
+
     def get_active_quests_for_session(self, session_id: str) -> List[Quest]:
         """Get all active quests for a specific session"""
         # This would need session tracking in quests
         # For now, return all active quests
         return list(self.active_quests.values())
-    
+
     def get_quest_statistics(self) -> Dict[str, Any]:
         """Get quest system statistics"""
         return {

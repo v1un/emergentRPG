@@ -14,6 +14,10 @@ from models.game_models import (
 )
 from models.scenario_models import Lorebook
 from services.database_service import db_service
+from utils.exceptions import (
+    SessionNotFoundError, SessionSaveError, CharacterLevelUpError,
+    TransientError, PermanentError, create_error_response
+)
 
 logger = logging.getLogger(__name__)
 
@@ -162,8 +166,8 @@ class GameStateManager:
     async def _check_game_milestones(self, session: GameSession):
         """Check for character progression, quest completion, etc."""
         try:
-            # Check for level up
-            if session.character.experience >= session.character.level * 100:
+            # Check for level up using new Character method
+            while session.character.can_level_up():
                 await self._handle_level_up(session)
 
             # Check for quest completion
@@ -202,26 +206,23 @@ class GameStateManager:
         try:
             for quest in session.quests:
                 if quest.status == "active":
-                    # Simple completion check (in full implementation would be more sophisticated)
-                    progress_parts = quest.progress.split("/")
-                    if len(progress_parts) == 2:
-                        current, total = int(progress_parts[0]), int(progress_parts[1])
-                        if current >= total:
-                            quest.status = "completed"
+                    # Check if quest is complete using new progress model
+                    if quest.progress.is_complete:
+                        quest.status = "completed"
 
-                            # Add quest completion message
-                            completion_message = (
-                                f"✅ Quest Completed: {quest.title}! {quest.description}"
-                            )
-                            completion_entry = StoryEntry(
-                                type=ActionType.SYSTEM, text=completion_message
-                            )
-                            session.story.append(completion_entry)
+                        # Add quest completion message
+                        completion_message = (
+                            f"✅ Quest Completed: {quest.title}! {quest.description}"
+                        )
+                        completion_entry = StoryEntry(
+                            type=ActionType.SYSTEM, text=completion_message
+                        )
+                        session.story.append(completion_entry)
 
-                            # Award experience
-                            session.character.experience += 50
+                        # Award experience
+                        session.character.experience += 50
 
-                            logger.info(f"Quest completed: {quest.title}")
+                        logger.info(f"Quest completed: {quest.title}")
 
         except Exception as e:
             logger.error(f"Error checking quest completion: {str(e)}")

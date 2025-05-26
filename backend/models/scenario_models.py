@@ -38,7 +38,8 @@ class SeriesMetadata(BaseModel):
     confidence_score: float = Field(ge=0, le=1, default=0.0)
 
 
-class Character(BaseModel):
+class LoreCharacter(BaseModel):
+    """Character model for lorebook/scenario generation - distinct from game Character"""
     name: str
     role: str  # protagonist, antagonist, supporting, etc.
     description: str
@@ -74,7 +75,7 @@ class WorldSystem(BaseModel):
 class Lorebook(BaseModel):
     id: str
     series_metadata: SeriesMetadata
-    characters: List[Character] = Field(default_factory=list)
+    characters: List[LoreCharacter] = Field(default_factory=list)
     locations: List[Location] = Field(default_factory=list)
     world_systems: List[WorldSystem] = Field(default_factory=list)
     timeline: List[Dict[str, Any]] = Field(default_factory=list)
