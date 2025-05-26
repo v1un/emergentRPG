@@ -30,6 +30,9 @@ from models.scenario_models import (
 )
 from services.database_service import db_service
 from services.scenario_generation.scenario_orchestrator import scenario_orchestrator
+from services.config.configuration_manager import config_manager
+from services.config.feature_flags import feature_flag_manager
+from services.config.content_manager import content_manager
 
 # Configure logging
 logging.basicConfig(
@@ -458,6 +461,75 @@ async def perform_game_action(session_id: str, action_data: Dict[str, Any]):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.put("/api/game/sessions/{session_id}")
+async def update_game_session(session_id: str, updates: Dict[str, Any]):
+    """Update game session with provided data"""
+    try:
+        # Get existing session
+        session = await db_service.get_game_session(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Game session not found")
+
+        # Apply updates to session
+        for key, value in updates.items():
+            if hasattr(session, key):
+                setattr(session, key, value)
+
+        # Update timestamp
+        session.updated_at = datetime.now()
+
+        # Save updated session
+        success = await db_service.save_game_session(session)
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to update session")
+
+        return {
+            "success": True,
+            "updated_session": session.model_dump(),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating game session: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/game/sessions/{session_id}/save")
+async def save_game_session(session_id: str, session_data: Dict[str, Any]):
+    """Save game session data"""
+    try:
+        # Get existing session
+        session = await db_service.get_game_session(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Game session not found")
+
+        # Update session with provided data
+        for key, value in session_data.items():
+            if hasattr(session, key):
+                setattr(session, key, value)
+
+        # Update timestamp
+        session.updated_at = datetime.now()
+
+        # Save session
+        success = await db_service.save_game_session(session)
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to save session")
+
+        return {
+            "success": True,
+            "message": "Session saved successfully",
+            "session_id": session_id,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error saving game session: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.delete("/api/game/sessions/{session_id}")
 async def delete_game_session(session_id: str):
     """Delete a game session"""
@@ -608,13 +680,300 @@ async def create_character_from_series_endpoint(character_data: Dict[str, Any]):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-if __name__ == "__main__":
-    import uvicorn
+# ===== CONFIGURATION MANAGEMENT ENDPOINTS =====
 
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8001,
-        reload=settings.DEBUG,
-        log_level=settings.LOG_LEVEL.lower(),
-    )
+@app.get("/api/config/ui")
+async def get_ui_config(user_id: Optional[str] = None):
+    """Get UI configuration for user or default"""
+    try:
+        config = await config_manager.get_ui_config(user_id)
+        return {
+            "success": True,
+            "config": config.to_dict()
+        }
+    except Exception as e:
+        logger.error(f"Error getting UI config: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/config/models")
+async def get_available_models():
+    """Get available AI models"""
+    try:
+        models = await config_manager.get_available_models()
+        return {
+            "success": True,
+            "models": [model.to_dict() for model in models]
+        }
+    except Exception as e:
+        logger.error(f"Error getting AI models: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/config/themes")
+async def get_theme_options():
+    """Get available themes"""
+    try:
+        themes = await config_manager.get_theme_options()
+        return {
+            "success": True,
+            "themes": [theme.to_dict() for theme in themes]
+        }
+    except Exception as e:
+        logger.error(f"Error getting themes: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/config/user/{user_id}/preferences")
+async def update_user_preferences(user_id: str, preferences: Dict[str, Any]):
+    """Update user preferences"""
+    try:
+        # Validate preferences first
+        validation = await config_manager.validate_config(preferences)
+        if not validation["valid"]:
+            return {
+                "success": False,
+                "errors": validation["errors"],
+                "warnings": validation["warnings"]
+            }
+        
+        success = await config_manager.update_user_preferences(user_id, preferences)
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to update preferences")
+        
+        return {
+            "success": True,
+            "message": "Preferences updated successfully",
+            "warnings": validation["warnings"]
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating user preferences: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/config/defaults")
+async def get_default_config():
+    """Get default configuration"""
+    try:
+        config = await config_manager.get_default_config()
+        return {
+            "success": True,
+            "config": config.to_dict()
+        }
+    except Exception as e:
+        logger.error(f"Error getting default config: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== FEATURE FLAGS ENDPOINTS =====
+
+@app.get("/api/features")
+async def get_feature_flags(user_id: Optional[str] = None):
+    """Get all feature flags for a user"""
+    try:
+        flags = await feature_flag_manager.get_all_flags(user_id)
+        return {
+            "success": True,
+            "features": flags
+        }
+    except Exception as e:
+        logger.error(f"Error getting feature flags: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/features/{feature_name}")
+async def check_feature_flag(feature_name: str, user_id: Optional[str] = None):
+    """Check if a specific feature is enabled"""
+    try:
+        enabled = await feature_flag_manager.is_feature_enabled(feature_name, user_id)
+        flag_details = await feature_flag_manager.get_flag_details(feature_name)
+        
+        return {
+            "success": True,
+            "feature": feature_name,
+            "enabled": enabled,
+            "details": flag_details
+        }
+    except Exception as e:
+        logger.error(f"Error checking feature flag: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/features/{feature_name}")
+async def update_feature_flag(feature_name: str, flag_data: Dict[str, Any]):
+    """Update a feature flag (admin endpoint)"""
+    try:
+        enabled = flag_data.get("enabled", False)
+        scope = flag_data.get("scope", "global")
+        
+        success = await feature_flag_manager.update_flag(feature_name, enabled, scope)
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to update feature flag")
+        
+        # Handle percentage rollout
+        if "percentage" in flag_data:
+            await feature_flag_manager.set_percentage_rollout(
+                feature_name, flag_data["percentage"]
+            )
+        
+        return {
+            "success": True,
+            "message": f"Feature flag '{feature_name}' updated successfully"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating feature flag: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/features/enabled")
+async def get_enabled_features(user_id: Optional[str] = None):
+    """Get list of enabled features for a user"""
+    try:
+        enabled_features = await feature_flag_manager.get_enabled_features(user_id)
+        return {
+            "success": True,
+            "enabled_features": enabled_features
+        }
+    except Exception as e:
+        logger.error(f"Error getting enabled features: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== CONTENT MANAGEMENT ENDPOINTS =====
+
+@app.get("/api/content/scenarios")
+async def get_content_scenarios(
+    difficulty: Optional[str] = None,
+    tags: Optional[List[str]] = None
+):
+    """Get available scenarios from content management"""
+    try:
+        filters = {}
+        if difficulty:
+            filters["difficulty"] = difficulty
+        if tags:
+            filters["tags"] = tags
+            
+        scenarios = await content_manager.get_scenarios(filters)
+        return {
+            "success": True,
+            "scenarios": scenarios
+        }
+    except Exception as e:
+        logger.error(f"Error getting content scenarios: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/content/media")
+async def get_media_assets(category: Optional[str] = None):
+    """Get media assets by category"""
+    try:
+        assets = await content_manager.get_media_assets(category)
+        return {
+            "success": True,
+            "assets": [asset.to_dict() for asset in assets]
+        }
+    except Exception as e:
+        logger.error(f"Error getting media assets: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/content/ui-text")
+async def get_ui_text(language: str = "en"):
+    """Get UI text translations"""
+    try:
+        ui_text = await content_manager.get_ui_text(language)
+        return {
+            "success": True,
+            "language": language,
+            "text": ui_text
+        }
+    except Exception as e:
+        logger.error(f"Error getting UI text: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/content/update")
+async def update_content(content_data: Dict[str, Any]):
+    """Update content (admin endpoint)"""
+    try:
+        content_type = content_data.get("type")
+        data = content_data.get("data")
+        
+        if not content_type or not data:
+            raise HTTPException(
+                status_code=400, 
+                detail="content_type and data are required"
+            )
+        
+        success = await content_manager.update_content(content_type, data)
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to update content")
+        
+        return {
+            "success": True,
+            "message": f"Content of type '{content_type}' updated successfully"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating content: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/content/category/{category}")
+async def get_content_by_category(category: str):
+    """Get content items by category"""
+    try:
+        content_items = await content_manager.get_content_by_category(category)
+        return {
+            "success": True,
+            "category": category,
+            "items": [item.to_dict() for item in content_items]
+        }
+    except Exception as e:
+        logger.error(f"Error getting content by category: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== HEALTH AND STATUS ENDPOINTS =====
+
+@app.get("/api/status/services")
+async def get_services_status():
+    """Get status of all backend services"""
+    try:
+        # Check feature flags service
+        feature_flags_status = len(feature_flag_manager.flags) > 0
+        
+        # Check configuration service
+        config_status = True  # config_manager is always available
+        
+        # Check content service
+        content_status = len(content_manager.scenarios) > 0
+        
+        return {
+            "success": True,
+            "services": {
+                "feature_flags": {
+                    "status": "healthy" if feature_flags_status else "degraded",
+                    "flags_count": len(feature_flag_manager.flags)
+                },
+                "configuration": {
+                    "status": "healthy" if config_status else "degraded",
+                    "themes_count": len(config_manager.themes)
+                },
+                "content_management": {
+                    "status": "healthy" if content_status else "degraded",
+                    "scenarios_count": len(content_manager.scenarios),
+                    "media_assets_count": len(content_manager.media_assets)
+                }
+            },
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting services status: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
