@@ -124,6 +124,31 @@ def main():
     log_level = os.getenv('LOG_LEVEL', 'info').lower()
     workers = int(os.getenv('WORKERS', 1))
     
+    # Set Redis configuration
+    if os.getenv('REDIS_ENABLED') is None:
+        # If not explicitly set, check if Redis is available
+        try:
+            import socket
+            redis_host = os.getenv('REDIS_HOST', 'localhost')
+            redis_port = int(os.getenv('REDIS_PORT', 6379))
+            
+            # Try to connect to Redis
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(1)  # 1 second timeout
+            result = s.connect_ex((redis_host, redis_port))
+            s.close()
+            
+            # If connection successful, enable Redis
+            if result == 0:
+                os.environ['REDIS_ENABLED'] = 'true'
+                logger.info(f"Redis detected at {redis_host}:{redis_port}, enabling Redis cache")
+            else:
+                os.environ['REDIS_ENABLED'] = 'false'
+                logger.info("Redis not detected, using memory cache only")
+        except Exception as e:
+            os.environ['REDIS_ENABLED'] = 'false'
+            logger.info(f"Error checking Redis availability: {e}. Using memory cache only")
+    
     # Validate host configuration
     if host == '0.0.0.0' and os.getenv('ALLOW_EXTERNAL_ACCESS') != 'true':
         logger.warning(
