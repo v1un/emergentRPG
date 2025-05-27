@@ -482,6 +482,36 @@ def _create_initial_story(scenario_template, lorebook, lorebook_id: Optional[str
 
     return initial_story
 
+@app.get("/api/game/sessions")
+async def list_game_sessions(limit: int = 20, offset: int = 0):
+    """List all game sessions"""
+    try:
+        sessions = await db_service.list_game_sessions(limit=limit, offset=offset)
+
+        # Convert sessions to summary format
+        session_summaries = []
+        for session in sessions:
+            session_summaries.append({
+                "session_id": session.session_id,
+                "character": session.character.model_dump(),
+                "world_state": session.world_state.model_dump(),
+                "story_length": len(session.story),
+                "created_at": session.created_at.isoformat(),
+                "updated_at": session.updated_at.isoformat(),
+            })
+
+        return {
+            "sessions": session_summaries,
+            "total": len(session_summaries),
+            "limit": limit,
+            "offset": offset,
+        }
+
+    except Exception as e:
+        logger.error(f"Error listing game sessions: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/game/sessions")
 async def create_game_session(
     lorebook_id: Optional[str] = None,
