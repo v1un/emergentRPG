@@ -10,7 +10,6 @@ from flows.lorebook_generation.character_generation_flow import (
 )
 from flows.lorebook_generation.world_building_flow import world_building_flow
 from flows.series_analysis.analysis_flow import series_analysis_flow
-from models.game_models import Character
 from models.scenario_models import (
     GenerationRequest,
     GenerationStatus,
@@ -20,6 +19,7 @@ from models.scenario_models import (
     SeriesMetadata,
 )
 from services.database_service import db_service
+from utils.gemini_client import gemini_client
 
 logger = logging.getLogger(__name__)
 
@@ -157,7 +157,7 @@ class ScenarioOrchestrator:
 
         try:
             # Run series identification flow
-            identification_data = await series_analysis_flow.series_identification_flow(
+            await series_analysis_flow.series_identification_flow(
                 request.series_title, request.series_type.value
             )
 
@@ -181,7 +181,7 @@ class ScenarioOrchestrator:
                         setattr(series_metadata, field, value)
 
             # Run knowledge graph creation
-            knowledge_graph = await series_analysis_flow.knowledge_graph_creation_flow(
+            await series_analysis_flow.knowledge_graph_creation_flow(
                 series_metadata
             )
 
@@ -333,115 +333,133 @@ class ScenarioOrchestrator:
         )
 
         try:
-            # Create basic scenario templates
-            templates = []
-
-            # Beginning adventure template
             template_id = str(uuid.uuid4())
-
-            # Generate scenario context
             scenario_context = f"Beginning adventure in the world of {lorebook.series_metadata.title}. {lorebook.series_metadata.setting}"
 
-            # Generate playable characters from main characters in lorebook
-            playable_characters = []
+            # Generate playable characters
+            playable_characters = await self._create_playable_characters(lorebook, scenario_context)
 
-            # Prioritize characters with high playable potential or protagonist roles
-            suitable_characters = []
-            for char in lorebook.characters:
-                # Check if character has high playable potential (from enhanced character generation)
-                if (
-                    hasattr(char, "playable_potential")
-                    and "high" in str(getattr(char, "playable_potential", "")).lower()
-                ):
-                    suitable_characters.append(char.name)
-                # Fallback to role-based selection
-                elif char.role in [
-                    "protagonist",
-                    "main character",
-                    "hero",
-                    "deuteragonist",
-                ]:
-                    suitable_characters.append(char.name)
+            # Generate character-aware quest paths
+            available_paths = await self._generate_character_aware_paths(playable_characters, lorebook)
 
-            # Select up to 3 characters for playability
-            main_character_names = suitable_characters[:3]
-
-            # If no suitable characters found, use first 2 characters as fallback
-            if not main_character_names and lorebook.characters:
-                main_character_names = [char.name for char in lorebook.characters[:2]]
-
-            # Generate playable characters with enhanced context
-            logger.info(
-                f"Generating playable characters for scenario: {main_character_names}"
-            )
-            for char_name in main_character_names:
-                try:
-                    # Create character using character creation flow with world context
-                    character = (
-                        await character_creation_flow.create_character_from_series(
-                            char_name, lorebook, scenario_context
-                        )
-                    )
-
-                    # Enhance character with world-specific abilities based on power systems
-                    character_dict = character.model_dump()
-
-                    # Add world-specific metadata for consistency
-                    character_dict["world_context"] = {
-                        "power_system": lorebook.series_metadata.power_system,
-                        "setting": lorebook.series_metadata.setting,
-                        "series_title": lorebook.series_metadata.title,
-                    }
-
-                    # Add to playable characters list
-                    playable_characters.append(character_dict)
-                    logger.info(f"Successfully generated character: {char_name}")
-
-                except Exception as char_error:
-                    logger.error(
-                        f"Error generating character {char_name}: {str(char_error)}"
-                    )
-                    # Continue with other characters even if one fails
-
-            # Generate character-aware quest paths based on abilities
-            available_paths = await self._generate_character_aware_paths(
-                playable_characters, lorebook
+            # Create scenario template
+            beginning_template = self._create_beginning_template(
+                template_id, lorebook, playable_characters, available_paths
             )
 
-            beginning_template = ScenarioTemplate(
-                id=template_id,
-                title=f"Beginning Adventure in {lorebook.series_metadata.title}",
-                description=f"Start your journey in the world of {lorebook.series_metadata.title}. Choose from {len(playable_characters)} unique characters, each with abilities tailored to this world.",
-                lorebook_id=lorebook.id,
-                setting_location=lorebook.locations[0].name
-                if lorebook.locations
-                else "Unknown Location",
-                time_period="Present day",
-                starting_situation=f"You find yourself at the beginning of an adventure in {lorebook.series_metadata.setting}. The world's {lorebook.series_metadata.power_system or 'unique systems'} await your exploration.",
-                key_characters=[char.name for char in lorebook.characters[:3]],
-                playable_characters=playable_characters,
-                available_paths=available_paths,
-                difficulty_level="medium",
-                tags=[
-                    "beginner",
-                    "exploration",
-                    lorebook.series_metadata.type.value,
-                    "character-driven",
-                ],
-            )
-            templates.append(beginning_template)
+            # Add AI-generated narrative
+            await self._add_ai_narrative(lorebook, beginning_template, playable_characters)
 
-            # Save templates
-            for template in templates:
-                await db_service.save_scenario_template(template)
+            # Save template
+            await db_service.save_scenario_template(beginning_template)
 
             logger.info(
-                f"Generated {len(templates)} scenario templates with {len(playable_characters)} playable characters"
+                f"Generated scenario template with {len(playable_characters)} playable characters"
             )
 
         except Exception as e:
             logger.error(f"Error generating scenario templates: {str(e)}")
             raise
+
+    async def _create_playable_characters(self, lorebook: Lorebook, scenario_context: str) -> List[Dict[str, Any]]:
+        """Create playable characters from lorebook characters"""
+        playable_characters = []
+
+        # Find suitable characters
+        suitable_characters = self._find_suitable_characters(lorebook)
+        main_character_names = suitable_characters[:3]
+
+        # Fallback if no suitable characters found
+        if not main_character_names and lorebook.characters:
+            main_character_names = [char.name for char in lorebook.characters[:2]]
+
+        # Generate characters
+        logger.info(f"Generating playable characters for scenario: {main_character_names}")
+        for char_name in main_character_names:
+            try:
+                character = await character_creation_flow.create_character_from_series(
+                    char_name, lorebook, scenario_context
+                )
+
+                character_dict = character.model_dump()
+                character_dict["world_context"] = {
+                    "power_system": lorebook.series_metadata.power_system,
+                    "setting": lorebook.series_metadata.setting,
+                    "series_title": lorebook.series_metadata.title,
+                }
+
+                playable_characters.append(character_dict)
+                logger.info(f"Successfully generated character: {char_name}")
+
+            except Exception as char_error:
+                logger.error(f"Error generating character {char_name}: {str(char_error)}")
+
+        return playable_characters
+
+    def _find_suitable_characters(self, lorebook: Lorebook) -> List[str]:
+        """Find characters suitable for playing"""
+        suitable_characters = []
+
+        for char in lorebook.characters:
+            is_suitable = (
+                (hasattr(char, "playable_potential") and
+                 "high" in str(getattr(char, "playable_potential", "")).lower()) or
+                char.role in ["protagonist", "main character", "hero", "deuteragonist"]
+            )
+
+            if is_suitable:
+                suitable_characters.append(char.name)
+
+        return suitable_characters
+
+    def _create_beginning_template(
+        self, template_id: str, lorebook: Lorebook,
+        playable_characters: List[Dict[str, Any]], available_paths: List[str]
+    ) -> ScenarioTemplate:
+        """Create the beginning scenario template"""
+        return ScenarioTemplate(
+            id=template_id,
+            title=f"Beginning Adventure in {lorebook.series_metadata.title}",
+            description=f"Start your journey in the world of {lorebook.series_metadata.title}. Choose from {len(playable_characters)} unique characters, each with abilities tailored to this world.",
+            lorebook_id=lorebook.id,
+            setting_location=lorebook.locations[0].name if lorebook.locations else "Unknown Location",
+            time_period="Present day",
+            starting_situation=f"You find yourself at the beginning of an adventure in {lorebook.series_metadata.setting}. The world's {lorebook.series_metadata.power_system or 'unique systems'} await your exploration.",
+            key_characters=[char.name for char in lorebook.characters[:3]],
+            playable_characters=playable_characters,
+            available_paths=available_paths,
+            difficulty_level="medium",
+            tags=["beginner", "exploration", lorebook.series_metadata.type.value, "character-driven"],
+        )
+
+    async def _add_ai_narrative(
+        self, lorebook: Lorebook, template: ScenarioTemplate, playable_characters: List[Dict[str, Any]]
+    ):
+        """Add AI-generated narrative to the template"""
+        try:
+            logger.info("Generating AI-powered initial narrative for scenario template")
+            initial_narrative = await self._generate_initial_narrative(lorebook, template)
+            template.initial_narrative = initial_narrative
+            template.narrative_metadata = {
+                "generation_method": "ai",
+                "ai_model": "gemini-2.5-flash-preview",
+                "generation_date": datetime.now().isoformat(),
+                "character_count": len(playable_characters),
+                "world_elements_used": {
+                    "locations": len(lorebook.locations),
+                    "characters": len(lorebook.characters),
+                    "power_system": bool(lorebook.series_metadata.power_system),
+                    "genre": lorebook.series_metadata.genre,
+                }
+            }
+            logger.info("Successfully generated and attached AI narrative to scenario template")
+        except Exception as narrative_error:
+            logger.error(f"Failed to generate AI narrative for template: {str(narrative_error)}")
+            template.narrative_metadata = {
+                "generation_method": "fallback",
+                "error": str(narrative_error),
+                "generation_date": datetime.now().isoformat(),
+            }
 
     async def _generate_character_aware_paths(
         self, playable_characters: List[Dict[str, Any]], lorebook: Lorebook
@@ -522,6 +540,88 @@ class ScenarioOrchestrator:
         except Exception as e:
             logger.error(f"Error generating character-aware paths: {str(e)}")
             return ["Explore the area", "Seek allies", "Investigate mysteries"]
+
+    async def _generate_initial_narrative(
+        self, lorebook: Lorebook, scenario_template: ScenarioTemplate
+    ) -> str:
+        """Generate AI-powered initial narrative for the scenario"""
+        logger.info(f"Generating initial narrative for scenario: {scenario_template.title}")
+
+        try:
+            # Build character context
+            character_names = [char.get('name', 'Unknown') for char in scenario_template.playable_characters]
+            character_classes = [char.get('class_name', 'Adventurer') for char in scenario_template.playable_characters]
+
+            # Build world context
+            key_locations = [loc.name for loc in lorebook.locations[:3]] if lorebook.locations else []
+            key_characters = [char.name for char in lorebook.characters[:3]] if lorebook.characters else []
+
+            prompt = f"""
+            Create an immersive opening narrative for a role-playing adventure in the world of {lorebook.series_metadata.title}.
+
+            WORLD CONTEXT:
+            - Series: {lorebook.series_metadata.title}
+            - Setting: {lorebook.series_metadata.setting}
+            - Genre: {', '.join(lorebook.series_metadata.genre) if lorebook.series_metadata.genre else 'Fantasy'}
+            - Power System: {lorebook.series_metadata.power_system or 'Unknown magical systems'}
+            - Tone: {lorebook.series_metadata.tone or 'Adventurous'}
+
+            SCENARIO DETAILS:
+            - Starting Location: {scenario_template.setting_location}
+            - Time Period: {scenario_template.time_period}
+            - Situation: {scenario_template.starting_situation}
+            - Key World Locations: {', '.join(key_locations)}
+            - Important Characters in World: {', '.join(key_characters)}
+
+            AVAILABLE CHARACTERS:
+            - Character Options: {', '.join(character_names)}
+            - Character Classes: {', '.join(character_classes)}
+
+            NARRATIVE REQUIREMENTS:
+            Write a compelling 2-3 paragraph opening narrative that:
+            1. Sets the atmospheric scene in {scenario_template.setting_location}
+            2. Establishes the mood and tone of {lorebook.series_metadata.title}
+            3. Introduces the current situation without assuming character choice
+            4. References the world's {lorebook.series_metadata.power_system or 'unique systems'} naturally
+            5. Creates intrigue and motivation for adventure
+            6. Ends with an invitation for the player to choose their character and begin
+
+            STYLE GUIDELINES:
+            - Match the tone of {lorebook.series_metadata.title}
+            - Use vivid, immersive descriptions
+            - Create atmosphere appropriate to the {', '.join(lorebook.series_metadata.genre) if lorebook.series_metadata.genre else 'fantasy'} genre
+            - Write in second person ("You find yourself...")
+            - Keep it engaging but not overwhelming (200-300 words)
+
+            Generate only the narrative text, no additional formatting or explanations.
+            """
+
+            system_instruction = f"""You are a master storyteller creating opening narratives for interactive adventures based on {lorebook.series_metadata.title}.
+            Your goal is to immediately immerse players in the world while maintaining authenticity to the source material.
+            Create atmospheric, engaging openings that make players excited to begin their adventure."""
+
+            narrative = await gemini_client.generate_text(
+                prompt,
+                system_instruction=system_instruction,
+                temperature=0.8,
+                max_output_tokens=400,
+            )
+
+            logger.info(f"Successfully generated initial narrative ({len(narrative)} characters)")
+            return narrative.strip()
+
+        except Exception as e:
+            logger.error(f"Error generating initial narrative: {str(e)}")
+            # Fallback to enhanced template-based narrative
+            fallback_narrative = f"""
+            Welcome to the world of {lorebook.series_metadata.title}, where {lorebook.series_metadata.setting.lower() if lorebook.series_metadata.setting else 'adventure awaits'}.
+
+            You find yourself in {scenario_template.setting_location}, a place where the very air seems to hum with the power of {lorebook.series_metadata.power_system or 'ancient forces'}. {scenario_template.starting_situation}
+
+            The time has come to choose your path and begin your journey. Who will you become in this world of endless possibilities?
+            """.strip()
+
+            return fallback_narrative
 
 
 # Global orchestrator instance

@@ -3,25 +3,56 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import motor.motor_asyncio
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pymongo import ASCENDING, DESCENDING
+from pymongo.errors import ConnectionFailure
 
 from config.settings import settings
 from models.game_models import GameSession
 from models.scenario_models import GenerationTask, Lorebook, ScenarioTemplate
+from utils.exceptions import DatabaseError, SessionSaveError
 
 logger = logging.getLogger(__name__)
 
+# Constants
+DB_NOT_CONNECTED_ERROR = "Database is not connected. Please call connect() first."
+
 
 class DatabaseService:
+    """
+    Async MongoDB database service for emergentRPG.
+
+    Provides high-level database operations with proper error handling,
+    connection management, and performance optimization.
+
+    Attributes:
+        client: MongoDB async client instance
+        db: Database instance
+        _connection_pool_size: Maximum connection pool size
+        _connection_timeout: Connection timeout in seconds
+    """
+
     def __init__(self):
         self.client = None
         self.db = None
+        self._connection_pool_size = 10
+        self._connection_timeout = 30
 
-    async def connect(self):
-        """Initialize database connection"""
+    async def connect(self) -> None:
+        """
+        Initialize database connection with proper error handling.
+
+        Raises:
+            DatabaseError: If connection fails
+            ConnectionFailure: If MongoDB is unreachable
+        """
         try:
-            self.client = motor.motor_asyncio.AsyncIOMotorClient(settings.MONGO_URL)
+            # Create client with connection pool settings
+            self.client = motor.motor_asyncio.AsyncIOMotorClient(
+                settings.MONGO_URL,
+                maxPoolSize=self._connection_pool_size,
+                serverSelectionTimeoutMS=self._connection_timeout * 1000
+            )
+
             if self.client:
                 self.db = self.client[settings.DATABASE_NAME]
 
@@ -32,14 +63,22 @@ class DatabaseService:
                 # Create indexes
                 await self.create_indexes()
 
-        except Exception as e:
+        except ConnectionFailure as e:
             logger.error(f"Failed to connect to MongoDB: {str(e)}")
-            raise
+            raise DatabaseError(f"Database connection failed: {str(e)}", "DB_CONNECTION_FAILED")
+        except Exception as e:
+            logger.error(f"Unexpected error connecting to MongoDB: {str(e)}")
+            raise DatabaseError(f"Database initialization failed: {str(e)}", "DB_INIT_FAILED")
 
-    async def create_indexes(self):
-        """Create database indexes for better performance"""
+    async def create_indexes(self) -> None:
+        """
+        Create database indexes for better performance.
+
+        Raises:
+            DatabaseError: If database is not connected or index creation fails
+        """
         if self.db is None:
-            raise RuntimeError("Database not connected")
+            raise DatabaseError(DB_NOT_CONNECTED_ERROR, "DB_NOT_CONNECTED")
 
         try:
             # Game sessions indexes
@@ -81,15 +120,27 @@ class DatabaseService:
 
     # Game Session Operations
     async def save_game_session(self, session: GameSession) -> bool:
-        """Save or update game session"""
+        """
+        Save or update game session.
+
+        Args:
+            session: GameSession instance to save
+
+        Returns:
+            bool: True if successful, False otherwise
+
+        Raises:
+            DatabaseError: If database is not connected
+            SessionSaveError: If save operation fails
+        """
         if self.db is None:
-            raise RuntimeError("Database not connected")
+            raise DatabaseError(DB_NOT_CONNECTED_ERROR, "DB_NOT_CONNECTED")
 
         try:
             session.updated_at = datetime.now()
             session_dict = session.model_dump()
 
-            result = await self.db.game_sessions.replace_one(
+            await self.db.game_sessions.replace_one(
                 {"session_id": session.session_id}, session_dict, upsert=True
             )
 
@@ -98,12 +149,12 @@ class DatabaseService:
 
         except Exception as e:
             logger.error(f"Error saving game session: {str(e)}")
-            return False
+            raise SessionSaveError(f"Failed to save session {session.session_id}: {str(e)}", "SESSION_SAVE_FAILED")
 
     async def get_game_session(self, session_id: str) -> Optional[GameSession]:
         """Retrieve game session by ID"""
         if self.db is None:
-            raise RuntimeError("Database not connected")
+            raise RuntimeError(DB_NOT_CONNECTED_ERROR)
 
         try:
             session_data = await self.db.game_sessions.find_one(
@@ -120,7 +171,7 @@ class DatabaseService:
     async def delete_game_session(self, session_id: str) -> bool:
         """Delete game session"""
         if self.db is None:
-            raise RuntimeError("Database not connected")
+            raise RuntimeError(DB_NOT_CONNECTED_ERROR)
 
         try:
             result = await self.db.game_sessions.delete_one({"session_id": session_id})
@@ -135,7 +186,7 @@ class DatabaseService:
     ) -> List[GameSession]:
         """List game sessions with pagination"""
         if self.db is None:
-            raise RuntimeError("Database not connected")
+            raise RuntimeError(DB_NOT_CONNECTED_ERROR)
 
         try:
             cursor = (
@@ -155,15 +206,26 @@ class DatabaseService:
 
     # Lorebook Operations
     async def save_lorebook(self, lorebook: Lorebook) -> bool:
-        """Save or update lorebook"""
+        """
+        Save or update lorebook.
+
+        Args:
+            lorebook: Lorebook instance to save
+
+        Returns:
+            bool: True if successful
+
+        Raises:
+            DatabaseError: If database is not connected or save fails
+        """
         if self.db is None:
-            raise RuntimeError("Database not connected")
+            raise DatabaseError(DB_NOT_CONNECTED_ERROR, "DB_NOT_CONNECTED")
 
         try:
             lorebook.updated_at = datetime.now()
             lorebook_dict = lorebook.model_dump()
 
-            result = await self.db.lorebooks.replace_one(
+            await self.db.lorebooks.replace_one(
                 {"id": lorebook.id}, lorebook_dict, upsert=True
             )
 
@@ -172,12 +234,12 @@ class DatabaseService:
 
         except Exception as e:
             logger.error(f"Error saving lorebook: {str(e)}")
-            return False
+            raise DatabaseError(f"Failed to save lorebook {lorebook.id}: {str(e)}", "LOREBOOK_SAVE_FAILED")
 
     async def get_lorebook(self, lorebook_id: str) -> Optional[Lorebook]:
         """Retrieve lorebook by ID"""
         if self.db is None:
-            raise RuntimeError("Database not connected")
+            raise RuntimeError(DB_NOT_CONNECTED_ERROR)
 
         try:
             lorebook_data = await self.db.lorebooks.find_one({"id": lorebook_id})
@@ -197,7 +259,7 @@ class DatabaseService:
     ) -> List[Lorebook]:
         """Search lorebooks by criteria"""
         if self.db is None:
-            raise RuntimeError("Database not connected")
+            raise RuntimeError(DB_NOT_CONNECTED_ERROR)
 
         try:
             query = {}
@@ -226,7 +288,7 @@ class DatabaseService:
     async def delete_lorebook(self, lorebook_id: str) -> bool:
         """Delete lorebook"""
         if self.db is None:
-            raise RuntimeError("Database not connected")
+            raise RuntimeError(DB_NOT_CONNECTED_ERROR)
 
         try:
             result = await self.db.lorebooks.delete_one({"id": lorebook_id})
@@ -238,15 +300,26 @@ class DatabaseService:
 
     # Generation Task Operations
     async def save_generation_task(self, task: GenerationTask) -> bool:
-        """Save or update generation task"""
+        """
+        Save or update generation task.
+
+        Args:
+            task: GenerationTask instance to save
+
+        Returns:
+            bool: True if successful
+
+        Raises:
+            DatabaseError: If database is not connected or save fails
+        """
         if self.db is None:
-            raise RuntimeError("Database not connected")
+            raise DatabaseError(DB_NOT_CONNECTED_ERROR, "DB_NOT_CONNECTED")
 
         try:
             task.updated_at = datetime.now()
             task_dict = task.model_dump()
 
-            result = await self.db.generation_tasks.replace_one(
+            await self.db.generation_tasks.replace_one(
                 {"task_id": task.task_id}, task_dict, upsert=True
             )
 
@@ -255,12 +328,12 @@ class DatabaseService:
 
         except Exception as e:
             logger.error(f"Error saving generation task: {str(e)}")
-            return False
+            raise DatabaseError(f"Failed to save generation task {task.task_id}: {str(e)}", "TASK_SAVE_FAILED")
 
     async def get_generation_task(self, task_id: str) -> Optional[GenerationTask]:
         """Retrieve generation task by ID"""
         if self.db is None:
-            raise RuntimeError("Database not connected")
+            raise RuntimeError(DB_NOT_CONNECTED_ERROR)
 
         try:
             task_data = await self.db.generation_tasks.find_one({"task_id": task_id})
@@ -281,7 +354,7 @@ class DatabaseService:
     ) -> bool:
         """Update generation task progress"""
         if self.db is None:
-            raise RuntimeError("Database not connected")
+            raise RuntimeError(DB_NOT_CONNECTED_ERROR)
 
         try:
             update_data = {
@@ -304,14 +377,25 @@ class DatabaseService:
 
     # Scenario Template Operations
     async def save_scenario_template(self, template: ScenarioTemplate) -> bool:
-        """Save scenario template"""
+        """
+        Save scenario template.
+
+        Args:
+            template: ScenarioTemplate instance to save
+
+        Returns:
+            bool: True if successful
+
+        Raises:
+            DatabaseError: If database is not connected or save fails
+        """
         if self.db is None:
-            raise RuntimeError("Database not connected")
+            raise DatabaseError(DB_NOT_CONNECTED_ERROR, "DB_NOT_CONNECTED")
 
         try:
             template_dict = template.model_dump()
 
-            result = await self.db.scenario_templates.replace_one(
+            await self.db.scenario_templates.replace_one(
                 {"id": template.id}, template_dict, upsert=True
             )
 
@@ -320,14 +404,14 @@ class DatabaseService:
 
         except Exception as e:
             logger.error(f"Error saving scenario template: {str(e)}")
-            return False
+            raise DatabaseError(f"Failed to save scenario template {template.id}: {str(e)}", "TEMPLATE_SAVE_FAILED")
 
     async def get_scenario_templates_by_lorebook(
         self, lorebook_id: str
     ) -> List[ScenarioTemplate]:
         """Get scenario templates for a specific lorebook"""
         if self.db is None:
-            raise RuntimeError("Database not connected")
+            raise RuntimeError(DB_NOT_CONNECTED_ERROR)
 
         try:
             cursor = self.db.scenario_templates.find({"lorebook_id": lorebook_id})
@@ -348,7 +432,7 @@ class DatabaseService:
     ) -> List[ScenarioTemplate]:
         """Search scenario templates by criteria"""
         if self.db is None:
-            raise RuntimeError("Database not connected")
+            raise RuntimeError(DB_NOT_CONNECTED_ERROR)
 
         try:
             query = {}
@@ -376,7 +460,7 @@ class DatabaseService:
     ) -> Optional[ScenarioTemplate]:
         """Get scenario template by ID"""
         if self.db is None:
-            raise RuntimeError("Database not connected")
+            raise RuntimeError(DB_NOT_CONNECTED_ERROR)
 
         try:
             template_data = await self.db.scenario_templates.find_one(
@@ -389,6 +473,45 @@ class DatabaseService:
         except Exception as e:
             logger.error(f"Error retrieving scenario template: {str(e)}")
             return None
+
+    async def update_scenario_template(
+        self, template_id: str, update_data: Dict[str, Any]
+    ) -> bool:
+        """Update scenario template with new data"""
+        if self.db is None:
+            raise RuntimeError(DB_NOT_CONNECTED_ERROR)
+
+        try:
+            # Add updated timestamp
+            update_data["updated_at"] = datetime.now()
+
+            result = await self.db.scenario_templates.update_one(
+                {"id": template_id}, {"$set": update_data}
+            )
+
+            if result.matched_count > 0:
+                logger.info(f"Updated scenario template {template_id}")
+                return True
+            else:
+                logger.warning(f"No scenario template found with ID {template_id}")
+                return False
+
+        except Exception as e:
+            logger.error(f"Error updating scenario template: {str(e)}")
+            return False
+
+    async def delete_scenario_template(self, template_id: str) -> bool:
+        """Delete scenario template"""
+        if self.db is None:
+            raise RuntimeError(DB_NOT_CONNECTED_ERROR)
+
+        try:
+            result = await self.db.scenario_templates.delete_one({"id": template_id})
+            return result.deleted_count > 0
+
+        except Exception as e:
+            logger.error(f"Error deleting scenario template: {str(e)}")
+            return False
 
 
 # Global database service instance

@@ -8,21 +8,96 @@ const FEATURE_FLAGS_STORAGE_KEY = 'emergentRPG_feature_flags';
 
 // Default feature flags for fallback
 const DEFAULT_FEATURE_FLAGS = {
-  dynamic_themes: true,
-  ai_response_caching: true,
-  realtime_updates: false,
-  advanced_inventory: false,
-  quest_recommendations: false,
-  custom_character_creation: false,
-  multiplayer_sessions: false,
-  voice_commands: false,
-  mobile_optimizations: true,
-  accessibility_enhancements: true,
-  debug_mode: false,
-  beta_features: false,
-  analytics_tracking: true,
-  offline_mode: true,
-  auto_save: true
+  dynamic_themes: {
+    name: "Dynamic Themes",
+    description: "Enable dynamic theme switching based on game context",
+    enabled: true,
+    category: "stable"
+  },
+  ai_response_caching: {
+    name: "AI Response Caching",
+    description: "Cache AI responses to improve performance",
+    enabled: true,
+    category: "stable"
+  },
+  realtime_updates: {
+    name: "Realtime Updates",
+    description: "Enable realtime game state updates",
+    enabled: false,
+    category: "beta"
+  },
+  advanced_inventory: {
+    name: "Advanced Inventory",
+    description: "Enhanced inventory management with categories and search",
+    enabled: false,
+    category: "beta"
+  },
+  quest_recommendations: {
+    name: "Quest Recommendations",
+    description: "AI-powered quest recommendations based on play style",
+    enabled: false,
+    category: "experimental"
+  },
+  custom_character_creation: {
+    name: "Custom Character Creation",
+    description: "Advanced character customization options",
+    enabled: false,
+    category: "beta"
+  },
+  multiplayer_sessions: {
+    name: "Multiplayer Sessions",
+    description: "Enable multiplayer game sessions",
+    enabled: false,
+    category: "experimental"
+  },
+  voice_commands: {
+    name: "Voice Commands",
+    description: "Control the game using voice commands",
+    enabled: false,
+    category: "experimental"
+  },
+  mobile_optimizations: {
+    name: "Mobile Optimizations",
+    description: "Optimize UI for mobile devices",
+    enabled: true,
+    category: "stable"
+  },
+  accessibility_enhancements: {
+    name: "Accessibility Enhancements",
+    description: "Additional accessibility features",
+    enabled: true,
+    category: "stable"
+  },
+  debug_mode: {
+    name: "Debug Mode",
+    description: "Show debug information for developers",
+    enabled: false,
+    category: "developer"
+  },
+  beta_features: {
+    name: "Beta Features",
+    description: "Enable all beta features",
+    enabled: false,
+    category: "beta"
+  },
+  analytics_tracking: {
+    name: "Analytics Tracking",
+    description: "Anonymous usage data collection to improve the game",
+    enabled: true,
+    category: "stable"
+  },
+  offline_mode: {
+    name: "Offline Mode",
+    description: "Allow playing without internet connection",
+    enabled: true,
+    category: "stable"
+  },
+  auto_save: {
+    name: "Auto Save",
+    description: "Automatically save game progress",
+    enabled: true,
+    category: "stable"
+  }
 };
 
 export const useFeatureFlags = () => {
@@ -48,10 +123,32 @@ export const useFeatureFlags = () => {
         if (response.ok) {
           const result = await response.json();
           if (result.success && result.features) {
-            setFeatureFlags({ ...DEFAULT_FEATURE_FLAGS, ...result.features });
+            // Merge backend features with defaults, preserving structure
+            const mergedFlags = { ...DEFAULT_FEATURE_FLAGS };
+            
+            // Update enabled status from backend for existing flags
+            Object.entries(result.features).forEach(([key, value]) => {
+              if (mergedFlags[key]) {
+                if (typeof value === 'boolean') {
+                  // Handle simple boolean values from backend
+                  mergedFlags[key] = {
+                    ...mergedFlags[key],
+                    enabled: value
+                  };
+                } else if (typeof value === 'object') {
+                  // Handle complex objects from backend
+                  mergedFlags[key] = {
+                    ...mergedFlags[key],
+                    ...value
+                  };
+                }
+              }
+            });
+            
+            setFeatureFlags(mergedFlags);
             
             // Save to localStorage as backup
-            localStorage.setItem(FEATURE_FLAGS_STORAGE_KEY, JSON.stringify(result.features));
+            localStorage.setItem(FEATURE_FLAGS_STORAGE_KEY, JSON.stringify(mergedFlags));
             return;
           }
         }
@@ -62,8 +159,36 @@ export const useFeatureFlags = () => {
       // Fallback to localStorage
       const savedFlags = localStorage.getItem(FEATURE_FLAGS_STORAGE_KEY);
       if (savedFlags) {
-        const parsedFlags = JSON.parse(savedFlags);
-        setFeatureFlags({ ...DEFAULT_FEATURE_FLAGS, ...parsedFlags });
+        try {
+          const parsedFlags = JSON.parse(savedFlags);
+          
+          // Merge saved flags with defaults, preserving structure
+          const mergedFlags = { ...DEFAULT_FEATURE_FLAGS };
+          
+          Object.entries(parsedFlags).forEach(([key, value]) => {
+            if (mergedFlags[key]) {
+              if (typeof value === 'boolean') {
+                // Handle simple boolean values from localStorage
+                mergedFlags[key] = {
+                  ...mergedFlags[key],
+                  enabled: value
+                };
+              } else if (typeof value === 'object') {
+                // Handle complex objects from localStorage
+                mergedFlags[key] = {
+                  ...mergedFlags[key],
+                  ...value
+                };
+              }
+            }
+          });
+          
+          setFeatureFlags(mergedFlags);
+        } catch (error) {
+          console.error('Error parsing saved feature flags:', error);
+          setFeatureFlags(DEFAULT_FEATURE_FLAGS);
+          localStorage.setItem(FEATURE_FLAGS_STORAGE_KEY, JSON.stringify(DEFAULT_FEATURE_FLAGS));
+        }
       } else {
         // Use default feature flags
         setFeatureFlags(DEFAULT_FEATURE_FLAGS);
@@ -81,13 +206,52 @@ export const useFeatureFlags = () => {
 
   // Check if a specific feature is enabled
   const isFeatureEnabled = useCallback((featureName) => {
-    return featureFlags[featureName] || false;
+    return featureFlags[featureName]?.enabled || false;
   }, [featureFlags]);
 
   // Get all enabled features
   const getEnabledFeatures = useCallback(() => {
-    return Object.keys(featureFlags).filter(key => featureFlags[key]);
+    return Object.keys(featureFlags).filter(key => featureFlags[key]?.enabled);
   }, [featureFlags]);
+
+  // Toggle a feature flag
+  const toggleFlag = useCallback((flagId) => {
+    setFeatureFlags(prevFlags => {
+      if (!prevFlags[flagId]) {
+        console.warn(`Feature flag ${flagId} not found`);
+        return prevFlags;
+      }
+      
+      const newFlags = {
+        ...prevFlags,
+        [flagId]: {
+          ...prevFlags[flagId],
+          enabled: !prevFlags[flagId].enabled
+        }
+      };
+      
+      // Save to localStorage
+      localStorage.setItem(FEATURE_FLAGS_STORAGE_KEY, JSON.stringify(newFlags));
+      
+      // Optionally sync with backend
+      try {
+        fetch(`${BACKEND_URL}/api/features/update`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            user_id: 'default', // TODO: Replace with actual user ID when auth is implemented
+            features: newFlags
+          }),
+        }).catch(err => console.log('Failed to sync feature flags with backend:', err));
+      } catch (error) {
+        console.log('Error syncing feature flags with backend:', error);
+      }
+      
+      return newFlags;
+    });
+  }, []);
 
   // Initialize feature flags on mount
   useEffect(() => {
@@ -100,6 +264,7 @@ export const useFeatureFlags = () => {
     error,
     isFeatureEnabled,
     getEnabledFeatures,
+    toggleFlag,
     reloadFeatureFlags: loadFeatureFlags,
   };
 };

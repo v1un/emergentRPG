@@ -192,12 +192,12 @@ const ThemeConfigSection = ({ currentTheme, availableThemes, onThemeChange }) =>
     <p className="text-gray-400 text-sm">Choose your preferred visual theme for the interface.</p>
     
     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-      {availableThemes.map((theme) => (
+      {Object.values(availableThemes).map((theme) => (
         <button
           key={theme.id}
           onClick={() => onThemeChange(theme.id)}
           className={`p-4 rounded-lg border-2 transition-all ${
-            currentTheme === theme.id
+            currentTheme.id === theme.id
               ? 'border-purple-500 bg-purple-900/30'
               : 'border-gray-600 bg-gray-700 hover:border-gray-500'
           }`}
@@ -205,11 +205,11 @@ const ThemeConfigSection = ({ currentTheme, availableThemes, onThemeChange }) =>
           <div className="flex items-center gap-3">
             <div 
               className="w-6 h-6 rounded-full border-2 border-gray-400"
-              style={{ backgroundColor: theme.primary }}
+              style={{ backgroundColor: theme.colors?.primary }}
             />
             <div className="text-left">
               <div className="font-medium text-white">{theme.name}</div>
-              <div className="text-sm text-gray-400">{theme.description}</div>
+              <div className="text-sm text-gray-400">{theme.description || ''}</div>
             </div>
           </div>
         </button>
@@ -277,7 +277,7 @@ const UIConfigurationPanel = () => {
     reorderQuickActions
   } = useUIConfig();
 
-  const { currentTheme, availableThemes, setTheme } = useTheme();
+  const { currentTheme, availableThemes, changeTheme } = useTheme();
   const { featureFlags, toggleFlag, isLoading: flagsLoading } = useFeatureFlags();
 
   if (isLoading || flagsLoading) {
@@ -367,7 +367,7 @@ const UIConfigurationPanel = () => {
         <ThemeConfigSection
           currentTheme={currentTheme}
           availableThemes={availableThemes}
-          onThemeChange={setTheme}
+          onThemeChange={changeTheme}
         />
         
         <FeatureFlagsConfigSection

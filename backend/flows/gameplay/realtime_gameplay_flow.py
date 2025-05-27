@@ -1,16 +1,33 @@
 import json
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from models.game_models import (
     ActionType,
-    Character,
     GameSession,
     StoryEntry,
-    WorldState,
 )
 from models.scenario_models import Lorebook
 from utils.gemini_client import gemini_client
+
+# Import new AI-driven systems
+from services.ai.dynamic_world_manager import (
+    dynamic_world_manager,
+    EnvironmentalContext,
+    WorldStateChange
+)
+from services.ai.character_development_manager import (
+    character_development_manager,
+    CharacterAnalysisContext,
+)
+from services.ai.consequence_manager import (
+    consequence_manager,
+    ConsequenceContext,
+)
+from services.ai.dynamic_quest_manager import (
+    dynamic_quest_manager,
+    QuestGenerationContext
+)
 
 logger = logging.getLogger(__name__)
 
@@ -48,19 +65,19 @@ class RealtimeGameplayFlow:
 
         prompt = f"""
         Analyze this player action in the context of the ongoing adventure:
-        
+
         Player Action: "{player_action}"
-        
+
         Current Context:
         {world_context}
-        
+
         Recent Story:
         {story_context}
-        
+
         Character: {game_session.character.name} (Level {game_session.character.level})
         Current Location: {game_session.world_state.current_location}
         Health: {game_session.character.health}/{game_session.character.max_health}
-        
+
         Analyze the action and provide interpretation in JSON format:
         {{
             "action_type": "combat/exploration/social/magic/stealth/investigation/other",
@@ -121,47 +138,122 @@ class RealtimeGameplayFlow:
             }
 
     async def state_update_flow(
-        self, action_analysis: Dict[str, Any], game_session: GameSession
+        self, action_analysis: Dict[str, Any], game_session: GameSession,
+        player_action: str, lorebook: Optional[Lorebook] = None
     ) -> GameSession:
-        """Flow: Update game world based on action results"""
+        """Flow: Update game world using AI-driven dynamic systems"""
 
-        # Determine outcome based on probabilities
-        outcomes = action_analysis.get("suggested_outcomes", [])
-        if not outcomes:
+        try:
+            # Create contexts for AI-driven systems
+            env_context = EnvironmentalContext(game_session, lorebook, [player_action])
+            char_context = CharacterAnalysisContext(game_session, lorebook)
+            consequence_context = ConsequenceContext(game_session, player_action, lorebook)
+
+            # 1. Generate AI-driven world state changes
+            world_change = await dynamic_world_manager.generate_world_response(player_action, env_context)
+
+            # Apply world changes to game state
+            game_session.world_state = await dynamic_world_manager.apply_world_change(
+                world_change, game_session.world_state
+            )
+
+            # 2. Check for pending consequences and activate them
+            activated_consequences = await consequence_manager.activate_pending_consequences(
+                game_session.session_id, consequence_context
+            )
+
+            # Apply activated consequences
+            for consequence in activated_consequences:
+                game_session = await consequence_manager.apply_consequence_effects(consequence, game_session)
+
+            # 3. Generate new consequences for current action
+            new_consequences = await consequence_manager.generate_consequences(consequence_context)
+
+            # Apply immediate consequences
+            for consequence in new_consequences:
+                if consequence.delay_type == "immediate":
+                    game_session = await consequence_manager.apply_consequence_effects(consequence, game_session)
+
+            # 4. AI-driven experience and character development
+            difficulty = action_analysis.get("difficulty_level", "medium")
+
+            # Use AI to determine experience gain based on context
+            exp_gain = await self._calculate_ai_experience_gain(
+                player_action, difficulty, char_context, world_change
+            )
+            game_session.character.experience += exp_gain
+
+            # 5. Check for character development opportunities
+            if len(game_session.story) % 5 == 0:  # Every 5 actions, check for development
+                development_suggestion = await character_development_manager.analyze_character_development(char_context)
+
+                # Apply character development if significant
+                if development_suggestion.confidence_score > 0.7:
+                    game_session.character = await character_development_manager.apply_character_development(
+                        development_suggestion, game_session.character
+                    )
+
+            # 6. Check for dynamic quest opportunities
+            quest_context = QuestGenerationContext(game_session, lorebook)
+
+            # Generate new quest if conditions are right
+            if (len([q for q in game_session.quests if q.status == "active"]) < 2 and
+                len(game_session.story) > 10 and
+                len(game_session.story) % 15 == 0):  # Every 15 actions, consider new quest
+
+                new_quest = await dynamic_quest_manager.generate_contextual_quest(quest_context)
+                game_session.quests.append(new_quest)
+
+            logger.info(f"AI-driven state update completed for action: {player_action[:30]}...")
             return game_session
 
-        # For now, select most likely outcome (in real implementation, would roll dice)
-        selected_outcome = max(outcomes, key=lambda x: x.get("probability", 0))
+        except Exception as e:
+            logger.error(f"Error in AI-driven state update: {str(e)}")
+            # Fallback to basic state update
+            return await self._fallback_state_update(action_analysis, game_session)
 
-        # Update character state based on action
-        action_type = action_analysis.get("action_type", "other")
+    async def _calculate_ai_experience_gain(self, action: str, difficulty: str,
+                                          char_context: CharacterAnalysisContext,
+                                          world_change: WorldStateChange) -> int:
+        """Calculate experience gain using AI analysis"""
+        try:
+            # Base experience from difficulty
+            base_exp = {
+                "trivial": 1,
+                "easy": 3,
+                "medium": 8,
+                "hard": 15,
+                "extreme": 25,
+            }.get(difficulty, 8)
+
+            # AI-driven modifiers based on context
+            modifiers = 1.0
+
+            # Bonus for narrative significance
+            if world_change.confidence_score > 0.8:
+                modifiers += 0.3
+
+            # Bonus for character growth actions
+            if any(trait in action.lower() for trait in ["help", "learn", "discover", "create"]):
+                modifiers += 0.2
+
+            # Level-appropriate scaling
+            level_modifier = max(0.5, 1.0 + (char_context.character.level - 1) * 0.1)
+
+            final_exp = int(base_exp * modifiers * level_modifier)
+            return max(1, final_exp)
+
+        except Exception as e:
+            logger.error(f"Error calculating AI experience gain: {str(e)}")
+            return 5  # Safe fallback
+
+    async def _fallback_state_update(self, action_analysis: Dict[str, Any],
+                                   game_session: GameSession) -> GameSession:
+        """Fallback state update when AI systems fail"""
+        # Simple fallback logic
         difficulty = action_analysis.get("difficulty_level", "medium")
-
-        # Award experience for actions
-        exp_gain = {
-            "trivial": 1,
-            "easy": 2,
-            "medium": 5,
-            "hard": 10,
-            "extreme": 20,
-        }.get(difficulty, 5)
+        exp_gain = {"trivial": 1, "easy": 2, "medium": 5, "hard": 10, "extreme": 20}.get(difficulty, 5)
         game_session.character.experience += exp_gain
-
-        # Handle level up
-        if game_session.character.experience >= game_session.character.level * 100:
-            game_session.character.level += 1
-            game_session.character.max_health += 10
-            game_session.character.health = game_session.character.max_health
-            game_session.character.max_mana += 5
-            game_session.character.mana = game_session.character.max_mana
-
-        # Update world state based on consequences
-        consequences = selected_outcome.get("consequences", [])
-        for consequence in consequences:
-            if "discovered" in consequence.lower():
-                game_session.world_state.special_conditions.append(consequence)
-            elif "enemy" in consequence.lower():
-                game_session.world_state.npcs_present.append("Hostile Entity")
 
         return game_session
 
@@ -204,24 +296,24 @@ class RealtimeGameplayFlow:
 
         prompt = f"""
         As the AI Game Master, respond to the player's action with a compelling narrative.
-        
+
         World Context:
         {world_context}
-        
+
         Recent Story:
         {story_context}
-        
+
         Player Action: "{player_action}"
         Action Analysis: {action_analysis.get('intent', 'unclear intent')}
         Outcome: {selected_outcome.get('description', 'uncertain result')}
-        
+
         Current Situation:
         - Location: {game_session.world_state.current_location}
         - Time: {game_session.world_state.time_of_day}
         - Weather: {game_session.world_state.weather}
         - NPCs Present: {game_session.world_state.npcs_present}
         - Character Health: {game_session.character.health}/{game_session.character.max_health}
-        
+
         Generate a response that:
         1. Acknowledges the player's action
         2. Describes what happens as a result
@@ -229,7 +321,7 @@ class RealtimeGameplayFlow:
         4. Maintains the series' tone and style
         5. Includes sensory details (sight, sound, smell, etc.)
         6. Advances the narrative meaningfully
-        
+
         Write a compelling 2-3 paragraph response that immerses the player in the world.
         Focus on showing rather than telling, and maintain appropriate pacing.
         """
@@ -267,17 +359,17 @@ class RealtimeGameplayFlow:
 
         prompt = f"""
         Check this AI GM response for consistency with the established world and story.
-        
+
         World Facts:
         {world_facts}
-        
+
         Current Game State:
         - Location: {game_session.world_state.current_location}
         - Character: {game_session.character.name} (Level {game_session.character.level})
         - Recent Events: {[entry.text for entry in game_session.story[-2:]] if game_session.story else []}
-        
+
         Generated Response: "{generated_response}"
-        
+
         Analyze consistency in JSON format:
         {{
             "consistency_score": 0.95,
@@ -330,7 +422,7 @@ class RealtimeGameplayFlow:
 
             # Step 2: Update game state
             updated_session = await self.state_update_flow(
-                action_analysis, game_session
+                action_analysis, game_session, player_action, lorebook
             )
 
             # Step 3: Generate GM response

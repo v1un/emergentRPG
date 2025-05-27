@@ -2,7 +2,7 @@ import json
 import logging
 from typing import Any, Dict, List, Optional
 
-from models.scenario_models import Character, SeriesMetadata
+from models.scenario_models import LoreCharacter, SeriesMetadata
 from utils.gemini_client import gemini_client
 
 logger = logging.getLogger(__name__)
@@ -13,18 +13,18 @@ class CharacterGenerationFlow:
 
     async def main_characters_flow(
         self, series_metadata: SeriesMetadata
-    ) -> List[Character]:
+    ) -> List[LoreCharacter]:
         """Flow: Generate detailed main character profiles"""
         prompt = f"""
         Create detailed main character profiles for "{series_metadata.title}".
-        
+
         Series Context:
         - Setting: {series_metadata.setting}
         - Genre: {series_metadata.genre}
         - Themes: {series_metadata.themes}
         - Power System: {series_metadata.power_system}
         - Tone: {series_metadata.tone}
-        
+
         Generate main characters in JSON format:
         {{
             "characters": [
@@ -56,7 +56,7 @@ class CharacterGenerationFlow:
                 }}
             ]
         }}
-        
+
         Create 4-6 main characters with complex, interconnected relationships.
         Ensure at least 2-3 characters have "high" playable_potential for interactive gameplay.
         Focus on characters that would be engaging to play as protagonists in an adventure.
@@ -79,7 +79,7 @@ class CharacterGenerationFlow:
             data = json.loads(response)
             characters = []
             for char_data in data.get("characters", []):
-                character = Character(
+                character = LoreCharacter(
                     name=char_data.get("name", "Unknown Character"),
                     role=char_data.get("role", "supporting"),
                     description=char_data.get("description", ""),
@@ -97,7 +97,7 @@ class CharacterGenerationFlow:
                 f"Failed to parse main characters JSON: {response}, Error: {e}"
             )
             return [
-                Character(
+                LoreCharacter(
                     name="Hero",
                     role="protagonist",
                     description="A brave adventurer",
@@ -111,8 +111,8 @@ class CharacterGenerationFlow:
             ]
 
     async def supporting_cast_flow(
-        self, series_metadata: SeriesMetadata, main_characters: List[Character]
-    ) -> List[Character]:
+        self, series_metadata: SeriesMetadata, main_characters: List[LoreCharacter]
+    ) -> List[LoreCharacter]:
         """Flow: Generate supporting character network"""
         main_chars_context = "\n".join(
             [f"- {c.name}: {c.role}, {c.description}" for c in main_characters[:4]]
@@ -120,15 +120,15 @@ class CharacterGenerationFlow:
 
         prompt = f"""
         Create a network of supporting characters for "{series_metadata.title}".
-        
+
         Series Context:
         - Setting: {series_metadata.setting}
         - Themes: {series_metadata.themes}
         - Tone: {series_metadata.tone}
-        
+
         Main Characters:
         {main_chars_context}
-        
+
         Generate supporting characters in JSON format:
         {{
             "characters": [
@@ -153,7 +153,7 @@ class CharacterGenerationFlow:
                 }}
             ]
         }}
-        
+
         Create 8-12 diverse supporting characters that expand the world.
         """
 
@@ -174,7 +174,7 @@ class CharacterGenerationFlow:
             data = json.loads(response)
             characters = []
             for char_data in data.get("characters", []):
-                character = Character(
+                character = LoreCharacter(
                     name=char_data.get("name", "Unknown Character"),
                     role=char_data.get("role", "supporting"),
                     description=char_data.get("description", ""),
@@ -194,7 +194,7 @@ class CharacterGenerationFlow:
             return []
 
     async def relationship_mapping_flow(
-        self, characters: List[Character]
+        self, characters: List[LoreCharacter]
     ) -> Dict[str, Any]:
         """Flow: Generate complex relationship dynamics"""
         chars_context = "\n".join(
@@ -203,9 +203,9 @@ class CharacterGenerationFlow:
 
         prompt = f"""
         Create detailed relationship mappings between these characters:
-        
+
         {chars_context}
-        
+
         Generate relationship dynamics in JSON format:
         {{
             "relationship_matrix": {{
@@ -279,7 +279,7 @@ class CharacterGenerationFlow:
             }
 
     async def character_progression_flow(
-        self, characters: List[Character], series_metadata: SeriesMetadata
+        self, characters: List[LoreCharacter], series_metadata: SeriesMetadata
     ) -> Dict[str, Any]:
         """Flow: Generate character development arcs and progression paths"""
         main_chars = [
@@ -293,11 +293,11 @@ class CharacterGenerationFlow:
 
         prompt = f"""
         Create character development arcs for "{series_metadata.title}".
-        
+
         Series Themes: {series_metadata.themes}
         Main Characters:
         {chars_context}
-        
+
         Generate progression paths in JSON format:
         {{
             "character_arcs": {{

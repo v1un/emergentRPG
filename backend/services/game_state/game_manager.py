@@ -14,6 +14,20 @@ from models.game_models import (
 )
 from models.scenario_models import Lorebook
 from services.database_service import db_service
+from utils.exceptions import (
+    SessionNotFoundError, SessionSaveError, CharacterLevelUpError,
+    TransientError, PermanentError, create_error_response
+)
+
+# Import AI-driven systems
+from services.ai.context_manager import context_manager, GameContext
+from services.ai.character_development_manager import (
+    character_development_manager,
+    CharacterAnalysisContext,
+    CharacterDevelopmentSuggestion
+)
+from services.ai.dynamic_quest_manager import dynamic_quest_manager, QuestGenerationContext
+from services.ai.dynamic_item_manager import dynamic_item_manager, ItemGenerationContext
 
 logger = logging.getLogger(__name__)
 
@@ -151,7 +165,7 @@ class GameStateManager:
                 await self.save_session(updated_session)
 
                 # Check for level up, quest completion, etc.
-                await self._check_game_milestones(updated_session)
+                await self._check_game_milestones(updated_session, lorebook)
 
             return result
 
@@ -159,15 +173,15 @@ class GameStateManager:
             logger.error(f"Error handling player action: {str(e)}")
             return {"success": False, "error": str(e)}
 
-    async def _check_game_milestones(self, session: GameSession):
+    async def _check_game_milestones(self, session: GameSession, lorebook: Optional[Lorebook] = None):
         """Check for character progression, quest completion, etc."""
         try:
-            # Check for level up
-            if session.character.experience >= session.character.level * 100:
-                await self._handle_level_up(session)
+            # Check for level up using new Character method
+            while session.character.can_level_up():
+                await self._handle_level_up(session, lorebook)
 
             # Check for quest completion
-            await self._check_quest_completion(session)
+            await self._check_quest_completion(session, lorebook)
 
             # Check for story milestones
             await self._check_story_milestones(session)
@@ -175,56 +189,349 @@ class GameStateManager:
         except Exception as e:
             logger.error(f"Error checking game milestones: {str(e)}")
 
-    async def _handle_level_up(self, session: GameSession):
-        """Handle character level up"""
+    async def _handle_level_up(self, session: GameSession, lorebook: Optional[Lorebook] = None):
+        """Handle AI-driven character level up and development"""
         try:
             old_level = session.character.level
+
+            # Get comprehensive context for AI-driven development
+            game_context = context_manager.get_context(session, lorebook)
+            char_context = CharacterAnalysisContext(session, lorebook)
+
+            # Generate AI-driven level up development
+            development_suggestion = await character_development_manager.suggest_level_up_development(char_context)
+
+            # Apply AI-generated character development
             session.character.level += 1
-            session.character.max_health += 10
+            session.character = await character_development_manager.apply_character_development(
+                development_suggestion, session.character
+            )
+
+            # AI-driven health and mana increases based on character development
+            health_increase = self._calculate_ai_health_increase(development_suggestion, session.character)
+            mana_increase = self._calculate_ai_mana_increase(development_suggestion, session.character)
+
+            session.character.max_health += health_increase
             session.character.health = session.character.max_health
-            session.character.max_mana += 5
+            session.character.max_mana += mana_increase
             session.character.mana = session.character.max_mana
 
-            # Add level up message
-            level_up_message = f"🎉 Congratulations! {session.character.name} has reached level {session.character.level}! Health and mana have been fully restored."
-            level_up_entry = StoryEntry(type=ActionType.SYSTEM, text=level_up_message)
+            # Generate AI-driven level up narrative
+            level_up_narrative = await self._generate_level_up_narrative(
+                development_suggestion, old_level, session.character, game_context
+            )
+
+            level_up_entry = StoryEntry(
+                type=ActionType.SYSTEM,
+                text=level_up_narrative,
+                metadata={
+                    "development_type": development_suggestion.development_type,
+                    "stat_changes": development_suggestion.stat_adjustments,
+                    "health_increase": health_increase,
+                    "mana_increase": mana_increase,
+                    "ai_generated": True
+                }
+            )
             session.story.append(level_up_entry)
 
+            # Update context with character development
+            game_context.character_development_history.append(development_suggestion)
+
             logger.info(
-                f"Character {session.character.name} leveled up from {old_level} to {session.character.level}"
+                f"AI-driven level up: {session.character.name} from {old_level} to {session.character.level} - {development_suggestion.development_type}"
             )
 
         except Exception as e:
-            logger.error(f"Error handling level up: {str(e)}")
+            logger.error(f"Error handling AI-driven level up: {str(e)}")
+            # Fallback to basic level up
+            await self._fallback_level_up(session)
 
-    async def _check_quest_completion(self, session: GameSession):
-        """Check if any quests have been completed"""
+    def _calculate_ai_health_increase(self, development: CharacterDevelopmentSuggestion, character: Character) -> int:
+        """Calculate AI-driven health increase based on character development"""
+        base_increase = 8  # Base health increase
+
+        # Bonus based on constitution development
+        constitution_bonus = development.stat_adjustments.get("constitution", 0) * 3
+
+        # Bonus based on development type
+        type_bonus = 0
+        if development.development_type in ["combat", "physical"]:
+            type_bonus = 4
+        elif development.development_type in ["survival", "endurance"]:
+            type_bonus = 6
+
+        # Level scaling
+        level_bonus = max(1, character.level // 3)
+
+        return base_increase + constitution_bonus + type_bonus + level_bonus
+
+    def _calculate_ai_mana_increase(self, development: CharacterDevelopmentSuggestion, character: Character) -> int:
+        """Calculate AI-driven mana increase based on character development"""
+        base_increase = 4  # Base mana increase
+
+        # Bonus based on intelligence/wisdom development
+        int_bonus = development.stat_adjustments.get("intelligence", 0) * 2
+        wis_bonus = development.stat_adjustments.get("wisdom", 0) * 2
+
+        # Bonus based on development type
+        type_bonus = 0
+        if development.development_type in ["magical", "mystical"]:
+            type_bonus = 3
+        elif development.development_type in ["scholarly", "intellectual"]:
+            type_bonus = 2
+
+        # Level scaling
+        level_bonus = max(1, character.level // 4)
+
+        return base_increase + int_bonus + wis_bonus + type_bonus + level_bonus
+
+    async def _generate_level_up_narrative(self, development: CharacterDevelopmentSuggestion,
+                                         old_level: int, character: Character,
+                                         game_context: GameContext) -> str:
+        """Generate AI-driven level up narrative"""
+        try:
+            from utils.gemini_client import gemini_client
+
+            prompt = f"""
+            Character {character.name} has just leveled up from level {old_level} to {character.level}!
+
+            Character Development: {development.suggestion}
+            Development Type: {development.development_type}
+            Stat Improvements: {development.stat_adjustments}
+            Reasoning: {development.reasoning}
+
+            Current Context:
+            - Location: {game_context.world_state.current_location}
+            - Recent Story: {game_context.session_summary['recent_actions'][-3:] if game_context.session_summary['recent_actions'] else ['Beginning of adventure']}
+            - Character Arc: {game_context.character_arc['dominant_traits']}
+
+            Generate a celebratory level-up message (2-3 sentences) that:
+            1. Congratulates the character on reaching the new level
+            2. Describes how their experiences have shaped their growth
+            3. Mentions the specific development they've gained
+            4. Feels personal and connected to their journey
+
+            Make it inspiring and reflective of their character development.
+            """
+
+            narrative = await gemini_client.generate_text(
+                prompt,
+                system_instruction="You are a character development narrator. Create inspiring, personalized level-up messages that reflect the character's journey and growth.",
+                temperature=0.7,
+                max_output_tokens=200
+            )
+
+            return f"🎉 {narrative.strip()}"
+
+        except Exception as e:
+            logger.error(f"Error generating level up narrative: {str(e)}")
+            return f"🎉 Congratulations! {character.name} has reached level {character.level}! Your experiences have made you stronger and wiser. Health and mana have been fully restored."
+
+    async def _fallback_level_up(self, session: GameSession):
+        """Fallback level up when AI systems fail"""
+        session.character.max_health += 10
+        session.character.health = session.character.max_health
+        session.character.max_mana += 5
+        session.character.mana = session.character.max_mana
+
+        level_up_message = f"🎉 Congratulations! {session.character.name} has reached level {session.character.level}! Health and mana have been fully restored."
+        level_up_entry = StoryEntry(type=ActionType.SYSTEM, text=level_up_message)
+        session.story.append(level_up_entry)
+
+    async def _check_quest_completion(self, session: GameSession, lorebook: Optional[Lorebook] = None):
+        """Check if any quests have been completed and handle AI-driven rewards"""
         try:
             for quest in session.quests:
                 if quest.status == "active":
-                    # Simple completion check (in full implementation would be more sophisticated)
-                    progress_parts = quest.progress.split("/")
-                    if len(progress_parts) == 2:
-                        current, total = int(progress_parts[0]), int(progress_parts[1])
-                        if current >= total:
-                            quest.status = "completed"
+                    # Check if quest is complete using new progress model
+                    if quest.progress.is_complete:
+                        quest.status = "completed"
 
-                            # Add quest completion message
-                            completion_message = (
-                                f"✅ Quest Completed: {quest.title}! {quest.description}"
-                            )
-                            completion_entry = StoryEntry(
-                                type=ActionType.SYSTEM, text=completion_message
-                            )
-                            session.story.append(completion_entry)
+                        # Generate AI-driven quest completion narrative and rewards
+                        await self._handle_ai_quest_completion(quest, session, lorebook)
 
-                            # Award experience
-                            session.character.experience += 50
-
-                            logger.info(f"Quest completed: {quest.title}")
+                        logger.info(f"Quest completed with AI rewards: {quest.title}")
 
         except Exception as e:
             logger.error(f"Error checking quest completion: {str(e)}")
+
+    async def _handle_ai_quest_completion(self, quest: Quest, session: GameSession, lorebook: Optional[Lorebook] = None):
+        """Handle AI-driven quest completion with dynamic rewards"""
+        try:
+            # Get context for AI-driven completion
+            game_context = context_manager.get_context(session, lorebook)
+            quest_context = QuestGenerationContext(session, lorebook)
+
+            # Generate completion narrative using dynamic quest manager
+            completion_narrative = await dynamic_quest_manager._generate_completion_narrative(quest, quest_context)
+
+            # Calculate AI-driven experience reward
+            experience_reward = await self._calculate_ai_quest_experience(quest, session, game_context)
+
+            # Generate contextual item rewards
+            item_rewards = await self._generate_quest_item_rewards(quest, session, lorebook)
+
+            # Add completion message with AI narrative
+            completion_entry = StoryEntry(
+                type=ActionType.SYSTEM,
+                text=f"✅ {completion_narrative}",
+                metadata={
+                    "quest_id": quest.id,
+                    "experience_reward": experience_reward,
+                    "item_rewards": [item.name for item in item_rewards],
+                    "ai_generated": True
+                }
+            )
+            session.story.append(completion_entry)
+
+            # Award AI-calculated experience
+            session.character.experience += experience_reward
+
+            # Add item rewards to inventory
+            for item in item_rewards:
+                # Convert AI Item to InventoryItem
+                inventory_item = self._convert_ai_item_to_inventory(item)
+                session.inventory.append(inventory_item)
+
+                # Add item notification
+                item_entry = StoryEntry(
+                    type=ActionType.SYSTEM,
+                    text=f"🎁 Quest Reward: {item.name} - {item.description}",
+                    metadata={"quest_reward": True, "item_id": item.id}
+                )
+                session.story.append(item_entry)
+
+            # Check if this completion should trigger a new quest
+            await self._check_for_follow_up_quest(quest, session, lorebook)
+
+        except Exception as e:
+            logger.error(f"Error handling AI quest completion: {str(e)}")
+            # Fallback to basic completion
+            await self._fallback_quest_completion(quest, session)
+
+    async def _calculate_ai_quest_experience(self, quest: Quest, session: GameSession, game_context: GameContext) -> int:
+        """Calculate AI-driven experience reward for quest completion"""
+        try:
+            from utils.gemini_client import gemini_client
+
+            prompt = f"""
+            Calculate appropriate experience reward for completing this quest:
+
+            Quest: {quest.title}
+            Description: {quest.description}
+            Objectives Completed: {quest.objectives}
+
+            Character Context:
+            - Level: {session.character.level}
+            - Current Experience: {session.character.experience}
+            - Character Arc: {game_context.character_arc['dominant_traits']}
+
+            Quest Context:
+            - Difficulty: {quest.metadata.get('difficulty', 'medium') if quest.metadata else 'medium'}
+            - Quest Type: {quest.metadata.get('quest_type', 'adventure') if quest.metadata else 'adventure'}
+            - Story Significance: {quest.metadata.get('narrative_significance', 'moderate') if quest.metadata else 'moderate'}
+
+            Calculate experience that:
+            1. Is appropriate for the character's level
+            2. Reflects the quest's difficulty and significance
+            3. Encourages continued progression
+            4. Feels rewarding but balanced
+
+            Respond with just the experience number (50-500 range).
+            """
+
+            response = await gemini_client.generate_text(
+                prompt,
+                system_instruction="You are an experience calculator. Provide balanced experience rewards that feel meaningful but not overpowered.",
+                temperature=0.3,
+                max_output_tokens=50
+            )
+
+            # Extract number from response
+            import re
+            numbers = re.findall(r'\d+', response)
+            if numbers:
+                experience = int(numbers[0])
+                return max(50, min(500, experience))  # Clamp between 50-500
+
+        except Exception as e:
+            logger.error(f"Error calculating AI quest experience: {str(e)}")
+
+        # Fallback calculation
+        base_exp = 100
+        level_multiplier = session.character.level * 10
+        return base_exp + level_multiplier
+
+    async def _generate_quest_item_rewards(self, quest: Quest, session: GameSession, lorebook: Optional[Lorebook] = None) -> List:
+        """Generate contextual item rewards for quest completion"""
+        try:
+            # Create context for item generation
+            item_context = ItemGenerationContext(
+                session,
+                "quest_reward",
+                lorebook,
+                f"Reward for completing quest: {quest.title}"
+            )
+
+            # Generate 1-2 contextual items based on quest
+            num_items = 1 if session.character.level < 5 else 2
+            items = await dynamic_item_manager.generate_loot_for_context(item_context, num_items)
+
+            return items
+
+        except Exception as e:
+            logger.error(f"Error generating quest item rewards: {str(e)}")
+            return []  # No items on error
+
+    def _convert_ai_item_to_inventory(self, ai_item) -> InventoryItem:
+        """Convert AI-generated Item to InventoryItem for inventory"""
+        return InventoryItem(
+            id=ai_item.id,
+            name=ai_item.name,
+            type=ai_item.item_type,
+            rarity=ai_item.rarity,
+            description=ai_item.description,
+            quantity=1,
+            equipped=False,
+            equipment_slot=ai_item.equipment_slot,
+            weight=1.0,
+            metadata=ai_item.metadata
+        )
+
+    async def _check_for_follow_up_quest(self, completed_quest: Quest, session: GameSession, lorebook: Optional[Lorebook] = None):
+        """Check if quest completion should trigger a new quest"""
+        try:
+            # Only generate follow-up quests occasionally and for significant quests
+            if (len(session.quests) < 3 and  # Don't overwhelm with quests
+                completed_quest.metadata and
+                completed_quest.metadata.get('quest_type') in ['main_story', 'character_development']):
+
+                quest_context = QuestGenerationContext(session, lorebook)
+                new_quest = await dynamic_quest_manager.generate_contextual_quest(quest_context)
+
+                session.quests.append(new_quest)
+
+                # Add quest notification
+                quest_entry = StoryEntry(
+                    type=ActionType.SYSTEM,
+                    text=f"📜 New Quest Available: {new_quest.title} - {new_quest.description}",
+                    metadata={"follow_up_quest": True, "parent_quest": completed_quest.id}
+                )
+                session.story.append(quest_entry)
+
+                logger.info(f"Generated follow-up quest: {new_quest.title}")
+
+        except Exception as e:
+            logger.error(f"Error checking for follow-up quest: {str(e)}")
+
+    async def _fallback_quest_completion(self, quest: Quest, session: GameSession):
+        """Fallback quest completion when AI systems fail"""
+        completion_message = f"✅ Quest Completed: {quest.title}! {quest.description}"
+        completion_entry = StoryEntry(type=ActionType.SYSTEM, text=completion_message)
+        session.story.append(completion_entry)
+
+        # Basic experience reward
+        session.character.experience += 100
 
     async def _check_story_milestones(self, session: GameSession):
         """Check for story milestones and achievements"""
