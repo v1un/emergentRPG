@@ -112,50 +112,30 @@ export const defaultScenarios = [
   },
 ];
 
-// Fallback AI responses for different action types
-export const fallbackAIResponses = {
-  combat: [
-    'You strike with precision, dealing damage to your opponent.',
-    'Your attack connects, but your enemy retaliates quickly.',
-    'You dodge the incoming attack and counter with your own.',
-    'The battle intensifies as both fighters exchange blows.',
-    'You find an opening in your opponent\'s defense.',
+// Emergency fallback responses - only used when AI systems are completely unavailable
+export const emergencyFallbackResponses = {
+  system_unavailable: [
+    'The AI storytelling system is temporarily unavailable. Your action has been noted and will be processed when the system returns.',
+    'Connection to the AI narrative engine is lost. Your choice is being saved for when full storytelling capabilities are restored.',
+    'The dynamic story system is offline. Your action will be integrated into the narrative once AI services are available.',
   ],
-  exploration: [
-    'You carefully examine your surroundings, taking note of every detail.',
-    'Your exploration reveals something interesting ahead.',
-    'You move cautiously through the area, alert for any danger.',
-    'The path forward becomes clearer as you investigate.',
-    'Your careful observation pays off as you spot something useful.',
+  ai_generation_failed: [
+    'The AI encountered an issue generating a response. Your action is being processed through backup systems.',
+    'Story generation temporarily failed. Your choice is being handled by emergency narrative protocols.',
+    'The AI storytelling engine needs a moment to process your complex action. Please try again shortly.',
   ],
-  social: [
-    'You engage in conversation, choosing your words carefully.',
-    'The interaction reveals important information about your situation.',
-    'Your diplomatic approach opens new possibilities.',
-    'You build rapport with the character, gaining their trust.',
-    'The conversation takes an unexpected but interesting turn.',
-  ],
-  magic: [
-    'You channel magical energy, feeling it flow through you.',
-    'Your spell takes effect, altering the situation around you.',
-    'The magical forces respond to your will and concentration.',
-    'You sense the arcane energies shifting in response to your actions.',
-    'Your magical intervention creates new opportunities.',
-  ],
-  stealth: [
-    'You move silently, avoiding detection.',
-    'Your stealthy approach allows you to gather valuable information.',
-    'You remain hidden while observing the situation.',
-    'Your careful movements keep you out of sight.',
-    'You slip past unnoticed, maintaining the element of surprise.',
-  ],
-  default: [
-    'You take action, and the world responds to your choice.',
-    'Your decision leads to an interesting development.',
-    'The situation evolves based on your actions.',
-    'You move forward with determination.',
-    'Your choice sets new events in motion.',
-  ],
+  context_loading: [
+    'Loading your story context and character history...',
+    'Gathering narrative threads and world state information...',
+    'Preparing personalized story response based on your journey...',
+  ]
+};
+
+// Note: These responses should only be used in emergency situations
+// The primary system should always attempt AI-driven narrative generation
+export const getEmergencyResponse = (category = 'system_unavailable') => {
+  const responses = emergencyFallbackResponses[category] || emergencyFallbackResponses.system_unavailable;
+  return responses[Math.floor(Math.random() * responses.length)];
 };
 
 // Default game configuration
@@ -240,10 +220,10 @@ export const defaultQuests = [
   },
 ];
 
-// Utility function to get random response
-export const getRandomResponse = (category = 'default') => {
-  const responses = fallbackAIResponses[category] || fallbackAIResponses.default;
-  return responses[Math.floor(Math.random() * responses.length)];
+// Legacy function - now redirects to emergency responses
+export const getRandomResponse = (category = 'system_unavailable') => {
+  console.warn('getRandomResponse is deprecated. Use AI-driven narrative generation instead.');
+  return getEmergencyResponse(category);
 };
 
 // Utility function to get random scenario
@@ -275,39 +255,41 @@ export const createDefaultGameState = (characterTemplate = null) => {
   };
 };
 
-// Utility function to get all fallback data
-export const getFallbackData = () => ({
+// Emergency data access - only for system failures
+export const getEmergencyData = () => ({
   defaultCharacterTemplates,
   defaultScenarios,
-  fallbackAIResponses,
+  emergencyFallbackResponses,
   defaultGameConfig,
   defaultItems,
   defaultQuests,
-  getRandomResponse,
+  getEmergencyResponse,
   getRandomScenario,
   createDefaultGameState,
-  // Additional utility data
-  defaultCharacter: defaultCharacterTemplates[0],
-  defaultInventory: defaultItems.slice(0, 2), // Health and mana potions
-  defaultWorldState: {
-    current_location: 'Forest Clearing',
-    time_of_day: 'morning',
-    weather: 'clear',
-    environment_description: 'A peaceful clearing surrounded by ancient trees.',
+  // Minimal emergency data
+  emergencyCharacter: defaultCharacterTemplates[0],
+  emergencyInventory: defaultItems.slice(0, 2), // Basic health and mana potions
+  emergencyWorldState: {
+    current_location: 'Starting Area',
+    time_of_day: 'unknown',
+    weather: 'unclear',
+    environment_description: 'AI systems are loading. Please wait for full narrative generation.',
   },
 });
 
+// Legacy export for backward compatibility
 const fallbackDataExport = {
   defaultCharacterTemplates,
   defaultScenarios,
-  fallbackAIResponses,
+  emergencyFallbackResponses,
   defaultGameConfig,
   defaultItems,
   defaultQuests,
-  getRandomResponse,
+  getRandomResponse, // Deprecated
+  getEmergencyResponse,
   getRandomScenario,
   createDefaultGameState,
-  getFallbackData,
+  getEmergencyData,
 };
 
 export default fallbackDataExport;

@@ -1,198 +1,181 @@
 #!/usr/bin/env python3
 """
-Backend startup script with improved error handling, security, and configuration management.
+Simple Backend Startup Script for EmergentRPG
+Optimized for Arch Linux + zsh + pyenv
 """
 import sys
 import os
+import signal
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, Any
 
-# Configure logging early
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+# Check for help flag FIRST
+if len(sys.argv) > 1 and sys.argv[1] in ['--help', '-h']:
+    print(__doc__)
+    print("\nUsage: python start_backend.py")
+    print("\nEnvironment Variables:")
+    print("  HOST                    - Server host (default: 127.0.0.1)")
+    print("  PORT                    - Server port (default: 8001)")
+    print("  RELOAD                  - Enable auto-reload (default: false)")
+    print("  LOG_LEVEL               - Logging level (default: info)")
+    print("  WORKERS                 - Number of workers (default: 1)")
+    print("  DEBUG                   - Enable debug mode (default: false)")
+    print("  ALLOW_EXTERNAL_ACCESS   - Allow external access (default: false)")
+    print("\nRequired Environment Variables:")
+    print("  GOOGLE_API_KEY          - Google AI API key")
+    print("  MONGO_URL               - MongoDB connection URL")
+    sys.exit(0)
+
+# Simple logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 
 def setup_python_path() -> Path:
-    """
-    Set up Python path and working directory dynamically.
-    
-    Returns:
-        Path: The backend directory path
-    
-    Raises:
-        SystemExit: If backend directory cannot be accessed
-    """
-    # Get the backend directory - try multiple strategies
+    """Set up Python path and working directory."""
+    # Get the backend directory
     backend_dir = None
     
-    # Strategy 1: Environment variable
     if os.environ.get('BACKEND_DIR'):
         backend_dir = Path(os.environ['BACKEND_DIR'])
-    # Strategy 2: Relative to script location (assuming script is in scripts/ folder)
     elif Path(__file__).parent.parent.joinpath('backend').exists():
         backend_dir = Path(__file__).parent.parent / 'backend'
-    # Strategy 3: Current directory has backend folder
     elif Path.cwd().joinpath('backend').exists():
         backend_dir = Path.cwd() / 'backend'
-    # Strategy 4: We're already in the backend directory
     elif Path.cwd().joinpath('main.py').exists():
         backend_dir = Path.cwd()
     else:
-        backend_dir = Path(os.environ.get('BACKEND_DIR', str(Path(__file__).parent)))
+        backend_dir = Path(__file__).parent.parent / 'backend'
     
-    try:
-        backend_dir = backend_dir.resolve()
-        
-        if not backend_dir.exists():
-            raise FileNotFoundError(f"Backend directory not found: {backend_dir}")
-        
-        if not backend_dir.is_dir():
-            raise NotADirectoryError(f"Backend path is not a directory: {backend_dir}")
-        
-        # Add to Python path if not already there
-        backend_str = str(backend_dir)
-        if backend_str not in sys.path:
-            sys.path.insert(0, backend_str)
-        
-        # Change to backend directory
-        os.chdir(backend_dir)
-        
-        # Set PYTHONPATH
+    backend_dir = backend_dir.resolve()
+    
+    if not backend_dir.exists():
+        logger.error(f"Backend directory not found: {backend_dir}")
+        sys.exit(1)
+    
+    # Add to Python path
+    backend_str = str(backend_dir)
+    if backend_str not in sys.path:
+        sys.path.insert(0, backend_str)
+    
+    # Change to backend directory
+    os.chdir(backend_dir)
+    
+    # Set PYTHONPATH
+    current_pythonpath = os.environ.get('PYTHONPATH', '')
+    if current_pythonpath:
+        os.environ['PYTHONPATH'] = f"{backend_str}:{current_pythonpath}"
+    else:
         os.environ['PYTHONPATH'] = backend_str
-        
-        logger.info(f"Backend directory set to: {backend_dir}")
-        return backend_dir
-        
-    except (FileNotFoundError, PermissionError, NotADirectoryError) as e:
-        logger.error(f"Error setting up backend path: {e}")
-        sys.exit(1)
+    
+    logger.info(f"Backend directory: {backend_dir}")
+    return backend_dir
 
 
-def get_ssl_config() -> tuple[Optional[str], Optional[str]]:
-    """
-    Get SSL configuration from environment or config files.
+def validate_environment() -> Dict[str, Any]:
+    """Validate environment configuration."""
+    config = {}
     
-    Returns:
-        tuple: (ssl_keyfile, ssl_certfile) or (None, None) if SSL is disabled
-    """
-    ssl_enabled = os.getenv('SSL_ENABLED', 'false').lower() == 'true'
+    # Check required variables
+    required_vars = ['GOOGLE_API_KEY', 'MONGO_URL']
+    missing_vars = []
     
-    if not ssl_enabled:
-        logger.warning("SSL is disabled. Running in HTTP mode.")
-        return None, None
+    for var in required_vars:
+        value = os.getenv(var)
+        if not value or value in ['your_google_api_key_here', '<YOUR_GOOGLE_API_KEY_HERE>']:
+            missing_vars.append(var)
+        else:
+            config[var] = value
     
-    ssl_keyfile = os.getenv('SSL_KEYFILE', '/path/to/private.key')
-    ssl_certfile = os.getenv('SSL_CERTFILE', '/path/to/certificate.crt')
-    
-    if ssl_keyfile and ssl_certfile:
-        # Validate SSL files exist
-        if not Path(ssl_keyfile).exists():
-            logger.warning(f"SSL key file not found: {ssl_keyfile}")
-        if not Path(ssl_certfile).exists():
-            logger.warning(f"SSL certificate file not found: {ssl_certfile}")
-        
-        logger.info("SSL enabled with provided certificates")
-        return ssl_keyfile, ssl_certfile
-    
-    logger.warning("SSL enabled but certificates not provided")
-    return None, None
-
-
-def main():
-    """Main entry point for the backend server."""
-    # Set up Python path first
-    backend_dir = setup_python_path()
-    
-    # Now we can import after path is set up
-    try:
-        from main import app  # type: ignore
-        import uvicorn
-    except ImportError as e:
-        logger.error(f"Failed to import required modules: {e}")
-        logger.error(f"Current working directory: {os.getcwd()}")
-        logger.error(f"Python path: {sys.path}")
+    if missing_vars:
+        logger.error(f"Missing required environment variables: {missing_vars}")
+        logger.error("Please check your .env file in the backend directory")
         sys.exit(1)
     
-    # Get configuration from environment
-    host = os.getenv('HOST', '127.0.0.1')
-    port = int(os.getenv('PORT', 8001))
-    reload = os.getenv('RELOAD', 'false').lower() == 'true'
-    log_level = os.getenv('LOG_LEVEL', 'info').lower()
-    workers = int(os.getenv('WORKERS', 1))
+    # Set defaults
+    config.update({
+        'HOST': os.getenv('HOST', '127.0.0.1'),
+        'PORT': int(os.getenv('PORT', 8001)),
+        'RELOAD': os.getenv('RELOAD', 'false').lower() == 'true',
+        'LOG_LEVEL': os.getenv('LOG_LEVEL', 'info').lower(),
+        'WORKERS': int(os.getenv('WORKERS', 1)),
+        'DEBUG': os.getenv('DEBUG', 'false').lower() == 'true',
+        'ALLOW_EXTERNAL_ACCESS': os.getenv('ALLOW_EXTERNAL_ACCESS', 'false').lower() == 'true',
+    })
     
-    # Set Redis configuration
+    # Security check
+    if config['HOST'] == '0.0.0.0' and not config['ALLOW_EXTERNAL_ACCESS']:
+        logger.warning("Binding to 0.0.0.0 requires ALLOW_EXTERNAL_ACCESS=true. Using localhost.")
+        config['HOST'] = '127.0.0.1'
+    
+    return config
+
+
+def setup_redis():
+    """Setup Redis configuration."""
     if os.getenv('REDIS_ENABLED') is None:
-        # If not explicitly set, check if Redis is available
         try:
             import socket
             redis_host = os.getenv('REDIS_HOST', 'localhost')
             redis_port = int(os.getenv('REDIS_PORT', 6379))
             
-            # Try to connect to Redis
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.settimeout(1)  # 1 second timeout
-            result = s.connect_ex((redis_host, redis_port))
-            s.close()
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(1)
+                result = s.connect_ex((redis_host, redis_port))
             
-            # If connection successful, enable Redis
             if result == 0:
                 os.environ['REDIS_ENABLED'] = 'true'
-                logger.info(f"Redis detected at {redis_host}:{redis_port}, enabling Redis cache")
+                logger.info(f"Redis detected at {redis_host}:{redis_port}")
             else:
                 os.environ['REDIS_ENABLED'] = 'false'
-                logger.info("Redis not detected, using memory cache only")
-        except Exception as e:
+                logger.info("Redis not detected, using memory cache")
+        except Exception:
             os.environ['REDIS_ENABLED'] = 'false'
-            logger.info(f"Error checking Redis availability: {e}. Using memory cache only")
+            logger.info("Redis check failed, using memory cache")
+
+
+def main():
+    """Main entry point."""
+    logger.info("Starting EmergentRPG Backend Server...")
     
-    # Validate host configuration
-    if host == '0.0.0.0' and os.getenv('ALLOW_EXTERNAL_ACCESS') != 'true':
-        logger.warning(
-            "Binding to 0.0.0.0 requires ALLOW_EXTERNAL_ACCESS=true. "
-            "Defaulting to localhost for security."
-        )
-        host = '127.0.0.1'
+    # Setup
+    setup_python_path()
+    config = validate_environment()
+    setup_redis()
     
-    # Get SSL configuration
-    ssl_keyfile, ssl_certfile = get_ssl_config()
+    # Import after path setup
+    try:
+        import uvicorn
+    except ImportError as e:
+        logger.error(f"Failed to import uvicorn: {e}")
+        logger.error("Please install uvicorn: pip install uvicorn")
+        sys.exit(1)
     
-    # Build uvicorn configuration
+    # Configure uvicorn
     uvicorn_config = {
         "app": "main:app",
-        "host": host,
-        "port": port,
-        "reload": reload,
-        "log_level": log_level,
+        "host": config['HOST'],
+        "port": config['PORT'],
+        "reload": config['RELOAD'],
+        "log_level": config['LOG_LEVEL'],
         "access_log": True,
-        "use_colors": True,
     }
     
-    # Add SSL config if available
-    if ssl_keyfile and ssl_certfile:
-        uvicorn_config.update({
-            "ssl_keyfile": ssl_keyfile,
-            "ssl_certfile": ssl_certfile,
-        })
+    if not config['RELOAD'] and config['WORKERS'] > 1:
+        uvicorn_config["workers"] = config['WORKERS']
     
-    # Add workers for production (only if reload is False)
-    if not reload and workers > 1:
-        uvicorn_config["workers"] = workers
-    
-    # Log startup configuration
-    logger.info(f"Starting backend server on {host}:{port}")
-    logger.info(f"SSL: {'Enabled' if ssl_keyfile else 'Disabled'}")
-    logger.info(f"Reload: {reload}")
-    logger.info(f"Workers: {workers if not reload else 1}")
-    logger.info(f"Log level: {log_level}")
+    # Log startup info
+    logger.info(f"Server: http://{config['HOST']}:{config['PORT']}")
+    logger.info(f"Mode: {'Development' if config['RELOAD'] else 'Production'}")
+    logger.info(f"Workers: {config['WORKERS'] if not config['RELOAD'] else 1}")
     
     try:
         uvicorn.run(**uvicorn_config)
+    except KeyboardInterrupt:
+        logger.info("Shutting down...")
     except Exception as e:
-        logger.error(f"Failed to start server: {e}")
+        logger.error(f"Server error: {e}")
         sys.exit(1)
 
 

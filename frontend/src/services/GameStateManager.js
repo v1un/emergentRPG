@@ -34,10 +34,10 @@ export class GameStateManager {
       }
 
       const sessionData = await response.json();
-      
+
       // Store session locally for offline access
       this.storeSessionLocally(sessionData);
-      
+
       return sessionData;
     } catch (error) {
       console.error('Error creating session:', error);
@@ -50,7 +50,7 @@ export class GameStateManager {
    */
   async createOfflineSession(scenario, characterConfig = null) {
     const fallbackData = getFallbackData();
-    
+
     const offlineSession = {
       session_id: `offline_${Date.now()}`,
       scenario: scenario,
@@ -58,9 +58,13 @@ export class GameStateManager {
       inventory: fallbackData.defaultInventory,
       quests: fallbackData.defaultQuests,
       story: [
-        { 
-          type: 'narration', 
-          text: scenario.intro || `Welcome to ${scenario.title}. Your adventure begins...`, 
+        {
+          type: 'narration',
+          text: scenario.initial_narrative || scenario.intro || `Welcome to ${scenario.title}. Your adventure begins...`,
+          metadata: {
+            source: scenario.initial_narrative ? 'ai_generated' : 'fallback',
+            scenario_id: scenario.id
+          }
         },
       ],
       world_state: fallbackData.defaultWorldState,
@@ -83,14 +87,14 @@ export class GameStateManager {
       }
 
       const response = await this.fetchWithRetry(`/api/game/sessions/${sessionId}`);
-      
+
       if (!response.ok) {
         throw new Error(`Failed to load session: ${response.statusText}`);
       }
 
       const sessionData = await response.json();
       this.storeSessionLocally(sessionData);
-      
+
       return sessionData;
     } catch (error) {
       console.error('Error loading session:', error);
@@ -121,7 +125,7 @@ export class GameStateManager {
 
       const updatedSession = await response.json();
       this.storeSessionLocally(updatedSession);
-      
+
       return updatedSession;
     } catch (error) {
       console.error('Error updating session:', error);
@@ -151,7 +155,7 @@ export class GameStateManager {
       }
 
       const result = await response.json();
-      
+
       if (result.success) {
         this.storeSessionLocally(result.updated_session);
         return {
@@ -164,13 +168,13 @@ export class GameStateManager {
       }
     } catch (error) {
       console.error('Error processing action:', error);
-      
+
       // Fallback to offline processing for network errors
       if (error.code === 'NETWORK_ERROR') {
         console.warn('Network error, falling back to offline action processing');
         return this.processOfflineAction(sessionId, action);
       }
-      
+
       throw this.classifyError(error);
     }
   }
@@ -179,7 +183,7 @@ export class GameStateManager {
    * Process action offline using simple response generation
    */
   async processOfflineAction(sessionId, action) {
-    const session = sessionId.startsWith('offline_') 
+    const session = sessionId.startsWith('offline_')
       ? this.loadOfflineSession(sessionId)
       : this.getStoredSession(sessionId);
 
@@ -189,7 +193,7 @@ export class GameStateManager {
 
     // Simple offline response generation
     const offlineResponse = this.generateOfflineResponse(action);
-    
+
     const updatedSession = {
       ...session,
       story: [
@@ -216,12 +220,12 @@ export class GameStateManager {
   generateOfflineResponse(_action) {
     const responses = [
       'Your action echoes through the realm as mysterious forces respond...',
-      'The world shifts slightly in response to your choice...', 
+      'The world shifts slightly in response to your choice...',
       'Something stirs in the shadows as you take action...',
       'The air crackles with potential as events unfold...',
       'Your decision ripples through the fabric of this world...',
     ];
-    
+
     return responses[Math.floor(Math.random() * responses.length)];
   }
 
@@ -341,7 +345,7 @@ export class GameStateManager {
         timeout: 10000,
         ...options,
       });
-      
+
       return response;
     } catch (error) {
       if (attempt < this.retryAttempts && this.shouldRetry(error)) {

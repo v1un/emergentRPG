@@ -1,39 +1,88 @@
 """
 AI Response Management Service
-Handles AI response generation, caching, and fallback responses
+Handles AI response generation, caching, and fallback responses with improved error handling
 """
 
 import hashlib
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from enum import Enum
+
 from cachetools import TTLCache
 
-from models.game_models import Character, GameSession, WorldState
+from models.game_models import GameSession
 from models.scenario_models import Lorebook
 from utils.gemini_client import gemini_client
 
 logger = logging.getLogger(__name__)
 
 
+class ResponseType(str, Enum):
+    """Enumeration of AI response types for better categorization."""
+    ATTACK = "attack"
+    DEFEND = "defend"
+    EXPLORE = "explore"
+    INTERACT = "interact"
+    REST = "rest"
+    LOOK = "look"
+    NARRATIVE = "narrative"
+    ERROR = "error"
+
+
+@dataclass
+class ResponseMetrics:
+    """Metrics for AI response generation performance."""
+    generation_time: float
+    cache_hit: bool
+    retry_count: int
+    confidence_score: float
+    token_count: Optional[int] = None
+    error_type: Optional[str] = None
+
+
 class NarrativeResponse:
-    """Structured narrative response from AI"""
-    def __init__(self, response_text: str, response_type: str = "narrative",
-                 character_effects: Optional[Dict[str, Any]] = None,
-                 world_effects: Optional[Dict[str, Any]] = None,
-                 suggested_actions: Optional[List[str]] = None,
-                 metadata: Optional[Dict[str, Any]] = None):
+    """
+    Structured narrative response from AI with comprehensive metadata.
+
+    Attributes:
+        response_text: The main narrative text
+        response_type: Type of response (attack, explore, etc.)
+        character_effects: Effects on character stats/state
+        world_effects: Effects on world state
+        suggested_actions: List of suggested next actions
+        metadata: Additional metadata about generation
+        generated_at: Timestamp of generation
+        confidence_score: AI confidence in response quality
+        metrics: Performance metrics for this response
+    """
+
+    def __init__(
+        self,
+        response_text: str,
+        response_type: str = ResponseType.NARRATIVE.value,
+        character_effects: Optional[Dict[str, Any]] = None,
+        world_effects: Optional[Dict[str, Any]] = None,
+        suggested_actions: Optional[List[str]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        confidence_score: float = 0.8,
+        metrics: Optional[ResponseMetrics] = None
+    ):
         self.response_text = response_text
-        self.response_type = response_type  # narrative, dialogue, action_result, system
+        self.response_type = response_type
         self.character_effects = character_effects or {}
         self.world_effects = world_effects or {}
         self.suggested_actions = suggested_actions or []
         self.metadata = metadata or {}
         self.generated_at = datetime.now()
-        self.confidence_score = 0.8  # Default confidence
-    
+        self.confidence_score = max(0.0, min(1.0, confidence_score))  # Clamp to [0,1]
+        self.metrics = metrics
+        self.from_cache = False  # Will be set by cache manager
+
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        """Convert response to dictionary for serialization."""
+        result = {
             "response_text": self.response_text,
             "response_type": self.response_type,
             "character_effects": self.character_effects,
@@ -41,14 +90,50 @@ class NarrativeResponse:
             "suggested_actions": self.suggested_actions,
             "metadata": self.metadata,
             "generated_at": self.generated_at.isoformat(),
-            "confidence_score": self.confidence_score
+            "confidence_score": self.confidence_score,
+            "from_cache": self.from_cache
         }
+
+        if self.metrics:
+            result["metrics"] = {
+                "generation_time": self.metrics.generation_time,
+                "cache_hit": self.metrics.cache_hit,
+                "retry_count": self.metrics.retry_count,
+                "confidence_score": self.metrics.confidence_score,
+                "token_count": self.metrics.token_count,
+                "error_type": self.metrics.error_type
+            }
+
+        return result
+
+    def is_error_response(self) -> bool:
+        """Check if this is an error response."""
+        return self.response_type == ResponseType.ERROR.value or "error" in self.metadata
 
 
 class GameContext:
-    """Context information for AI response generation"""
-    def __init__(self, session: GameSession, lorebook: Optional[Lorebook] = None,
-                 recent_actions: Optional[List[str]] = None):
+    """
+    Context information for AI response generation.
+
+    Provides comprehensive context about the current game state,
+    character, world, and recent history for AI response generation.
+
+    Attributes:
+        session: Current game session
+        lorebook: Associated lorebook for world context
+        recent_actions: List of recent player actions
+        character: Current character state
+        world_state: Current world state
+        story_length: Number of story entries
+        last_actions: Last 5 actions for context
+    """
+
+    def __init__(
+        self,
+        session: GameSession,
+        lorebook: Optional[Lorebook] = None,
+        recent_actions: Optional[List[str]] = None
+    ):
         self.session = session
         self.lorebook = lorebook
         self.recent_actions = recent_actions or []
@@ -56,16 +141,35 @@ class GameContext:
         self.world_state = session.world_state
         self.story_length = len(session.story)
         self.last_actions = recent_actions[-5:] if recent_actions else []
-    
+
     def to_dict(self) -> Dict[str, Any]:
+        """Convert context to dictionary for serialization."""
         return {
+            "session_id": self.session.session_id,
             "character": self.character.model_dump(),
             "world_state": self.world_state.model_dump(),
             "story_length": self.story_length,
             "last_actions": self.last_actions,
             "lorebook_available": self.lorebook is not None,
-            "lorebook_title": self.lorebook.series_metadata.title if self.lorebook else None
+            "lorebook_title": self.lorebook.series_metadata.title if self.lorebook else None,
+            "recent_actions_count": len(self.recent_actions)
         }
+
+    def get_context_summary(self) -> str:
+        """Get a brief summary of the current context."""
+        return (
+            f"Character: {self.character.name} (Level {self.character.level}) "
+            f"at {self.world_state.current_location}, "
+            f"Story length: {self.story_length} entries"
+        )
+
+    def has_sufficient_context(self) -> bool:
+        """Check if context has sufficient information for AI generation."""
+        return (
+            self.character is not None and
+            self.world_state is not None and
+            len(self.session.story) > 0
+        )
 
 
 class AIResponseManager:
@@ -344,29 +448,31 @@ Generate a combat result that:
     def _classify_action(self, action: str) -> str:
         """Classify the type of action for appropriate response generation"""
         action_lower = action.lower()
-        
+
+        # Social actions (check first to avoid conflicts with other keywords)
+        if any(word in action_lower for word in ["talk", "speak", "say", "ask", "tell", "greet", "convince"]):
+            return ResponseType.INTERACT.value
+
         # Combat actions
         if any(word in action_lower for word in ["attack", "fight", "strike", "hit", "shoot", "stab", "slash"]):
-            return "attack"
-        
-        # Defensive actions
-        if any(word in action_lower for word in ["defend", "block", "parry", "dodge", "shield", "guard"]):
-            return "defend"
-        
+            return ResponseType.ATTACK.value
+
+        # Defensive actions (check after social to avoid "guard" conflicts)
+        if any(word in action_lower for word in ["defend", "block", "parry", "dodge", "shield"]):
+            return ResponseType.DEFEND.value
+        if "guard" in action_lower and not any(word in action_lower for word in ["talk", "speak", "ask"]):
+            return ResponseType.DEFEND.value
+
         # Exploration actions
         if any(word in action_lower for word in ["explore", "search", "investigate", "examine", "look"]):
-            return "explore"
-        
-        # Social actions
-        if any(word in action_lower for word in ["talk", "speak", "say", "ask", "tell", "greet", "convince"]):
-            return "interact"
-        
+            return ResponseType.EXPLORE.value
+
         # Rest actions
         if any(word in action_lower for word in ["rest", "sleep", "wait", "camp", "recover"]):
-            return "rest"
-        
+            return ResponseType.REST.value
+
         # Default to exploration for unknown actions
-        return "explore"
+        return ResponseType.EXPLORE.value
     
     async def _build_prompt(self, context: GameContext, action: str, response_type: str) -> str:
         """Build AI prompt based on context and action type"""
@@ -479,22 +585,42 @@ Response:"""
                 metadata={"error": str(e), "generation_method": "ai_fallback"}
             )
     
-    def _generate_suggested_actions(self, response_text: str, response_type: str, 
+    def _generate_suggested_actions(self, response_text: str, response_type: str,
                                   context: GameContext) -> List[str]:
-        """Generate suggested next actions based on response"""
+        """
+        Generate suggested next actions based on response and context.
+
+        Args:
+            response_text: The AI-generated response text
+            response_type: Type of response (attack, explore, etc.)
+            context: Current game context
+
+        Returns:
+            List of suggested action strings
+        """
         suggestions = []
-        
+
         # Base suggestions by response type
         type_suggestions = {
-            "attack": ["Continue fighting", "Defend yourself", "Look for cover"],
-            "defend": ["Counter-attack", "Retreat", "Hold position"],
-            "explore": ["Investigate further", "Move to new area", "Search for items"],
-            "interact": ["Continue conversation", "Ask questions", "Make a request"],
-            "rest": ["Continue resting", "Check surroundings", "Plan next move"]
+            ResponseType.ATTACK.value: ["Continue fighting", "Defend yourself", "Look for cover"],
+            ResponseType.DEFEND.value: ["Counter-attack", "Retreat", "Hold position"],
+            ResponseType.EXPLORE.value: ["Investigate further", "Move to new area", "Search for items"],
+            ResponseType.INTERACT.value: ["Continue conversation", "Ask questions", "Make a request"],
+            ResponseType.REST.value: ["Continue resting", "Check surroundings", "Plan next move"],
+            ResponseType.LOOK.value: ["Examine closer", "Move to different area", "Search for details"]
         }
-        
+
         suggestions.extend(type_suggestions.get(response_type, ["Look around", "Think about options"]))
-        
+
+        # Add context-specific suggestions based on response content
+        response_lower = response_text.lower()
+        if "door" in response_lower or "entrance" in response_lower:
+            suggestions.append("Open the door")
+        if "item" in response_lower or "object" in response_lower:
+            suggestions.append("Pick up the item")
+        if "person" in response_lower or "character" in response_lower:
+            suggestions.append("Approach and talk")
+
         # Add context-specific suggestions
         if context.world_state.npcs_present:
             suggestions.append("Talk to someone")

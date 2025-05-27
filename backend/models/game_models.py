@@ -56,6 +56,7 @@ class Character(BaseModel):
     background: Optional[str] = None
     equipped_items: Dict[EquipmentSlot, str] = Field(default_factory=dict)  # slot -> item_id
     max_carry_weight: float = Field(default=100.0)  # Base carry capacity
+    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)  # For AI-driven character development
 
     @property
     def experience_to_next_level(self) -> int:
@@ -65,6 +66,18 @@ class Character(BaseModel):
     def can_level_up(self) -> bool:
         """Check if character can level up"""
         return self.experience >= self.level * 100
+
+
+class Item(BaseModel):
+    """Base item model for AI-generated items"""
+    id: str
+    name: str
+    description: str
+    item_type: str  # weapon, armor, consumable, tool, magical
+    rarity: str = "common"  # common, uncommon, rare, epic, legendary
+    equipment_slot: Optional[EquipmentSlot] = None
+    effects: Optional[Dict[str, Any]] = None  # AI-generated effects
+    metadata: Optional[Dict[str, Any]] = None
 
 
 class InventoryItem(BaseModel):

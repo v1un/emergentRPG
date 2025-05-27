@@ -9,7 +9,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from models.game_models import Character, InventoryItem, WorldState, EquipmentSlot
+from models.game_models import Character, InventoryItem, WorldState, EquipmentSlot, GameSession
 from models.scenario_models import Lorebook
 from utils.gemini_client import gemini_client
 from utils.exceptions import (
@@ -17,6 +17,9 @@ from utils.exceptions import (
     InvalidEquipmentSlotError, InventoryFullError, InsufficientCarryCapacityError,
     InvalidItemQuantityError, ValidationError
 )
+
+# Import AI-driven systems
+from services.ai.dynamic_item_manager import dynamic_item_manager, ItemGenerationContext
 
 logger = logging.getLogger(__name__)
 
@@ -404,28 +407,101 @@ class InventoryManager:
             logger.error(f"Error applying item effects: {str(e)}")
             return {"error": str(e)}
 
-    async def generate_loot(self, context: LootContext) -> List[InventoryItem]:
-        """Generate loot based on context"""
+    async def generate_loot(self, context: LootContext, session: Optional[GameSession] = None,
+                           lorebook: Optional[Lorebook] = None) -> List[InventoryItem]:
+        """Generate AI-driven loot based on context"""
+        try:
+            # Try AI-driven loot generation first
+            if session:
+                ai_items = await self._generate_ai_loot(context, session, lorebook)
+                if ai_items:
+                    return ai_items
+
+            # Fallback to template-based generation
+            return await self._generate_template_loot(context)
+
+        except Exception as e:
+            logger.error(f"Error generating loot: {str(e)}")
+            return []
+
+    async def _generate_ai_loot(self, context: LootContext, session: GameSession,
+                               lorebook: Optional[Lorebook] = None) -> List[InventoryItem]:
+        """Generate loot using AI-driven item manager"""
+        try:
+            # Create AI item generation context
+            item_context = ItemGenerationContext(
+                session,
+                context.encounter_type,
+                lorebook,
+                f"Loot from {context.encounter_type} encounter at {context.location}"
+            )
+
+            # Determine number of items
+            num_items = self._calculate_loot_quantity(context)
+
+            # Generate AI items
+            ai_items = await dynamic_item_manager.generate_loot_for_context(item_context, num_items)
+
+            # Convert AI items to InventoryItems
+            inventory_items = []
+            for ai_item in ai_items:
+                inventory_item = self._convert_ai_item_to_inventory(ai_item)
+                inventory_items.append(inventory_item)
+
+            logger.info(f"Generated {len(inventory_items)} AI-driven loot items for level {context.character_level}")
+            return inventory_items
+
+        except Exception as e:
+            logger.error(f"Error generating AI loot: {str(e)}")
+            return []
+
+    def _convert_ai_item_to_inventory(self, ai_item) -> InventoryItem:
+        """Convert AI-generated Item to InventoryItem"""
+        # Extract stats from AI item effects
+        stats = {}
+        if ai_item.effects:
+            if "stat_bonuses" in ai_item.effects:
+                stats.update(ai_item.effects["stat_bonuses"])
+            if "special_abilities" in ai_item.effects:
+                stats["special_abilities"] = ai_item.effects["special_abilities"]
+            if "passive_effects" in ai_item.effects:
+                stats["passive_effects"] = ai_item.effects["passive_effects"]
+
+        return InventoryItem(
+            id=ai_item.id,
+            name=ai_item.name,
+            type=ai_item.item_type,
+            rarity=ai_item.rarity,
+            description=ai_item.description,
+            quantity=1,
+            equipped=False,
+            equipment_slot=ai_item.equipment_slot,
+            weight=1.0,  # Default weight
+            metadata={
+                "ai_generated": True,
+                "effects": ai_item.effects,
+                "stats": stats,
+                "generated_at": datetime.now().isoformat()
+            }
+        )
+
+    async def _generate_template_loot(self, context: LootContext) -> List[InventoryItem]:
+        """Fallback template-based loot generation"""
         try:
             loot_items = []
-
-            # Determine number of items based on difficulty and encounter type
             num_items = self._calculate_loot_quantity(context)
 
             for _ in range(num_items):
-                # Select rarity based on character level and context
                 rarity = self._select_rarity(context)
-
-                # Generate item based on rarity and level
                 item = await self._generate_item_by_rarity(rarity, context)
                 if item:
                     loot_items.append(item)
 
-            logger.info(f"Generated {len(loot_items)} loot items for level {context.character_level}")
+            logger.info(f"Generated {len(loot_items)} template-based loot items for level {context.character_level}")
             return loot_items
 
         except Exception as e:
-            logger.error(f"Error generating loot: {str(e)}")
+            logger.error(f"Error generating template loot: {str(e)}")
             return []
 
     def _calculate_loot_quantity(self, context: LootContext) -> int:

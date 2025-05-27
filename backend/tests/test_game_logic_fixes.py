@@ -8,21 +8,16 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import uuid
-from datetime import datetime
-from typing import List
 
 from models.game_models import (
-    Character, CharacterStats, InventoryItem, Quest, QuestProgress,
-    EquipmentSlot, StoryEntry, ActionType, GameSession, WorldState
+    Character, InventoryItem, Quest, QuestProgress,
+    EquipmentSlot, StoryEntry, ActionType
 )
-from models.scenario_models import LoreCharacter, Lorebook, SeriesMetadata
+from models.scenario_models import LoreCharacter
 from services.inventory.inventory_manager import InventoryManager
-from services.quest.quest_manager import QuestManager
-from services.game_state.game_manager import GameStateManager
 from utils.exceptions import (
     InvalidItemQuantityError, InsufficientCarryCapacityError,
-    EquipmentSlotOccupiedError, InvalidEquipmentSlotError,
-    QuestNotFoundError, ValidationError
+    ValidationError
 )
 
 
@@ -95,7 +90,7 @@ class TestEquipmentSystemFixes:
         )
 
         assert sword.equipment_slot == EquipmentSlot.WEAPON
-        assert sword.weight == 3.0
+        assert abs(sword.weight - 3.0) < 1e-6
 
     def test_character_equipped_items_tracking(self):
         """Test Character equipped items tracking"""
@@ -118,14 +113,14 @@ class TestQuestSystemFixes:
 
         assert progress.current == 2
         assert progress.total == 5
-        assert progress.percentage == 40.0
+        assert abs(progress.percentage - 40.0) < 1e-6
         assert progress.is_complete == False
         assert str(progress) == "2/5"
 
         # Complete quest
         progress.current = 5
         assert progress.is_complete == True
-        assert progress.percentage == 100.0
+        assert abs(progress.percentage - 100.0) < 1e-6
 
     def test_quest_with_structured_progress(self):
         """Test Quest with QuestProgress"""
@@ -149,7 +144,7 @@ class TestQuestSystemFixes:
         quest.progress.current = 1
         quest.progress.completed_objectives[0] = True
 
-        assert quest.progress.percentage == 50.0
+        assert abs(quest.progress.percentage - 50.0) < 1e-6
         assert quest.progress.is_complete == False
 
 
@@ -161,17 +156,10 @@ class TestInventoryManagerFixes:
         inventory_manager = InventoryManager()
         test_inventory = []
 
-        heavy_item = InventoryItem(
-            id=str(uuid.uuid4()),
-            name="Heavy Boulder",
-            type="misc",
-            weight=150.0  # Exceeds carry capacity
-        )
-
         # This should be tested in the actual implementation
         # For now, just verify the weight calculation method exists
         total_weight = inventory_manager._calculate_total_weight(test_inventory)
-        assert total_weight == 0.0
+        assert abs(total_weight - 0.0) < 1e-6
 
     def test_equipment_slot_validation(self):
         """Test equipment slot validation"""
@@ -294,7 +282,7 @@ class TestIntegrationFixes:
         # Simulate quest progress
         quest.progress.current = 1
         quest.progress.completed_objectives[0] = True
-        assert quest.progress.percentage == 50.0
+        assert abs(quest.progress.percentage - 50.0) < 1e-6
 
         # Complete quest
         quest.progress.current = 2

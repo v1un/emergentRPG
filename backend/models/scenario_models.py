@@ -102,6 +102,9 @@ class ScenarioTemplate(BaseModel):
     difficulty_level: str = "medium"
     estimated_duration: str = "2-4 hours"
     tags: List[str] = Field(default_factory=list)
+    # NEW: AI-generated narrative fields
+    initial_narrative: Optional[str] = None
+    narrative_metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=datetime.now)
 
 
