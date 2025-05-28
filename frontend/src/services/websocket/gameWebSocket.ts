@@ -33,7 +33,8 @@ export class GameWebSocketService {
     if (typeof window !== 'undefined') {
       window.addEventListener('online', this.handleOnline.bind(this));
       window.addEventListener('offline', this.handleOffline.bind(this));
-      window.addEventListener('beforeunload', this.disconnect.bind(this));
+      // Note: Removed beforeunload listener as it interferes with SPA navigation
+      // WebSocket cleanup is now handled by React component lifecycle
     }
   }
 

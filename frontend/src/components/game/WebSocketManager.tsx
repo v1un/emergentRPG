@@ -25,6 +25,7 @@ export function WebSocketManager({ children }: WebSocketManagerProps) {
     clearError: clearWebSocketError
   } = useGameWebSocket(currentSession?.session_id, {
     autoConnect: false, // Disable auto-connect to prevent conflicts
+    manageConnection: true, // This component manages the WebSocket connection lifecycle
     onConnect: () => {
       console.log('WebSocket connected successfully');
       clearError();
@@ -85,12 +86,7 @@ export function WebSocketManager({ children }: WebSocketManagerProps) {
     }
   }, [error]); // setLastError is stable
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      disconnect();
-    };
-  }, []); // disconnect function is now stable
+  // Note: Cleanup is handled by useGameWebSocket hook when manageConnection=true
 
   // Log connection status changes for debugging
   useEffect(() => {

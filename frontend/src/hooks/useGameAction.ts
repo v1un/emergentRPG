@@ -47,7 +47,10 @@ export function useGameAction(
     setLastError,
   } = useGameStore();
 
-  const { sendAction: sendWebSocketAction, isConnected } = useGameWebSocket(sessionId);
+  const { sendAction: sendWebSocketAction, isConnected } = useGameWebSocket(sessionId, {
+    manageConnection: false, // Don't manage connection - let WebSocketManager handle it
+    autoConnect: false, // Don't auto-connect
+  });
 
   // REST API mutation for fallback
   const actionMutation = useMutation({

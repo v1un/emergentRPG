@@ -10,6 +10,7 @@ interface UseGameWebSocketOptions {
   onConnect?: () => void;
   onDisconnect?: () => void;
   onError?: (error: Error) => void;
+  manageConnection?: boolean; // Only WebSocketManager should set this to true
 }
 
 interface UseGameWebSocketReturn {
@@ -42,7 +43,7 @@ export function useGameWebSocket(
     setLastError,
   } = useGameStore();
 
-  const { autoConnect = true, onConnect, onDisconnect, onError } = options;
+  const { autoConnect = true, onConnect, onDisconnect, onError, manageConnection = false } = options;
 
   // Memoize WebSocket callbacks to prevent unnecessary reconnections
   const callbacks: WebSocketCallbacks = useMemo(() => ({
@@ -210,14 +211,14 @@ export function useGameWebSocket(
     return () => clearTimeout(timeoutId);
   }, [autoConnect, sessionId]); // Remove connect from deps since it's stable now
 
-  // Cleanup effect
+  // Cleanup effect - only disconnect if this hook manages the connection
   useEffect(() => {
     return () => {
-      if (gameWebSocket.isConnected()) {
+      if (manageConnection && gameWebSocket.isConnected()) {
         disconnect();
       }
     };
-  }, []); // disconnect is stable now
+  }, [manageConnection]); // Only cleanup if this hook manages the connection
 
   // Sync connection status with WebSocket service on mount only
   useEffect(() => {
