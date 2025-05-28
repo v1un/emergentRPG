@@ -77,7 +77,12 @@ check_system_dependencies() {
     # Check pyenv
     if ! command_exists pyenv; then
         missing_deps+=("pyenv")
-        log_error "pyenv not found. Install with: curl https://pyenv.run | bash"
+        # Provide secure multi-step installation instructions instead of direct pipe
+        log_error "pyenv not found. Please install pyenv using these secure steps:
+        1. Download: curl -L https://pyenv.run -o pyenv-installer.sh
+        2. Verify: sha256sum pyenv-installer.sh
+        3. Review: less pyenv-installer.sh
+        4. Install: bash pyenv-installer.sh"
     else
         log_success "pyenv found"
     fi
@@ -123,27 +128,131 @@ check_system_dependencies() {
     fi
 }
 
-# Initialize pyenv
+# Security measures implemented for pyenv initialization:
+# 1. Validation of pyenv installation and permissions
+# 2. Secure temporary file handling with cleanup
+# 3. Output validation before execution
+# 4. Pattern matching for expected content
+# 5. Detection of suspicious content
+# 6. Proper error handling and logging
+# 7. Use of source instead of eval for safety
+# 8. Trap-based cleanup of temporary files
+#
+# Security validation for pyenv
+validate_pyenv() {
+    local pyenv_exec="${PYENV_ROOT}/bin/pyenv"
+    
+    # Check if pyenv exists and is executable
+    if [[ ! -x "$pyenv_exec" ]]; then
+        log_error "pyenv not found or not executable at $pyenv_exec"
+        return 1
+    fi
+    
+    # Check owner and permissions
+    local owner=$(stat -c '%U' "$pyenv_exec")
+    local perms=$(stat -c '%a' "$pyenv_exec")
+    
+    # Ensure pyenv is owned by current user or root
+    if [[ "$owner" != "$USER" && "$owner" != "root" ]]; then
+        log_error "pyenv has unexpected owner: $owner"
+        return 1
+    fi
+    
+    # Ensure permissions are restrictive (755 or more restrictive)
+    if (( perms > 755 )); then
+        log_error "pyenv has too permissive permissions: $perms"
+        return 1
+    fi
+    
+    return 0
+}
+
+# Safely process pyenv output
+process_pyenv_output() {
+    local cmd="$1"
+    local output_file="$2"
+    local expected_pattern="$3"
+    
+    # Run pyenv command and capture output
+    if ! "$cmd" > "$output_file" 2>/dev/null; then
+        log_error "Failed to run command: $cmd"
+        return 1
+    fi
+    
+    # Validate output exists and matches expected pattern
+    if [[ ! -s "$output_file" ]]; then
+        log_error "Empty output from command: $cmd"
+        return 1
+    fi
+    
+    # Check for suspicious content
+    if grep -q '[;&|]' "$output_file"; then
+        log_error "Suspicious content detected in output"
+        return 1
+    fi
+    
+    # Verify expected content pattern
+    if ! grep -q "$expected_pattern" "$output_file"; then
+        log_error "Output does not match expected pattern"
+        return 1
+    fi
+    
+    return 0
+}
+
+# Initialize pyenv with security measures
 init_pyenv() {
     log "🐍 Initializing pyenv..."
     
-    # Initialize pyenv for zsh
-    if [[ -d "$HOME/.pyenv" ]]; then
-        export PYENV_ROOT="$HOME/.pyenv"
-        export PATH="$PYENV_ROOT/bin:$PATH"
-        eval "$(pyenv init --path)"
-        eval "$(pyenv init -)"
-        
-        # Check if pyenv-virtualenv is available
-        if [[ -d "$PYENV_ROOT/plugins/pyenv-virtualenv" ]]; then
-            eval "$(pyenv virtualenv-init -)"
-        fi
-        
-        log_success "pyenv initialized"
-    else
-        log_error "pyenv not found in $HOME/.pyenv"
-        exit 1
+    if [[ ! -d "$HOME/.pyenv" ]]; then
+        log_error "pyenv not installed"
+        return 1
     fi
+    
+    export PYENV_ROOT="$HOME/.pyenv"
+    export PATH="$PYENV_ROOT/bin:$PATH"
+    
+    # Validate pyenv installation
+    if ! validate_pyenv; then
+        log_error "pyenv validation failed"
+        return 1
+    fi
+    
+    # Create secure temporary directory
+    local tmp_dir=$(mktemp -d)
+    trap 'rm -rf "$tmp_dir"' EXIT
+    
+    # Process init --path
+    if ! process_pyenv_output \
+        "pyenv init --path" \
+        "$tmp_dir/init_path.sh" \
+        "^export PATH="; then
+        return 1
+    fi
+    source "$tmp_dir/init_path.sh"
+    
+    # Process init
+    if ! process_pyenv_output \
+        "pyenv init -" \
+        "$tmp_dir/init.sh" \
+        "^export"; then
+        return 1
+    fi
+    source "$tmp_dir/init.sh"
+    
+    # Process virtualenv-init if available
+    if [[ -d "$PYENV_ROOT/plugins/pyenv-virtualenv" ]]; then
+        if ! process_pyenv_output \
+            "pyenv virtualenv-init -" \
+            "$tmp_dir/virtualenv_init.sh" \
+            "^export"; then
+            return 1
+        fi
+        source "$tmp_dir/virtualenv_init.sh"
+    fi
+    
+    log_success "pyenv initialized successfully"
+    return 0
 }
 
 # Check Python version
