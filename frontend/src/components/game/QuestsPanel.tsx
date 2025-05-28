@@ -437,7 +437,7 @@ export function QuestsPanel() {
                   {Object.entries(selectedQuest.rewards).map(([rewardType, value]) => (
                     <div key={rewardType} className="flex justify-between items-center p-2 bg-muted rounded">
                       <span className="text-sm capitalize">
-                        {rewardType.replace('_', ' ')}
+                        {rewardType.replaceAll('_', ' ')}
                       </span>
                       <span className="text-sm font-medium">
                         {typeof value === 'number' ? value.toLocaleString() : String(value)}
@@ -520,7 +520,8 @@ export function QuestsPanel() {
                   {Object.entries(selectedQuest.metadata).map(([key, value]) => (
                     <div key={key} className="flex justify-between">
                       <span className="text-muted-foreground capitalize">
-                        {key.replace('_', ' ')}
+                        {/* Replace all underscores with spaces for display formatting */}
+                        {key.replace(/_/g, ' ')}
                       </span>
                       <span className="font-medium">{String(value)}</span>
                     </div>
