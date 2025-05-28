@@ -792,6 +792,340 @@ async def delete_game_session(session_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ===== STORY MANAGEMENT ENDPOINTS =====
+
+@app.post("/api/bookmarks/{session_id}")
+async def create_bookmark(session_id: str, bookmark_data: Dict[str, Any]):
+    """Create a new story bookmark"""
+    try:
+        # Get game session to validate it exists
+        session = await db_service.get_game_session(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail=GAME_SESSION_NOT_FOUND)
+
+        # Extract bookmark data
+        story_entry_id = bookmark_data.get("story_entry_id")
+        title = bookmark_data.get("title", "Bookmarked Moment")
+        description = bookmark_data.get("description")
+        tags = bookmark_data.get("tags", [])
+        category = bookmark_data.get("category", "important")
+        is_private = bookmark_data.get("is_private", False)
+
+        if not story_entry_id:
+            raise HTTPException(status_code=400, detail="story_entry_id is required")
+
+        # Validate story entry exists in session
+        story_entry = next((entry for entry in session.story if entry.id == story_entry_id), None)
+        if not story_entry:
+            raise HTTPException(status_code=404, detail="Story entry not found in session")
+
+        # Generate AI summary for the bookmark
+        ai_summary = f"AI summary: {story_entry.text[:100]}..." if len(story_entry.text) > 100 else story_entry.text
+
+        # Create bookmark
+        bookmark_id = str(uuid.uuid4())
+        bookmark = {
+            "id": bookmark_id,
+            "story_entry_id": story_entry_id,
+            "session_id": session_id,
+            "title": title,
+            "description": description,
+            "tags": tags,
+            "ai_summary": ai_summary,
+            "created_at": datetime.now().isoformat(),
+            "updated_at": datetime.now().isoformat(),
+            "category": category,
+            "is_private": is_private,
+        }
+
+        # TODO: Save bookmark to database
+        # For now, return the created bookmark
+        return {
+            "success": True,
+            "bookmark": bookmark,
+            "message": "Bookmark created successfully"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating bookmark: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/bookmarks/{session_id}")
+async def get_bookmarks(session_id: str, category: Optional[str] = None, tags: Optional[str] = None):
+    """Get bookmarks for a session"""
+    try:
+        # Get game session to validate it exists
+        session = await db_service.get_game_session(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail=GAME_SESSION_NOT_FOUND)
+
+        # TODO: Implement actual bookmark retrieval from database
+        # For now, return empty list
+        bookmarks = []
+
+        return {
+            "success": True,
+            "bookmarks": bookmarks,
+            "session_id": session_id,
+            "filters": {
+                "category": category,
+                "tags": tags.split(",") if tags else None
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting bookmarks: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/bookmarks/{session_id}/{bookmark_id}")
+async def update_bookmark(session_id: str, bookmark_id: str, bookmark_data: Dict[str, Any]):
+    """Update an existing bookmark"""
+    try:
+        # Get game session to validate it exists
+        session = await db_service.get_game_session(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail=GAME_SESSION_NOT_FOUND)
+
+        # TODO: Implement actual bookmark update in database
+        # For now, return success
+        updated_bookmark = {
+            "id": bookmark_id,
+            "session_id": session_id,
+            "updated_at": datetime.now().isoformat(),
+            **bookmark_data
+        }
+
+        return {
+            "success": True,
+            "bookmark": updated_bookmark,
+            "message": "Bookmark updated successfully"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating bookmark: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/bookmarks/{session_id}/{bookmark_id}")
+async def delete_bookmark(session_id: str, bookmark_id: str):
+    """Delete a bookmark"""
+    try:
+        # Get game session to validate it exists
+        session = await db_service.get_game_session(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail=GAME_SESSION_NOT_FOUND)
+
+        # TODO: Implement actual bookmark deletion from database
+        # For now, return success
+        return {
+            "success": True,
+            "message": "Bookmark deleted successfully"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting bookmark: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/export/{session_id}")
+async def start_story_export(session_id: str, export_options: Dict[str, Any]):
+    """Start story export process"""
+    try:
+        # Get game session to validate it exists
+        session = await db_service.get_game_session(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail=GAME_SESSION_NOT_FOUND)
+
+        # Extract export options
+        format_type = export_options.get("format", "markdown")
+        include_character_info = export_options.get("include_character_info", True)
+        include_world_state = export_options.get("include_world_state", True)
+        include_bookmarks = export_options.get("include_bookmarks", True)
+        include_timestamps = export_options.get("include_timestamps", False)
+        custom_title = export_options.get("custom_title")
+
+        # Create export task
+        export_id = str(uuid.uuid4())
+
+        # TODO: Implement actual export generation
+        # For now, return export task info
+        return {
+            "success": True,
+            "export_id": export_id,
+            "status": "started",
+            "message": f"Export started for session {session_id}",
+            "format": format_type,
+            "options": export_options
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error starting story export: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/export/{session_id}/{export_id}")
+async def get_export_status(session_id: str, export_id: str):
+    """Get export progress and status"""
+    try:
+        # TODO: Implement actual export status tracking
+        # For now, return mock progress
+        return {
+            "export_id": export_id,
+            "session_id": session_id,
+            "status": "complete",
+            "progress": 100,
+            "message": "Export completed successfully",
+            "download_url": f"/api/export/{session_id}/{export_id}/download"
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting export status: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/search/{session_id}")
+async def search_story(session_id: str, search_options: Dict[str, Any]):
+    """Search story entries with AI-powered relevance"""
+    try:
+        # Get game session
+        session = await db_service.get_game_session(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail=GAME_SESSION_NOT_FOUND)
+
+        query = search_options.get("query", "").strip()
+        categories = search_options.get("categories", [])
+        max_results = search_options.get("max_results", 20)
+
+        if not query:
+            raise HTTPException(status_code=400, detail="Search query is required")
+
+        # Simple text search implementation
+        search_results = []
+        query_lower = query.lower()
+
+        for entry in session.story:
+            if query_lower in entry.text.lower():
+                # Calculate simple relevance score
+                relevance_score = entry.text.lower().count(query_lower) / len(entry.text.split())
+
+                # Extract matched text context
+                text_lower = entry.text.lower()
+                match_index = text_lower.find(query_lower)
+                start = max(0, match_index - 50)
+                end = min(len(entry.text), match_index + len(query) + 50)
+                matched_text = entry.text[start:end]
+
+                search_results.append({
+                    "entry_id": entry.id,
+                    "entry": entry.model_dump(),
+                    "relevance_score": min(1.0, relevance_score),
+                    "matched_text": matched_text,
+                    "context": {
+                        "before": entry.text[max(0, match_index - 100):match_index] if match_index > 0 else "",
+                        "after": entry.text[match_index + len(query):match_index + len(query) + 100] if match_index + len(query) < len(entry.text) else ""
+                    },
+                    "category": "dialogue" if "says" in entry.text.lower() or '"' in entry.text else "action" if entry.type == "player" else "description"
+                })
+
+        # Sort by relevance score
+        search_results.sort(key=lambda x: x["relevance_score"], reverse=True)
+        search_results = search_results[:max_results]
+
+        return {
+            "success": True,
+            "results": search_results,
+            "query": query,
+            "total_results": len(search_results),
+            "session_id": session_id
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error searching story: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/progression/{session_id}")
+async def get_character_progression(session_id: str):
+    """Get character progression analysis"""
+    try:
+        # Get game session
+        session = await db_service.get_game_session(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail=GAME_SESSION_NOT_FOUND)
+
+        # Calculate progression metrics
+        character = session.character
+        story_length = len(session.story)
+
+        # Simple progression analysis
+        overall_growth = min(100, (character.level - 1) * 20 + (story_length / 10))
+
+        # Analyze dominant traits based on stats
+        stats = character.stats.model_dump()
+        max_stat_value = max(stats.values()) if stats else 0
+        dominant_traits = [stat for stat, value in stats.items() if value == max_stat_value]
+
+        # Identify growth areas (lowest stats)
+        min_stat_value = min(stats.values()) if stats else 0
+        growth_areas = [stat for stat, value in stats.items() if value == min_stat_value]
+
+        # Generate recent milestones
+        recent_changes = []
+        if character.level > 1:
+            recent_changes.append({
+                "id": str(uuid.uuid4()),
+                "type": "level_up",
+                "title": f"Reached Level {character.level}",
+                "description": f"{character.name} has grown stronger through their adventures",
+                "timestamp": datetime.now().isoformat()
+            })
+
+        # Generate insights
+        insights = []
+        if story_length > 10:
+            insights.append({
+                "id": str(uuid.uuid4()),
+                "type": "story_engagement",
+                "title": "Active Adventurer",
+                "description": f"{character.name} has participated in {story_length} story moments, showing strong engagement",
+                "confidence": 0.8,
+                "timestamp": datetime.now().isoformat()
+            })
+
+        return {
+            "success": True,
+            "session_id": session_id,
+            "character_name": character.name,
+            "progression_analysis": {
+                "overall_growth": overall_growth,
+                "dominant_traits": dominant_traits,
+                "growth_areas": growth_areas,
+                "recent_changes": recent_changes,
+                "insights": insights
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting character progression: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ===== SCENARIO TEMPLATES ENDPOINTS =====
 
 

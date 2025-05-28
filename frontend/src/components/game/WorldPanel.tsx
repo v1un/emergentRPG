@@ -55,7 +55,7 @@ export function WorldPanel() {
       try {
         const content = await dynamicUIService.getDynamicUIContent({
           character: currentSession?.character,
-          session: currentSession,
+          session: currentSession || undefined,
           currentLocation: worldState?.current_location,
           gameState: worldState ? 'playing' : 'starting',
           panelType: 'world',

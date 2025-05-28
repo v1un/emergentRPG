@@ -102,7 +102,7 @@ export function QuestsPanel() {
       try {
         const content = await dynamicUIService.getDynamicUIContent({
           character: currentSession?.character,
-          session: currentSession,
+          session: currentSession || undefined,
           currentLocation: currentSession?.world_state?.current_location,
           gameState: quests.length === 0 ? 'starting' : 'playing',
           panelType: 'quests',

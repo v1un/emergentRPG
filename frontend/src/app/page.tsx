@@ -22,11 +22,24 @@ export default function Home() {
 
   // Auto-select the first session if none is selected and sessions are available
   useEffect(() => {
-    if (!currentSession && sessionsData?.sessions && sessionsData.sessions.length > 0) {
-      console.log('Auto-selecting first available session:', sessionsData.sessions[0].session_id);
-      setCurrentSession(sessionsData.sessions[0]);
-      setActivePanel(PANELS.STORY); // Set to story panel when auto-loading a session
-    }
+    const autoLoadSession = async () => {
+      if (!currentSession && sessionsData?.sessions && sessionsData.sessions.length > 0) {
+        const firstSession = sessionsData.sessions[0];
+        console.log('Auto-selecting first available session:', firstSession.session_id);
+
+        try {
+          // Fetch the full session data
+          const sessionData = await gameAPI.getSession(firstSession.session_id);
+          setCurrentSession(sessionData.session);
+          setActivePanel(PANELS.STORY); // Set to story panel when auto-loading a session
+        } catch (error) {
+          console.error('Failed to auto-load session:', error);
+          // Don't set current session if loading fails
+        }
+      }
+    };
+
+    autoLoadSession();
   }, [currentSession, sessionsData, setCurrentSession, setActivePanel]);
 
   const handleSessionSelect = (session: GameSession) => {
@@ -46,7 +59,9 @@ export default function Home() {
   // If session is active, let MainContent handle panel navigation
   return (
     <GameLayout>
-      {/* MainContent will automatically render the appropriate panels */}
+      <div className="flex-1">
+        {/* MainContent will automatically render the appropriate panels based on activePanel */}
+      </div>
     </GameLayout>
   );
 }

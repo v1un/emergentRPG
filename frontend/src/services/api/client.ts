@@ -236,6 +236,60 @@ export class GameAPIClient {
     );
   }
 
+  // Story Management endpoints
+  async createBookmark(sessionId: string, bookmarkData: any): Promise<{ success: boolean; bookmark: any; message: string }> {
+    return this.post<{ success: boolean; bookmark: any; message: string }>(
+      `/api/bookmarks/${sessionId}`,
+      bookmarkData
+    );
+  }
+
+  async getBookmarks(sessionId: string, filters?: { category?: string; tags?: string }): Promise<{ success: boolean; bookmarks: any[]; session_id: string; filters: any }> {
+    return this.get<{ success: boolean; bookmarks: any[]; session_id: string; filters: any }>(
+      `/api/bookmarks/${sessionId}`,
+      { params: filters }
+    );
+  }
+
+  async updateBookmark(sessionId: string, bookmarkId: string, bookmarkData: any): Promise<{ success: boolean; bookmark: any; message: string }> {
+    return this.put<{ success: boolean; bookmark: any; message: string }>(
+      `/api/bookmarks/${sessionId}/${bookmarkId}`,
+      bookmarkData
+    );
+  }
+
+  async deleteBookmark(sessionId: string, bookmarkId: string): Promise<{ success: boolean; message: string }> {
+    return this.delete<{ success: boolean; message: string }>(
+      `/api/bookmarks/${sessionId}/${bookmarkId}`
+    );
+  }
+
+  async startStoryExport(sessionId: string, exportOptions: any): Promise<{ success: boolean; export_id: string; status: string; message: string; format: string; options: any }> {
+    return this.post<{ success: boolean; export_id: string; status: string; message: string; format: string; options: any }>(
+      `/api/export/${sessionId}`,
+      exportOptions
+    );
+  }
+
+  async getExportStatus(sessionId: string, exportId: string): Promise<{ export_id: string; session_id: string; status: string; progress: number; message: string; download_url?: string }> {
+    return this.get<{ export_id: string; session_id: string; status: string; progress: number; message: string; download_url?: string }>(
+      `/api/export/${sessionId}/${exportId}`
+    );
+  }
+
+  async searchStory(sessionId: string, searchOptions: any): Promise<{ success: boolean; results: any[]; query: string; total_results: number; session_id: string }> {
+    return this.post<{ success: boolean; results: any[]; query: string; total_results: number; session_id: string }>(
+      `/api/search/${sessionId}`,
+      searchOptions
+    );
+  }
+
+  async getCharacterProgression(sessionId: string): Promise<{ success: boolean; session_id: string; character_name: string; progression_analysis: any }> {
+    return this.get<{ success: boolean; session_id: string; character_name: string; progression_analysis: any }>(
+      `/api/progression/${sessionId}`
+    );
+  }
+
   // Utility methods
   async ping(): Promise<{ success: boolean; timestamp: string }> {
     return this.get<{ success: boolean; timestamp: string }>('/api/ping');

@@ -4,7 +4,7 @@ export type Theme = 'light' | 'dark' | 'auto';
 
 export type ScreenSize = 'mobile' | 'tablet' | 'desktop';
 
-export type ActivePanel = 'story' | 'character' | 'inventory' | 'quests' | 'world';
+export type ActivePanel = 'sessions' | 'story' | 'character' | 'inventory' | 'quests' | 'world';
 
 export interface UIConfig {
   theme: Theme;

@@ -22,6 +22,14 @@ export type {
   CreateSessionRequest,
   HealthStatus,
   PerformanceMetrics,
+  StoryBookmark,
+  BookmarkFilter,
+  StoryExportOptions,
+  ExportProgress,
+  StorySearchResult,
+  StorySearchOptions,
+  CharacterMilestone,
+  CharacterProgressionInsight,
 } from './game';
 
 // API types

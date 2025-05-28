@@ -7,13 +7,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { gameAPI } from '@/services/api/client';
 import { useGameStore } from '@/stores/gameStore';
 import { Button } from '@/components/ui/Button';
+import { ActionButton } from '@/components/ui/ActionButton';
+import { ButtonGroup } from '@/components/ui/ButtonGroup';
 import { Input } from '@/components/ui/Input';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { LoadingSpinner, LoadingCard } from '@/components/ui/Loading';
 import { cn } from '@/utils/helpers';
 import { dateFormatters, gameFormatters } from '@/utils/formatting';
 import { createSessionSchema } from '@/utils/validation';
-import { GameSession, CreateSessionRequest, ScenarioTemplate, Lorebook } from '@/types';
+import { GameSession, GameSessionSummary, CreateSessionRequest } from '@/types';
 import { QUERY_KEYS } from '@/utils/constants';
 import {
   PlusIcon,
@@ -112,7 +114,7 @@ export function SessionManager({ onSessionSelect }: SessionManagerProps) {
     createSessionMutation.mutate(createFormData);
   };
 
-  const handleLoadSession = async (session: GameSession) => {
+  const handleLoadSession = async (session: GameSessionSummary) => {
     setLoadingSession(true);
     try {
       // Fetch fresh session data
@@ -373,16 +375,26 @@ export function SessionManager({ onSessionSelect }: SessionManagerProps) {
             Create a new adventure or continue an existing one
           </p>
         </div>
-        <div className="flex space-x-3">
-          <Button variant="outline" onClick={handleCreateDemoSession}>
-            <PlayIcon className="h-4 w-4 mr-2" />
+        <ButtonGroup spacing="md">
+          <ActionButton
+            action="play"
+            onClick={handleCreateDemoSession}
+            aria-label="Create demo session"
+            tooltip="Try a demo session to explore the interface"
+            loadingText="Creating demo..."
+            successText="Demo loaded!"
+          >
             Demo Session
-          </Button>
-          <Button onClick={() => setShowCreateForm(true)}>
-            <PlusIcon className="h-4 w-4 mr-2" />
+          </ActionButton>
+          <ActionButton
+            action="add"
+            onClick={() => setShowCreateForm(true)}
+            aria-label="Create new session"
+            tooltip="Create a new game session"
+          >
             New Session
-          </Button>
-        </div>
+          </ActionButton>
+        </ButtonGroup>
       </div>
 
       {/* Sessions Grid */}
@@ -401,16 +413,27 @@ export function SessionManager({ onSessionSelect }: SessionManagerProps) {
           <p className="text-muted-foreground mb-4">
             Create your first game session to begin your AI-driven adventure.
           </p>
-          <div className="flex space-x-3 justify-center">
-            <Button variant="outline" onClick={handleCreateDemoSession}>
-              <PlayIcon className="h-4 w-4 mr-2" />
+          <ButtonGroup spacing="md" className="justify-center">
+            <ActionButton
+              action="play"
+              variant="outline"
+              onClick={handleCreateDemoSession}
+              aria-label="Try demo session"
+              tooltip="Experience the AI storytelling with a demo session"
+              loadingText="Creating demo..."
+              successText="Demo ready!"
+            >
               Try Demo Session
-            </Button>
-            <Button onClick={() => setShowCreateForm(true)}>
-              <PlusIcon className="h-4 w-4 mr-2" />
+            </ActionButton>
+            <ActionButton
+              action="add"
+              onClick={() => setShowCreateForm(true)}
+              aria-label="Create first session"
+              tooltip="Create your first AI-driven adventure"
+            >
               Create First Session
-            </Button>
-          </div>
+            </ActionButton>
+          </ButtonGroup>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -426,25 +449,30 @@ export function SessionManager({ onSessionSelect }: SessionManagerProps) {
                       Level {session.character.level} {session.character.class_name}
                     </p>
                   </div>
-                  <div className="flex space-x-1">
-                    <Button
-                      size="icon"
-                      variant="ghost"
+                  <ButtonGroup spacing="sm">
+                    <ActionButton
+                      action="play"
+                      iconOnly
                       onClick={() => handleLoadSession(session)}
                       disabled={deleteSessionMutation.isPending}
-                    >
-                      <PlayIcon className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
+                      aria-label={`Load session for ${session.character.name}`}
+                      tooltip="Load this session"
+                      loadingText="Loading session..."
+                      successText="Session loaded!"
+                    />
+                    <ActionButton
+                      action="delete"
+                      iconOnly
                       onClick={() => handleDeleteSession(session.session_id)}
                       disabled={deleteSessionMutation.isPending}
-                      className="text-red-500 hover:text-red-600"
-                    >
-                      <TrashIcon className="h-4 w-4" />
-                    </Button>
-                  </div>
+                      aria-label={`Delete session for ${session.character.name}`}
+                      tooltip="Delete this session"
+                      confirmAction
+                      confirmMessage={`Are you sure you want to delete the session for ${session.character.name}? This action cannot be undone.`}
+                      loadingText="Deleting..."
+                      successText="Deleted!"
+                    />
+                  </ButtonGroup>
                 </div>
               </CardHeader>
               <CardContent>
@@ -468,7 +496,7 @@ export function SessionManager({ onSessionSelect }: SessionManagerProps) {
                   
                   <div className="text-sm">
                     <p className="text-muted-foreground">Story Entries:</p>
-                    <p className="font-medium">{session.story?.length || 0}</p>
+                    <p className="font-medium">{session.story_length || 0}</p>
                   </div>
                 </div>
               </CardContent>

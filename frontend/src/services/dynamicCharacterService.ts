@@ -2,7 +2,7 @@
 // Replaces hardcoded character defaults with AI-generated values
 
 import { Character, CharacterStats } from '@/types';
-import { gameAPIClient } from '@/services/gameAPIClient';
+// import { gameAPI } from '@/services/api/client'; // TODO: Implement AI character generation API
 import { DEFAULT_VALUES } from '@/utils/constants';
 
 export interface CharacterGenerationContext {
@@ -37,19 +37,12 @@ class DynamicCharacterService {
    */
   async generateCharacterAttributes(context: CharacterGenerationContext): Promise<AICharacterSuggestion> {
     try {
-      // Call backend AI service for character generation
-      const response = await gameAPIClient.post('/api/ai/generate-character', {
-        character_name: context.characterName,
-        class_name: context.className,
-        background: context.background,
-        scenario_id: context.scenarioId,
-        lorebook_id: context.lorebookId,
-        player_preferences: context.playerPreferences,
-      });
-
-      return this.parseAICharacterResponse(response.data);
+      // TODO: Implement AI character generation API call
+      // For now, use intelligent fallback based on class and context
+      console.log('AI character generation not yet implemented, using intelligent fallback');
+      return this.generateIntelligentFallback(context);
     } catch (error) {
-      console.warn('AI character generation failed, using intelligent fallback:', error);
+      console.warn('Character generation failed, using intelligent fallback:', error);
       return this.generateIntelligentFallback(context);
     }
   }

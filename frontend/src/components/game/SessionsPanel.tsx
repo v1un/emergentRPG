@@ -93,7 +93,7 @@ export function SessionsPanel() {
   const handleCreateNewSession = () => {
     // Clear current session to show session manager
     setCurrentSession(null);
-    toast.info('Create a new session below');
+    toast('Create a new session below');
   };
 
   if (isLoadingSessions) {

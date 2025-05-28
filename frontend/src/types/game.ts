@@ -201,3 +201,100 @@ export interface PerformanceMetrics {
     error_rate: number;
   }>;
 }
+
+// Bookmark system types
+export interface StoryBookmark {
+  id: string;
+  storyEntryId: string;
+  sessionId: string;
+  title: string;
+  description?: string;
+  tags: string[];
+  aiSummary?: string;
+  createdAt: string;
+  updatedAt: string;
+  category: 'important' | 'character_development' | 'plot_point' | 'dialogue' | 'action' | 'custom';
+  isPrivate: boolean;
+}
+
+export interface BookmarkFilter {
+  category?: string;
+  tags?: string[];
+  searchQuery?: string;
+  dateRange?: {
+    start: string;
+    end: string;
+  };
+}
+
+// Export system types
+export interface StoryExportOptions {
+  format: 'pdf' | 'markdown' | 'text' | 'json';
+  includeCharacterInfo: boolean;
+  includeWorldState: boolean;
+  includeBookmarks: boolean;
+  includeTimestamps: boolean;
+  customTitle?: string;
+  dateRange?: {
+    start: string;
+    end: string;
+  };
+}
+
+export interface ExportProgress {
+  id: string;
+  status: 'preparing' | 'generating' | 'formatting' | 'complete' | 'error';
+  progress: number;
+  message: string;
+  downloadUrl?: string;
+  error?: string;
+}
+
+// Search and navigation types
+export interface StorySearchResult {
+  entryId: string;
+  entry: StoryEntry;
+  relevanceScore: number;
+  matchedText: string;
+  context: {
+    before: string;
+    after: string;
+  };
+  category: 'dialogue' | 'action' | 'description' | 'system';
+}
+
+export interface StorySearchOptions {
+  query: string;
+  categories?: string[];
+  dateRange?: {
+    start: string;
+    end: string;
+  };
+  includeBookmarked?: boolean;
+  maxResults?: number;
+}
+
+// Character progression types
+export interface CharacterMilestone {
+  id: string;
+  sessionId: string;
+  characterName: string;
+  type: 'level_up' | 'skill_gain' | 'story_achievement' | 'relationship_change' | 'custom';
+  title: string;
+  description: string;
+  timestamp: string;
+  relatedStoryEntryId?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface CharacterProgressionInsight {
+  id: string;
+  characterName: string;
+  insightType: 'growth_pattern' | 'decision_analysis' | 'relationship_dynamics' | 'skill_development';
+  title: string;
+  description: string;
+  aiGenerated: boolean;
+  confidence: number;
+  relatedMilestones: string[];
+  timestamp: string;
+}

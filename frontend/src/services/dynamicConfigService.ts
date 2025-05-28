@@ -2,7 +2,7 @@
 // Replaces hardcoded game mechanics with AI-generated values
 
 import { Character, GameSession, StoryEntry } from '@/types';
-import { gameAPIClient } from '@/services/gameAPIClient';
+// import { gameAPI } from '@/services/api/client'; // TODO: Implement AI config generation API
 import { DEFAULT_VALUES } from '@/utils/constants';
 
 export interface GameContext {
@@ -69,16 +69,9 @@ class DynamicConfigService {
    * Generate AI-driven configuration
    */
   private async generateAIConfig(context: GameContext): Promise<DynamicGameConfig> {
-    const response = await gameAPIClient.post('/api/ai/generate-game-config', {
-      character: context.character,
-      session_id: context.session?.session_id,
-      story_length: context.storyLength,
-      current_location: context.currentLocation,
-      difficulty: context.difficulty,
-      playstyle: context.playstyle,
-    });
-
-    return this.parseAIConfigResponse(response.data);
+    // TODO: Implement AI config generation API call
+    console.log('AI config generation not yet implemented, using adaptive fallback');
+    throw new Error('AI config generation not implemented');
   }
 
   /**
@@ -214,15 +207,9 @@ class DynamicConfigService {
    */
   async getDynamicActionSuggestions(context: GameContext): Promise<string[]> {
     try {
-      const response = await gameAPIClient.post('/api/ai/generate-action-suggestions', {
-        character: context.character,
-        current_location: context.currentLocation,
-        recent_story: context.session?.story?.slice(-5), // Last 5 entries
-        playstyle: context.playstyle,
-        difficulty: context.difficulty,
-      });
-
-      return response.data.suggestions || this.getFallbackSuggestions(context);
+      // TODO: Implement AI action suggestions API call
+      console.log('AI action suggestions not yet implemented, using fallback');
+      return this.getFallbackSuggestions(context);
     } catch (error) {
       console.warn('AI action suggestions failed, using fallback:', error);
       return this.getFallbackSuggestions(context);

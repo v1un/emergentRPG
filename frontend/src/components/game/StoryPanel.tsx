@@ -20,15 +20,11 @@ import {
   BookmarkIcon,
   ArrowDownTrayIcon,
   MagnifyingGlassIcon,
-  ChevronDownIcon,
-  ChevronUpIcon,
   DocumentTextIcon,
-  FolderIcon,
-  StarIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import {
   BookmarkIcon as BookmarkSolidIcon,
-  StarIcon as StarSolidIcon,
 } from '@heroicons/react/24/solid';
 
 export function StoryPanel() {
@@ -36,7 +32,6 @@ export function StoryPanel() {
   const story = useCurrentStory();
   const isAIGenerating = useIsAIGenerating();
   const connectionStatus = useConnectionStatus();
-  const { isConnected } = useGameStore();
 
   const [actionInput, setActionInput] = useState('');
   const [actionError, setActionError] = useState('');
@@ -46,6 +41,12 @@ export function StoryPanel() {
   const [showBookmarks, setShowBookmarks] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [dynamicContent, setDynamicContent] = useState<DynamicUIContent | null>(null);
+
+  // Enhanced modal states
+  const [showBookmarkManager, setShowBookmarkManager] = useState(false);
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+  const [showStoryExporter, setShowStoryExporter] = useState(false);
+
   const storyEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -84,7 +85,7 @@ export function StoryPanel() {
       try {
         const content = await dynamicUIService.getDynamicUIContent({
           character: currentSession?.character,
-          session: currentSession,
+          session: currentSession || undefined,
           currentLocation: currentSession?.world_state?.current_location,
           recentStory: story.slice(-3), // Last 3 entries for context
           gameState: story.length === 0 ? 'starting' : 'playing',
@@ -161,17 +162,70 @@ export function StoryPanel() {
     }
   };
 
-  // Story enhancement functions
-  const handleBookmarkEntry = (entryId: string) => {
-    setBookmarkedEntries(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(entryId)) {
-        newSet.delete(entryId);
+  // Enhanced story management functions
+  const handleBookmarkEntry = async (entryId: string) => {
+    const entry = story.find(e => e.id === entryId);
+    if (!entry || !currentSession) return;
+
+    try {
+      if (bookmarkedEntries.has(entryId)) {
+        // Remove bookmark
+        setBookmarkedEntries(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(entryId);
+          return newSet;
+        });
+        // TODO: Call bookmarkService.deleteBookmark when backend is ready
       } else {
-        newSet.add(entryId);
+        // Add bookmark
+        setBookmarkedEntries(prev => {
+          const newSet = new Set(prev);
+          newSet.add(entryId);
+          return newSet;
+        });
+        // TODO: Call bookmarkService.createBookmark when backend is ready
       }
-      return newSet;
-    });
+    } catch (error) {
+      console.error('Failed to toggle bookmark:', error);
+      // Revert optimistic update on error
+      setBookmarkedEntries(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(entryId)) {
+          newSet.delete(entryId);
+        } else {
+          newSet.add(entryId);
+        }
+        return newSet;
+      });
+    }
+  };
+
+  const handleBookmarkSelect = (bookmark: any) => {
+    // Scroll to the bookmarked entry
+    const entryElement = document.getElementById(`story-entry-${bookmark.storyEntryId}`);
+    if (entryElement) {
+      entryElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Highlight the entry briefly
+      entryElement.classList.add('ring-4', 'ring-blue-400', 'ring-opacity-50');
+      setTimeout(() => {
+        entryElement.classList.remove('ring-4', 'ring-blue-400', 'ring-opacity-50');
+      }, 2000);
+    }
+    setShowBookmarkManager(false);
+  };
+
+  const handleSearchResultSelect = (result: any) => {
+    // Scroll to the search result entry
+    const entryElement = document.getElementById(`story-entry-${result.entryId}`);
+    if (entryElement) {
+      entryElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Highlight the entry briefly
+      entryElement.classList.add('ring-4', 'ring-green-400', 'ring-opacity-50');
+      setTimeout(() => {
+        entryElement.classList.remove('ring-4', 'ring-green-400', 'ring-opacity-50');
+      }, 2000);
+    }
+    setShowAdvancedSearch(false);
   };
 
   const handleExportStory = (format: 'markdown' | 'pdf' | 'txt') => {
@@ -246,7 +300,7 @@ export function StoryPanel() {
           </div>
 
           <div className="flex items-center space-x-2 flex-wrap">
-            {/* Search Toggle */}
+            {/* Quick Search Toggle */}
             <Button
               variant="outline"
               size="sm"
@@ -255,10 +309,21 @@ export function StoryPanel() {
                 'transition-all duration-200',
                 showSearch && 'bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-700'
               )}
-              aria-label="Toggle search"
+              aria-label="Toggle quick search"
             >
               <MagnifyingGlassIcon className="h-4 w-4" />
-              <span className="hidden sm:inline ml-1">Search</span>
+              <span className="hidden sm:inline ml-1">Quick Search</span>
+            </Button>
+
+            {/* Advanced Search */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAdvancedSearch(true)}
+              aria-label="Advanced search"
+            >
+              <MagnifyingGlassIcon className="h-4 w-4" />
+              <span className="hidden sm:inline ml-1">Advanced</span>
             </Button>
 
             {/* Bookmarks Toggle */}
@@ -281,50 +346,27 @@ export function StoryPanel() {
               )}
             </Button>
 
-            {/* Export Menu */}
-            <div className="relative">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowExportMenu(!showExportMenu)}
-                className="transition-all duration-200"
-                aria-label="Export story"
-              >
-                <ArrowDownTrayIcon className="h-4 w-4" />
-                <span className="hidden sm:inline ml-1">Export</span>
-              </Button>
+            {/* Bookmark Manager */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowBookmarkManager(true)}
+              aria-label="Manage bookmarks"
+            >
+              <BookmarkIcon className="h-4 w-4" />
+              <span className="hidden sm:inline ml-1">Manage</span>
+            </Button>
 
-              {showExportMenu && (
-                <div className="absolute right-0 top-full mt-1 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-10 animate-in slide-in-from-top-2 duration-200">
-                  <div className="py-2">
-                    {dynamicUIService.getExportOptions({
-                      character: currentSession?.character,
-                      session: currentSession,
-                      currentLocation: currentSession?.world_state?.current_location,
-                      recentStory: story.slice(-3),
-                      gameState: story.length === 0 ? 'starting' : 'playing',
-                      panelType: 'story',
-                    }).map((option) => (
-                      <button
-                        key={option.value}
-                        onClick={() => handleExportStory(option.value as 'markdown' | 'pdf' | 'txt')}
-                        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150 flex flex-col"
-                        disabled={option.value === 'pdf'}
-                      >
-                        <div className="flex items-center">
-                          <DocumentTextIcon className="h-4 w-4 mr-3 text-blue-500" />
-                          <span className="font-medium">{option.label}</span>
-                          {option.value === 'pdf' && (
-                            <span className="ml-auto text-xs bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">Soon</span>
-                          )}
-                        </div>
-                        <span className="text-xs text-muted-foreground ml-7 mt-1">{option.description}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            {/* Export */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowStoryExporter(true)}
+              aria-label="Export story"
+            >
+              <ArrowDownTrayIcon className="h-4 w-4" />
+              <span className="hidden sm:inline ml-1">Export</span>
+            </Button>
           </div>
         </div>
 
@@ -392,6 +434,7 @@ export function StoryPanel() {
           displayedStory.map((entry: StoryEntry, index: number) => (
             <Card
               key={entry.id}
+              id={`story-entry-${entry.id}`}
               className={cn(
                 'p-4 transition-all duration-300 group relative hover:shadow-lg hover:scale-[1.01] transform',
                 'animate-in slide-in-from-bottom-2 fade-in duration-500',
@@ -624,6 +667,95 @@ export function StoryPanel() {
           </div>
         </form>
       </div>
+
+      {/* Enhanced Modal Components */}
+
+      {/* Bookmark Manager Modal */}
+      {showBookmarkManager && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-xl font-semibold">Bookmark Manager</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowBookmarkManager(false)}
+                aria-label="Close bookmark manager"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </Button>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+              {/* TODO: Replace with actual BookmarkManager component when imports are fixed */}
+              <div className="text-center py-12">
+                <BookmarkIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">Bookmark Manager</h3>
+                <p className="text-muted-foreground">
+                  Advanced bookmark management will be available here.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Advanced Search Modal */}
+      {showAdvancedSearch && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-xl font-semibold">Advanced Story Search</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowAdvancedSearch(false)}
+                aria-label="Close advanced search"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </Button>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+              {/* TODO: Replace with actual StorySearch component when imports are fixed */}
+              <div className="text-center py-12">
+                <MagnifyingGlassIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">Advanced Search</h3>
+                <p className="text-muted-foreground">
+                  AI-powered story search will be available here.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Story Exporter Modal */}
+      {showStoryExporter && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-xl font-semibold">Export Story</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowStoryExporter(false)}
+                aria-label="Close story exporter"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </Button>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+              {/* TODO: Replace with actual StoryExporter component when imports are fixed */}
+              <div className="text-center py-12">
+                <ArrowDownTrayIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">Story Exporter</h3>
+                <p className="text-muted-foreground">
+                  Advanced export options will be available here.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

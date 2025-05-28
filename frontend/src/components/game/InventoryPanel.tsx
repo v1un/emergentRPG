@@ -3,13 +3,16 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { useCurrentInventory, useCurrentCharacter, useGameStore } from '@/stores/gameStore';
+import { useCurrentInventory, useCurrentCharacter, useGameStore, useCurrentSession } from '@/stores/gameStore';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { ActionButton } from '@/components/ui/ActionButton';
 import { Input } from '@/components/ui/Input';
 import { cn } from '@/utils/helpers';
 import { gameFormatters } from '@/utils/formatting';
 import { InventoryItem, EquipmentSlot } from '@/types';
+import { gameAPI } from '@/services/api/client';
+import { toast } from 'react-hot-toast';
 import {
   ShoppingBagIcon,
   MagnifyingGlassIcon,
@@ -32,6 +35,7 @@ type SortBy = 'name' | 'type' | 'weight' | 'rarity';
 export function InventoryPanel() {
   const inventory = useCurrentInventory();
   const character = useCurrentCharacter();
+  const currentSession = useCurrentSession();
   const { updateSession } = useGameStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<string>('all');
@@ -85,17 +89,49 @@ export function InventoryPanel() {
   };
 
   // Item action handlers
-  const handleUseItem = (item: InventoryItem) => {
-    if (item.type === 'consumable') {
-      // TODO: Implement consumable use logic
-      console.log('Using consumable:', item.name);
-    } else {
-      console.log('Cannot use this item type:', item.type);
+  const handleUseItem = async (item: InventoryItem) => {
+    if (!currentSession) {
+      toast.error('No active session');
+      return;
+    }
+
+    if (item.type !== 'consumable') {
+      toast.error('This item cannot be used');
+      return;
+    }
+
+    try {
+      // Optimistic update - reduce quantity immediately
+      const updatedInventory = inventory.map(invItem =>
+        invItem.id === item.id
+          ? { ...invItem, quantity: Math.max(0, invItem.quantity - 1) }
+          : invItem
+      ).filter(invItem => invItem.quantity > 0);
+
+      updateSession({
+        inventory: updatedInventory,
+      });
+
+      // TODO: Make API call to use item when backend endpoint is ready
+      // const response = await gameAPI.useItem(currentSession.session_id, item.id);
+
+      toast.success(`Used ${item.name}`);
+    } catch (error) {
+      console.error('Failed to use item:', error);
+      toast.error('Failed to use item');
+
+      // Revert optimistic update on error
+      updateSession({
+        inventory: inventory,
+      });
     }
   };
 
-  const handleEquipItem = (item: InventoryItem) => {
-    if (!character) return;
+  const handleEquipItem = async (item: InventoryItem) => {
+    if (!character || !currentSession) {
+      toast.error('Cannot equip item');
+      return;
+    }
 
     const equipmentSlots: Record<string, EquipmentSlot> = {
       weapon: 'weapon',
@@ -106,10 +142,17 @@ export function InventoryPanel() {
     };
 
     const slot = equipmentSlots[item.type];
-    if (slot) {
+    if (!slot) {
+      toast.error('This item cannot be equipped');
+      return;
+    }
+
+    try {
+      const previousItem = character.equipped_items[slot];
       const updatedEquipment = { ...character.equipped_items };
       updatedEquipment[slot] = item.name;
 
+      // Optimistic update
       updateSession({
         character: {
           ...character,
@@ -117,17 +160,59 @@ export function InventoryPanel() {
         },
       });
 
+      // TODO: Make API call to equip item when backend endpoint is ready
+      // const response = await gameAPI.equipItem(currentSession.session_id, item.id, slot);
+
+      toast.success(`Equipped ${item.name}`);
+
       // Show comparison if there was an item already equipped
-      if (character.equipped_items[slot]) {
+      if (previousItem) {
         setComparisonItem(item);
         setShowComparison(true);
       }
+    } catch (error) {
+      console.error('Failed to equip item:', error);
+      toast.error('Failed to equip item');
+
+      // Revert optimistic update on error
+      updateSession({
+        character: character,
+      });
     }
   };
 
-  const handleDropItem = (item: InventoryItem) => {
-    // TODO: Implement drop item logic
-    console.log('Dropping item:', item.name);
+  const handleDropItem = async (item: InventoryItem) => {
+    if (!currentSession) {
+      toast.error('No active session');
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to drop ${item.name}?`)) {
+      return;
+    }
+
+    try {
+      // Optimistic update - remove item from inventory
+      const updatedInventory = inventory.filter(invItem => invItem.id !== item.id);
+
+      updateSession({
+        inventory: updatedInventory,
+      });
+
+      // TODO: Make API call to drop item when backend endpoint is ready
+      // const response = await gameAPI.dropItem(currentSession.session_id, item.id);
+
+      toast.success(`Dropped ${item.name}`);
+      setSelectedItem(null); // Clear selection if dropped item was selected
+    } catch (error) {
+      console.error('Failed to drop item:', error);
+      toast.error('Failed to drop item');
+
+      // Revert optimistic update on error
+      updateSession({
+        inventory: inventory,
+      });
+    }
   };
 
   const handleCompareItem = (item: InventoryItem) => {
@@ -206,55 +291,59 @@ export function InventoryPanel() {
           <div className="absolute inset-x-2 bottom-2 opacity-0 group-hover:opacity-100 transition-opacity">
             <div className="flex space-x-1">
               {isConsumable && (
-                <Button
+                <ActionButton
+                  action="use"
                   size="sm"
-                  variant="outline"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleUseItem(item);
                   }}
                   className="flex-1 text-xs"
+                  tooltip="Use this consumable item"
                 >
                   Use
-                </Button>
+                </ActionButton>
               )}
               {isEquippable && (
-                <Button
+                <ActionButton
+                  action="equip"
                   size="sm"
-                  variant="outline"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleEquipItem(item);
                   }}
                   className="flex-1 text-xs"
+                  tooltip="Equip this item"
                 >
                   Equip
-                </Button>
+                </ActionButton>
               )}
               {isEquippable && (
-                <Button
+                <ActionButton
+                  action="compare"
                   size="sm"
-                  variant="outline"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleCompareItem(item);
                   }}
                   className="flex-1 text-xs"
+                  tooltip="Compare with equipped item"
                 >
                   <ArrowsRightLeftIcon className="h-3 w-3" />
-                </Button>
+                </ActionButton>
               )}
-              <Button
+              <ActionButton
+                action="delete"
                 size="sm"
-                variant="outline"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleDropItem(item);
                 }}
-                className="text-xs text-red-600 hover:text-red-700"
+                className="text-xs"
+                tooltip="Drop this item"
               >
                 <TrashIcon className="h-3 w-3" />
-              </Button>
+              </ActionButton>
             </div>
           </div>
         </CardContent>
@@ -477,41 +566,49 @@ export function InventoryPanel() {
 
             <div className="space-y-2">
               {selectedItem.type === 'consumable' && (
-                <Button
+                <ActionButton
+                  action="use"
                   className="w-full"
                   onClick={() => handleUseItem(selectedItem)}
+                  tooltip="Use this consumable item"
                 >
                   <InformationCircleIcon className="h-4 w-4 mr-2" />
                   Use Item
-                </Button>
+                </ActionButton>
               )}
               {['weapon', 'armor', 'helmet', 'boots', 'accessory'].includes(selectedItem.type) && (
                 <>
-                  <Button
+                  <ActionButton
+                    action="equip"
                     className="w-full"
                     onClick={() => handleEquipItem(selectedItem)}
+                    tooltip="Equip this item"
                   >
                     <WrenchScrewdriverIcon className="h-4 w-4 mr-2" />
                     Equip Item
-                  </Button>
-                  <Button
+                  </ActionButton>
+                  <ActionButton
+                    action="compare"
                     variant="outline"
                     className="w-full"
                     onClick={() => handleCompareItem(selectedItem)}
+                    tooltip="Compare with currently equipped item"
                   >
                     <ArrowsRightLeftIcon className="h-4 w-4 mr-2" />
                     Compare Equipment
-                  </Button>
+                  </ActionButton>
                 </>
               )}
-              <Button
+              <ActionButton
+                action="delete"
                 variant="outline"
-                className="w-full text-red-600 hover:text-red-700"
+                className="w-full"
                 onClick={() => handleDropItem(selectedItem)}
+                tooltip="Drop this item permanently"
               >
                 <TrashIcon className="h-4 w-4 mr-2" />
                 Drop Item
-              </Button>
+              </ActionButton>
             </div>
           </div>
         </div>
