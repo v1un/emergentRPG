@@ -153,7 +153,18 @@ export function SessionManager({ onSessionSelect }: SessionManagerProps) {
           wisdom: 11,
           charisma: 10,
         },
-        skills: ['Swordsmanship', 'Exploration', 'Survival'],
+        equipped_items: {
+          weapon: 'Steel Sword',
+          helmet: '',
+          chest: '',
+          legs: '',
+          boots: '',
+          gloves: '',
+          ring: '',
+          necklace: '',
+          shield: '',
+        },
+        max_carry_weight: 100,
       },
       world_state: {
         current_location: 'Mystical Forest Clearing',
@@ -165,8 +176,9 @@ export function SessionManager({ onSessionSelect }: SessionManagerProps) {
           'Examine the mysterious glowing crystals',
           'Rest by the peaceful stream',
         ],
-        discovered_locations: ['Village of Elderbrook', 'Mystical Forest Clearing'],
-        active_npcs: ['Forest Guardian', 'Wise Owl'],
+        npcs_present: ['Forest Guardian', 'Wise Owl'],
+        environment_description: 'A peaceful clearing surrounded by ancient trees, with a gentle stream flowing nearby.',
+        special_conditions: ['Magical aura present'],
       },
       inventory: [
         {
@@ -175,8 +187,13 @@ export function SessionManager({ onSessionSelect }: SessionManagerProps) {
           type: 'weapon',
           rarity: 'common',
           description: 'A well-crafted steel sword with a sharp edge.',
+          quantity: 1,
           equipped: true,
-          stats: { attack: 15, durability: 80 },
+          equipment_slot: 'weapon',
+          weight: 3.5,
+          durability: 80,
+          max_durability: 100,
+          metadata: { attack: 15 },
         },
         {
           id: 'potion-1',
@@ -185,6 +202,9 @@ export function SessionManager({ onSessionSelect }: SessionManagerProps) {
           rarity: 'common',
           description: 'Restores 50 health points.',
           quantity: 3,
+          equipped: false,
+          weight: 0.2,
+          metadata: { healing: 50 },
         },
       ],
       quests: [
@@ -193,12 +213,21 @@ export function SessionManager({ onSessionSelect }: SessionManagerProps) {
           title: 'The Lost Artifact',
           description: 'Find the ancient artifact hidden in the mystical forest.',
           status: 'active',
+          progress: {
+            current: 1,
+            total: 3,
+            completed_objectives: [true, false, false],
+            percentage: 33,
+            is_complete: false,
+          },
           objectives: [
-            { id: 'obj-1', description: 'Explore the forest clearing', completed: true },
-            { id: 'obj-2', description: 'Locate the ancient ruins', completed: false },
-            { id: 'obj-3', description: 'Retrieve the artifact', completed: false },
+            'Explore the forest clearing',
+            'Locate the ancient ruins',
+            'Retrieve the artifact',
           ],
           rewards: { experience: 500, gold: 100 },
+          dependencies: [],
+          failure_conditions: ['Character dies', 'Time limit exceeded'],
         },
       ],
       story: [
@@ -439,7 +468,7 @@ export function SessionManager({ onSessionSelect }: SessionManagerProps) {
                   
                   <div className="text-sm">
                     <p className="text-muted-foreground">Story Entries:</p>
-                    <p className="font-medium">{session.story.length}</p>
+                    <p className="font-medium">{session.story?.length || 0}</p>
                   </div>
                 </div>
               </CardContent>

@@ -270,7 +270,7 @@ export function AccessibleField({
           'aria-describedby': [descriptionId, errorId].filter(Boolean).join(' ') || undefined,
           'aria-invalid': error ? 'true' : undefined,
           'aria-required': required ? 'true' : undefined,
-        })}
+        } as any)}
       </div>
       
       {error && (

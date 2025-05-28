@@ -12,6 +12,7 @@ export type {
   Quest,
   WorldState,
   GameSession,
+  GameSessionSummary,
   PlayerAction,
   ActionResult,
   GenerationRequest,

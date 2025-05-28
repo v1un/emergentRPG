@@ -253,24 +253,26 @@ export async function retryWithBackoff<T>(
   maxRetries = 3,
   baseDelay = 1000
 ): Promise<T> {
-  let lastError: Error;
-  
+  let lastError: Error | undefined;
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await fn();
     } catch (error) {
       lastError = error as Error;
-      
+
       if (attempt === maxRetries) {
         throw lastError;
       }
-      
+
       const delay = baseDelay * Math.pow(2, attempt);
       await sleep(delay);
     }
   }
-  
-  throw lastError!;
+
+  // This should never be reached due to the loop logic above,
+  // but TypeScript requires it for type safety
+  throw lastError || new Error('Retry operation failed with unknown error');
 }
 
 /**

@@ -94,10 +94,10 @@ async def test_health_endpoint():
                 "redis_cache": {"status": "unavailable", "connected": False}
             },
             "ai": {
-                "status": "healthy" if settings.GOOGLE_API_KEY else "degraded",
-                "api_key_configured": bool(settings.GOOGLE_API_KEY),
-                "model": settings.GEMINI_MODEL,
-                "rate_limit": settings.GEMINI_REQUESTS_PER_MINUTE
+                "status": "healthy" if settings.ai.google_api_key else "degraded",
+                "api_key_configured": bool(settings.ai.google_api_key),
+                "model": settings.ai.gemini_model,
+                "rate_limit": settings.ai.requests_per_minute
             }
         },
         "performance": health_summary,

@@ -1,6 +1,6 @@
 // Custom hook for WebSocket game communication
 
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useMemo } from 'react';
 import { gameWebSocket } from '@/services/websocket/gameWebSocket';
 import { useGameStore } from '@/stores/gameStore';
 import { GameMessage, WebSocketCallbacks } from '@/types';
@@ -45,7 +45,7 @@ export function useGameWebSocket(
   const { autoConnect = true, onConnect, onDisconnect, onError } = options;
 
   // Memoize WebSocket callbacks to prevent unnecessary reconnections
-  const callbacks: WebSocketCallbacks = useCallback(() => ({
+  const callbacks: WebSocketCallbacks = useMemo(() => ({
     onConnect: () => {
       console.log('WebSocket connected');
       setConnectionStatus('connected');
@@ -115,24 +115,14 @@ export function useGameWebSocket(
       setLastError(wsError.message);
       onError?.(wsError);
     },
-  }), [
-    setConnectionStatus,
-    setConnected,
-    addStoryEntry,
-    updateWorldState,
-    setAIGenerating,
-    setLastError,
-    onConnect,
-    onDisconnect,
-    onError,
-  ]);
+  }), []); // Empty deps - all functions are either stable or captured in closure
 
   // Connect function
   const connect = useCallback(async (targetSessionId: string) => {
     try {
       setError(null);
       setConnectionStatus('connecting');
-      await gameWebSocket.connect(targetSessionId, callbacks());
+      await gameWebSocket.connect(targetSessionId, callbacks);
     } catch (err) {
       const error = err as Error;
       setError(error);
@@ -140,14 +130,14 @@ export function useGameWebSocket(
       setLastError(error.message);
       throw error;
     }
-  }, [callbacks, setConnectionStatus, setLastError]);
+  }, [callbacks]); // Zustand store functions are stable, no need to include in deps
 
   // Disconnect function
   const disconnect = useCallback(() => {
     gameWebSocket.disconnect();
     setConnectionStatus('disconnected');
     setConnected(false);
-  }, [setConnectionStatus, setConnected]);
+  }, []); // Zustand store functions are stable, no need to include in deps
 
   // Send action function
   const sendAction = useCallback((action: string) => {
@@ -155,13 +145,13 @@ export function useGameWebSocket(
       if (!gameWebSocket.isConnected()) {
         throw new Error('WebSocket not connected');
       }
-      
+
       // Set AI generation indicator
       setAIGenerating(true);
-      
+
       // Send action through WebSocket
       gameWebSocket.sendAction(action);
-      
+
     } catch (err) {
       const error = err as Error;
       setError(error);
@@ -169,7 +159,7 @@ export function useGameWebSocket(
       setLastError(error.message);
       throw error;
     }
-  }, [setAIGenerating, setLastError]);
+  }, []); // Zustand store functions are stable, no need to include in deps
 
   // Send generic message function
   const sendMessage = useCallback((message: any) => {
@@ -177,22 +167,22 @@ export function useGameWebSocket(
       if (!gameWebSocket.isConnected()) {
         throw new Error('WebSocket not connected');
       }
-      
+
       gameWebSocket.sendMessage(message);
-      
+
     } catch (err) {
       const error = err as Error;
       setError(error);
       setLastError(error.message);
       throw error;
     }
-  }, [setLastError]);
+  }, []); // Zustand store functions are stable, no need to include in deps
 
   // Clear error function
   const clearError = useCallback(() => {
     setError(null);
     setLastError(null);
-  }, [setLastError]);
+  }, []); // Zustand store functions are stable, no need to include in deps
 
   // Auto-connect effect with debouncing
   useEffect(() => {
@@ -218,7 +208,7 @@ export function useGameWebSocket(
     }, 100);
 
     return () => clearTimeout(timeoutId);
-  }, [autoConnect, sessionId, connect]);
+  }, [autoConnect, sessionId]); // Remove connect from deps since it's stable now
 
   // Cleanup effect
   useEffect(() => {
@@ -227,25 +217,22 @@ export function useGameWebSocket(
         disconnect();
       }
     };
-  }, [disconnect]);
+  }, []); // disconnect is stable now
 
-  // Sync connection status with WebSocket service (reduced frequency)
+  // Sync connection status with WebSocket service on mount only
   useEffect(() => {
-    const interval = setInterval(() => {
-      const wsStatus = gameWebSocket.getConnectionStatus();
-      const wsConnected = gameWebSocket.isConnected();
+    // Initial sync
+    const wsStatus = gameWebSocket.getConnectionStatus();
+    const wsConnected = gameWebSocket.isConnected();
 
-      if (wsStatus !== connectionStatus) {
-        setConnectionStatus(wsStatus);
-      }
+    if (wsStatus !== connectionStatus) {
+      setConnectionStatus(wsStatus);
+    }
 
-      if (wsConnected !== isConnected) {
-        setConnected(wsConnected);
-      }
-    }, 2000); // Reduced from 1000ms to 2000ms
-
-    return () => clearInterval(interval);
-  }, [connectionStatus, isConnected, setConnectionStatus, setConnected]);
+    if (wsConnected !== isConnected) {
+      setConnected(wsConnected);
+    }
+  }, []); // Only run on mount, callbacks handle real-time updates
 
   return {
     isConnected,

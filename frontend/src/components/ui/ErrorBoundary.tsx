@@ -72,7 +72,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground text-center">
-                An unexpected error occurred. This has been logged and we're working to fix it.
+                An unexpected error occurred. This has been logged and we&apos;re working to fix it.
               </p>
               
               {process.env.NODE_ENV === 'development' && this.state.error && (

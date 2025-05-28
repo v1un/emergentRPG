@@ -50,12 +50,7 @@ class FeatureFlagManager:
         default_flags = [
             FeatureFlag("dynamic_themes", True, "global", "Enable dynamic theme switching"),
             FeatureFlag("ai_response_caching", True, "global", "Cache AI responses for better performance"),
-            FeatureFlag("realtime_updates", False, "global", "Enable WebSocket real-time updates"),
-            FeatureFlag("advanced_inventory", False, "global", "Enable advanced inventory management"),
-            FeatureFlag("quest_recommendations", False, "global", "Enable AI-powered quest recommendations"),
-            FeatureFlag("custom_character_creation", False, "global", "Enable custom character creation"),
-            FeatureFlag("multiplayer_sessions", False, "global", "Enable multiplayer game sessions"),
-            FeatureFlag("voice_commands", False, "global", "Enable voice command input"),
+            FeatureFlag("realtime_updates", True, "global", "Enable WebSocket real-time updates"),
             FeatureFlag("mobile_optimizations", True, "global", "Enable mobile-specific optimizations"),
             FeatureFlag("accessibility_enhancements", True, "global", "Enable accessibility features"),
             FeatureFlag("debug_mode", False, "global", "Enable debug information and tools"),

@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { useCurrentSession, useCurrentStory, useIsAIGenerating, useGameStore } from '@/stores/gameStore';
+import { useCurrentSession, useCurrentStory, useIsAIGenerating, useGameStore, useConnectionStatus } from '@/stores/gameStore';
 import { useGameAction } from '@/hooks/useGameAction';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -14,6 +14,7 @@ import { gameFormatters } from '@/utils/formatting';
 import { actionSchema } from '@/utils/validation';
 import { StoryEntry, ActionType } from '@/types';
 import { ACTION_TYPES } from '@/utils/constants';
+import { dynamicUIService, DynamicUIContent } from '@/services/dynamicUIService';
 import {
   PaperAirplaneIcon,
   BookmarkIcon,
@@ -34,7 +35,8 @@ export function StoryPanel() {
   const currentSession = useCurrentSession();
   const story = useCurrentStory();
   const isAIGenerating = useIsAIGenerating();
-  const { updateSession } = useGameStore();
+  const connectionStatus = useConnectionStatus();
+  const { isConnected } = useGameStore();
 
   const [actionInput, setActionInput] = useState('');
   const [actionError, setActionError] = useState('');
@@ -43,6 +45,7 @@ export function StoryPanel() {
   const [bookmarkedEntries, setBookmarkedEntries] = useState<Set<string>>(new Set());
   const [showBookmarks, setShowBookmarks] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [dynamicContent, setDynamicContent] = useState<DynamicUIContent | null>(null);
   const storyEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -74,6 +77,30 @@ export function StoryPanel() {
       inputRef.current.focus();
     }
   }, []);
+
+  // Load dynamic UI content based on context
+  useEffect(() => {
+    const loadDynamicContent = async () => {
+      try {
+        const content = await dynamicUIService.getDynamicUIContent({
+          character: currentSession?.character,
+          session: currentSession,
+          currentLocation: currentSession?.world_state?.current_location,
+          recentStory: story.slice(-3), // Last 3 entries for context
+          gameState: story.length === 0 ? 'starting' : 'playing',
+          panelType: 'story',
+        });
+        setDynamicContent(content);
+      } catch (error) {
+        console.warn('Failed to load dynamic UI content:', error);
+        // Keep existing content or use fallback
+      }
+    };
+
+    if (currentSession) {
+      loadDynamicContent();
+    }
+  }, [currentSession, story.length, currentSession?.world_state?.current_location]);
 
   const handleSubmitAction = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -268,31 +295,32 @@ export function StoryPanel() {
               </Button>
 
               {showExportMenu && (
-                <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-10 animate-in slide-in-from-top-2 duration-200">
+                <div className="absolute right-0 top-full mt-1 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-10 animate-in slide-in-from-top-2 duration-200">
                   <div className="py-2">
-                    <button
-                      onClick={() => handleExportStory('markdown')}
-                      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150 flex items-center"
-                    >
-                      <DocumentTextIcon className="h-4 w-4 mr-3 text-blue-500" />
-                      Export as Markdown
-                    </button>
-                    <button
-                      onClick={() => handleExportStory('txt')}
-                      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150 flex items-center"
-                    >
-                      <DocumentTextIcon className="h-4 w-4 mr-3 text-green-500" />
-                      Export as Text
-                    </button>
-                    <button
-                      onClick={() => handleExportStory('pdf')}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-400 cursor-not-allowed flex items-center"
-                      disabled
-                    >
-                      <DocumentTextIcon className="h-4 w-4 mr-3" />
-                      Export as PDF
-                      <span className="ml-auto text-xs bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">Soon</span>
-                    </button>
+                    {dynamicUIService.getExportOptions({
+                      character: currentSession?.character,
+                      session: currentSession,
+                      currentLocation: currentSession?.world_state?.current_location,
+                      recentStory: story.slice(-3),
+                      gameState: story.length === 0 ? 'starting' : 'playing',
+                      panelType: 'story',
+                    }).map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => handleExportStory(option.value as 'markdown' | 'pdf' | 'txt')}
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150 flex flex-col"
+                        disabled={option.value === 'pdf'}
+                      >
+                        <div className="flex items-center">
+                          <DocumentTextIcon className="h-4 w-4 mr-3 text-blue-500" />
+                          <span className="font-medium">{option.label}</span>
+                          {option.value === 'pdf' && (
+                            <span className="ml-auto text-xs bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">Soon</span>
+                          )}
+                        </div>
+                        <span className="text-xs text-muted-foreground ml-7 mt-1">{option.description}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
@@ -340,10 +368,10 @@ export function StoryPanel() {
             {story.length === 0 ? (
               <>
                 <h3 className="text-lg font-medium text-foreground mb-2">
-                  Your Adventure Begins
+                  {dynamicContent?.emptyStateTitle || 'Your Adventure Begins'}
                 </h3>
                 <p className="text-muted-foreground mb-4">
-                  Enter your first action to start your AI-driven story adventure.
+                  {dynamicContent?.emptyStateMessage || 'Enter your first action to start your AI-driven story adventure.'}
                 </p>
               </>
             ) : (
@@ -468,7 +496,7 @@ export function StoryPanel() {
                 value={actionInput}
                 onChange={(e) => setActionInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="What do you do? (Press Enter to submit)"
+                placeholder={dynamicContent?.placeholderText || "What do you do? (Press Enter to submit)"}
                 error={actionError || error?.message}
                 className={cn(
                   'pr-16 transition-all duration-200',
@@ -555,17 +583,41 @@ export function StoryPanel() {
               </span>
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-4">
+              {/* Connection Status */}
+              <div className={cn(
+                'flex items-center space-x-1',
+                connectionStatus === 'connected' && 'text-green-600 dark:text-green-400',
+                connectionStatus === 'connecting' && 'text-yellow-600 dark:text-yellow-400',
+                connectionStatus === 'disconnected' && 'text-red-600 dark:text-red-400',
+                connectionStatus === 'error' && 'text-red-600 dark:text-red-400'
+              )}>
+                <div className={cn(
+                  'w-2 h-2 rounded-full',
+                  connectionStatus === 'connected' && 'bg-green-500',
+                  connectionStatus === 'connecting' && 'bg-yellow-500 animate-pulse',
+                  connectionStatus === 'disconnected' && 'bg-red-500',
+                  connectionStatus === 'error' && 'bg-red-500'
+                )} />
+                <span>
+                  {connectionStatus === 'connected' && (dynamicContent?.statusMessages.connected || 'Connected')}
+                  {connectionStatus === 'connecting' && (dynamicContent?.statusMessages.connecting || 'Connecting...')}
+                  {connectionStatus === 'disconnected' && (dynamicContent?.statusMessages.disconnected || 'Disconnected')}
+                  {connectionStatus === 'error' && (dynamicContent?.statusMessages.error || 'Connection Error')}
+                </span>
+              </div>
+
+              {/* AI Status */}
               {isAIGenerating && (
                 <div className="flex items-center space-x-1 text-blue-600 dark:text-blue-400">
                   <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                  <span>AI is thinking...</span>
+                  <span>{dynamicContent?.statusMessages.aiThinking || 'AI is thinking...'}</span>
                 </div>
               )}
-              {!isAIGenerating && actionInput.trim() && (
+              {!isAIGenerating && actionInput.trim() && connectionStatus === 'connected' && (
                 <div className="flex items-center space-x-1 text-green-600 dark:text-green-400">
                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span>Ready to send</span>
+                  <span>{dynamicContent?.statusMessages.readyToSend || 'Ready to send'}</span>
                 </div>
               )}
             </div>

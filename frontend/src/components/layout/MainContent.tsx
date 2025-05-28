@@ -5,7 +5,6 @@
 import React from 'react';
 import { useGameStore, useActivePanel, useCurrentSession } from '@/stores/gameStore';
 import { LoadingState } from '@/components/ui/Loading';
-import { cn } from '@/utils/helpers';
 import { PANELS } from '@/utils/constants';
 import {
   LazyStoryPanel,
@@ -20,6 +19,7 @@ import {
   WorldPanelLoading,
   LazyWrapper
 } from '@/components/ui/LazyWrapper';
+import { SessionsPanel } from '@/components/game/SessionsPanel';
 
 interface MainContentProps {
   children?: React.ReactNode;
@@ -44,8 +44,8 @@ export function MainContent({ children }: Readonly<MainContentProps>) {
     );
   }
 
-  // If no session is loaded, show session selection
-  if (!currentSession && !isLoadingSession) {
+  // If no session is loaded and we're not on the sessions panel, show welcome message
+  if (!currentSession && !isLoadingSession && activePanel !== PANELS.SESSIONS) {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center space-y-4">
@@ -88,6 +88,8 @@ export function MainContent({ children }: Readonly<MainContentProps>) {
   // Render the appropriate panel based on activePanel with lazy loading
   const renderPanel = () => {
     switch (activePanel) {
+      case PANELS.SESSIONS:
+        return <SessionsPanel />;
       case PANELS.STORY:
         return (
           <LazyWrapper fallback={<StoryPanelLoading />}>
@@ -139,7 +141,7 @@ export function MainContent({ children }: Readonly<MainContentProps>) {
             <h2 className="text-lg font-semibold text-foreground capitalize">
               {activePanel.replace('_', ' ')}
             </h2>
-            {currentSession && (
+            {currentSession && activePanel !== PANELS.SESSIONS && (
               <p className="text-sm text-muted-foreground">
                 {currentSession.character.name} in {currentSession.world_state.current_location}
               </p>

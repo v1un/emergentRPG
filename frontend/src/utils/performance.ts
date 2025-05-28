@@ -67,7 +67,7 @@ export const performanceMonitor = new PerformanceMonitor();
 
 // Hook to measure component render time
 export function useRenderTime(componentName: string, props?: any) {
-  const startTimeRef = useRef<number>();
+  const startTimeRef = useRef<number>(0);
   
   // Mark start of render
   startTimeRef.current = performance.now();
@@ -250,9 +250,9 @@ export function analyzeBundleSize() {
   const moduleStats: { [key: string]: number } = {};
 
   Object.keys(modules).forEach(moduleId => {
-    const module = modules[moduleId];
-    if (module && module.exports) {
-      const size = JSON.stringify(module.exports).length;
+    const moduleData = modules[moduleId];
+    if (moduleData && moduleData.exports) {
+      const size = JSON.stringify(moduleData.exports).length;
       moduleStats[moduleId] = size;
     }
   });

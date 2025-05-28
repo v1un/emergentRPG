@@ -1,12 +1,13 @@
 // API Client Service for emergentRPG Backend Integration
 
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { 
-  APIConfig, 
-  APIError, 
-  NetworkError, 
+import {
+  APIConfig,
+  APIError,
+  NetworkError,
   RequestOptions,
   GameSession,
+  GameSessionSummary,
   CreateSessionRequest,
   ActionResult,
   ScenarioTemplate,
@@ -169,9 +170,9 @@ export class GameAPIClient {
     }
   }
 
-  async getSessions(): Promise<{ sessions: GameSession[] }> {
+  async getSessions(): Promise<{ sessions: GameSessionSummary[] }> {
     try {
-      return await this.get<{ sessions: GameSession[] }>(API_ENDPOINTS.SESSIONS);
+      return await this.get<{ sessions: GameSessionSummary[] }>(API_ENDPOINTS.SESSIONS);
     } catch (error) {
       // Fallback to mock API if backend is not available
       console.warn('Using mock API for getSessions');

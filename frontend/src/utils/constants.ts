@@ -90,7 +90,8 @@ export const DEFAULT_VALUES = {
   ANIMATION_DURATION: 200,
   DEBOUNCE_DELAY: 300,
 
-  // Game configuration
+  // Game configuration - These should be dynamically generated based on context
+  // Keeping as fallbacks for error states only
   MAX_STORY_ENTRIES: 1000,
   MAX_ACTION_LENGTH: 500,
   AUTO_SAVE_INTERVAL: 30000,
@@ -100,11 +101,12 @@ export const DEFAULT_VALUES = {
   DEFAULT_PAGE_SIZE: 20,
   MAX_PAGE_SIZE: 100,
 
-  // Character defaults
-  DEFAULT_CHARACTER_HEALTH: 100,
-  DEFAULT_CHARACTER_MANA: 50,
-  DEFAULT_CHARACTER_LEVEL: 1,
-  DEFAULT_CARRY_WEIGHT: 100,
+  // Character defaults - These should be AI-generated based on character background
+  // Keeping minimal fallbacks for error states only
+  FALLBACK_CHARACTER_HEALTH: 100,
+  FALLBACK_CHARACTER_MANA: 50,
+  FALLBACK_CHARACTER_LEVEL: 1,
+  FALLBACK_CARRY_WEIGHT: 100,
 } as const;
 
 export const THEMES = {
@@ -128,6 +130,7 @@ export const BREAKPOINTS = {
 } as const;
 
 export const PANELS = {
+  SESSIONS: 'sessions',
   STORY: 'story',
   CHARACTER: 'character',
   INVENTORY: 'inventory',
@@ -171,10 +174,14 @@ export const NOTIFICATION_TYPES = {
 
 export const EQUIPMENT_SLOTS = {
   WEAPON: 'weapon',
-  ARMOR: 'armor',
   HELMET: 'helmet',
+  CHEST: 'chest',
+  LEGS: 'legs',
   BOOTS: 'boots',
-  ACCESSORY: 'accessory',
+  GLOVES: 'gloves',
+  RING: 'ring',
+  NECKLACE: 'necklace',
+  SHIELD: 'shield',
 } as const;
 
 export const ITEM_RARITIES = {

@@ -20,7 +20,7 @@ export interface CharacterStats {
   charisma: number;
 }
 
-export type EquipmentSlot = 'weapon' | 'armor' | 'helmet' | 'boots' | 'accessory';
+export type EquipmentSlot = 'weapon' | 'helmet' | 'chest' | 'legs' | 'boots' | 'gloves' | 'ring' | 'necklace' | 'shield';
 
 export interface Character {
   name: string;
@@ -41,23 +41,42 @@ export interface Character {
 export interface InventoryItem {
   id: string;
   name: string;
-  description: string;
-  item_type: string;
+  type: string; // weapon, armor, consumable, misc
   rarity: string;
-  value: number;
-  weight: number;
+  description?: string;
   quantity: number;
-  properties: Record<string, any>;
+  equipped: boolean;
+  equipment_slot?: EquipmentSlot;
+  weight: number;
+  durability?: number;
+  max_durability?: number;
   metadata?: Record<string, any>;
+}
+
+export interface QuestProgress {
+  current: number;
+  total: number;
+  completed_objectives: boolean[];
+  percentage: number;
+  is_complete: boolean;
+}
+
+export interface QuestDependency {
+  quest_id: string;
+  required_status: string;
 }
 
 export interface Quest {
   id: string;
   title: string;
   description: string;
-  status: 'active' | 'completed' | 'failed';
+  status: 'active' | 'completed' | 'failed' | 'hidden';
+  progress: QuestProgress;
   objectives: string[];
-  rewards: Record<string, any>;
+  rewards?: Record<string, any>;
+  dependencies: QuestDependency[];
+  time_limit?: number;
+  failure_conditions: string[];
   metadata?: Record<string, any>;
 }
 
@@ -65,9 +84,10 @@ export interface WorldState {
   current_location: string;
   time_of_day: string;
   weather: string;
-  special_conditions: string[];
   npcs_present: string[];
   available_actions: string[];
+  environment_description: string;
+  special_conditions: string[];
   metadata?: Record<string, any>;
 }
 
@@ -83,6 +103,16 @@ export interface GameSession {
   created_at: string;
   updated_at: string;
   metadata?: Record<string, any>;
+}
+
+// Session summary for list views (from /api/game/sessions)
+export interface GameSessionSummary {
+  session_id: string;
+  character: Character;
+  world_state: WorldState;
+  story_length: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface PlayerAction {

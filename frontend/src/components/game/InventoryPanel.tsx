@@ -27,7 +27,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 type ViewMode = 'grid' | 'list';
-type SortBy = 'name' | 'type' | 'value' | 'weight' | 'rarity';
+type SortBy = 'name' | 'type' | 'weight' | 'rarity';
 
 export function InventoryPanel() {
   const inventory = useCurrentInventory();
@@ -43,14 +43,14 @@ export function InventoryPanel() {
   const [comparisonItem, setComparisonItem] = useState<InventoryItem | null>(null);
 
   // Get unique item types for filtering
-  const itemTypes = ['all', ...new Set(inventory.map(item => item.item_type))];
+  const itemTypes = ['all', ...new Set(inventory.map(item => item.type))];
 
   // Filter and sort inventory
   const filteredInventory = inventory
     .filter(item => {
       const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           item.description.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesType = selectedType === 'all' || item.item_type === selectedType;
+                           (item.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
+      const matchesType = selectedType === 'all' || item.type === selectedType;
       return matchesSearch && matchesType;
     })
     .sort((a, b) => {
@@ -58,21 +58,19 @@ export function InventoryPanel() {
         case 'name':
           return a.name.localeCompare(b.name);
         case 'type':
-          return a.item_type.localeCompare(b.item_type);
-        case 'value':
-          return b.value - a.value;
+          return a.type.localeCompare(b.type);
         case 'weight':
           return b.weight - a.weight;
-        case 'rarity':
+        case 'rarity': {
           const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
           return rarityOrder.indexOf(b.rarity) - rarityOrder.indexOf(a.rarity);
+        }
         default:
           return 0;
       }
     });
 
   const totalWeight = inventory.reduce((sum, item) => sum + (item.weight * item.quantity), 0);
-  const totalValue = inventory.reduce((sum, item) => sum + (item.value * item.quantity), 0);
 
   const getItemIcon = (type: string) => {
     const icons: Record<string, string> = {
@@ -88,11 +86,11 @@ export function InventoryPanel() {
 
   // Item action handlers
   const handleUseItem = (item: InventoryItem) => {
-    if (item.item_type === 'consumable') {
+    if (item.type === 'consumable') {
       // TODO: Implement consumable use logic
       console.log('Using consumable:', item.name);
     } else {
-      console.log('Cannot use this item type:', item.item_type);
+      console.log('Cannot use this item type:', item.type);
     }
   };
 
@@ -101,13 +99,13 @@ export function InventoryPanel() {
 
     const equipmentSlots: Record<string, EquipmentSlot> = {
       weapon: 'weapon',
-      armor: 'armor',
+      armor: 'chest',
       helmet: 'helmet',
       boots: 'boots',
-      accessory: 'accessory',
+      accessory: 'ring',
     };
 
-    const slot = equipmentSlots[item.item_type];
+    const slot = equipmentSlots[item.type];
     if (slot) {
       const updatedEquipment = { ...character.equipped_items };
       updatedEquipment[slot] = item.name;
@@ -164,8 +162,8 @@ export function InventoryPanel() {
 
   const renderItemCard = (item: InventoryItem) => {
     const rarityInfo = gameFormatters.itemRarity(item.rarity);
-    const isEquippable = ['weapon', 'armor', 'helmet', 'boots', 'accessory'].includes(item.item_type);
-    const isConsumable = item.item_type === 'consumable';
+    const isEquippable = ['weapon', 'armor', 'helmet', 'boots', 'accessory'].includes(item.type);
+    const isConsumable = item.type === 'consumable';
 
     return (
       <Card
@@ -185,7 +183,7 @@ export function InventoryPanel() {
         <CardContent className="p-4">
           <div className="flex items-start space-x-3">
             <span className="text-2xl flex-shrink-0">
-              {getItemIcon(item.item_type)}
+              {getItemIcon(item.type)}
             </span>
             <div className="flex-1 min-w-0">
               <h4 className="font-medium text-foreground truncate">
@@ -195,11 +193,11 @@ export function InventoryPanel() {
                 {rarityInfo.text}
               </p>
               <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                {item.description}
+                {item.description || 'No description available'}
               </p>
               <div className="flex justify-between items-center mt-2 text-xs text-muted-foreground">
                 <span>Qty: {item.quantity}</span>
-                <span>{gameFormatters.itemValue(item.value)}</span>
+                <span>{gameFormatters.weight(item.weight)}</span>
               </div>
             </div>
           </div>
@@ -277,14 +275,14 @@ export function InventoryPanel() {
         onClick={() => setSelectedItem(item)}
       >
         <span className="text-xl flex-shrink-0">
-          {getItemIcon(item.item_type)}
+          {getItemIcon(item.type)}
         </span>
         <div className="flex-1 min-w-0">
           <h4 className="font-medium text-foreground truncate">
             {item.name}
           </h4>
           <p className="text-sm text-muted-foreground truncate">
-            {item.description}
+            {item.description || 'No description available'}
           </p>
         </div>
         <div className="text-right text-sm">
@@ -297,7 +295,7 @@ export function InventoryPanel() {
         </div>
         <div className="text-right text-sm">
           <p className="font-medium text-foreground">
-            {gameFormatters.itemValue(item.value)}
+            {item.equipped ? 'Equipped' : 'Available'}
           </p>
           <p className="text-muted-foreground">
             {gameFormatters.weight(item.weight)}
@@ -344,9 +342,9 @@ export function InventoryPanel() {
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-foreground">
-                {gameFormatters.itemValue(totalValue)}
+                {inventory.filter(item => item.equipped).length}
               </p>
-              <p className="text-sm text-muted-foreground">Value</p>
+              <p className="text-sm text-muted-foreground">Equipped</p>
             </div>
           </div>
 
@@ -379,7 +377,6 @@ export function InventoryPanel() {
               >
                 <option value="name">Name</option>
                 <option value="type">Type</option>
-                <option value="value">Value</option>
                 <option value="weight">Weight</option>
                 <option value="rarity">Rarity</option>
               </select>
@@ -428,7 +425,7 @@ export function InventoryPanel() {
         <div className="w-80 border-l border-gray-200 dark:border-gray-800 bg-card p-6">
           <div className="space-y-4">
             <div className="text-center">
-              <span className="text-4xl">{getItemIcon(selectedItem.item_type)}</span>
+              <span className="text-4xl">{getItemIcon(selectedItem.type)}</span>
               <h3 className="text-lg font-semibold text-foreground mt-2">
                 {selectedItem.name}
               </h3>
@@ -439,22 +436,22 @@ export function InventoryPanel() {
 
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">
-                {selectedItem.description}
+                {selectedItem.description || 'No description available'}
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-muted-foreground">Type</p>
-                <p className="font-medium capitalize">{selectedItem.item_type}</p>
+                <p className="font-medium capitalize">{selectedItem.type}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Quantity</p>
                 <p className="font-medium">{selectedItem.quantity}</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Value</p>
-                <p className="font-medium">{gameFormatters.itemValue(selectedItem.value)}</p>
+                <p className="text-muted-foreground">Equipped</p>
+                <p className="font-medium">{selectedItem.equipped ? 'Yes' : 'No'}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Weight</p>
@@ -462,11 +459,11 @@ export function InventoryPanel() {
               </div>
             </div>
 
-            {selectedItem.properties && Object.keys(selectedItem.properties).length > 0 && (
+            {selectedItem.metadata && Object.keys(selectedItem.metadata).length > 0 && (
               <div>
                 <h4 className="font-medium text-foreground mb-2">Properties</h4>
                 <div className="space-y-1 text-sm">
-                  {Object.entries(selectedItem.properties).map(([key, value]) => (
+                  {Object.entries(selectedItem.metadata).map(([key, value]) => (
                     <div key={key} className="flex justify-between">
                       <span className="text-muted-foreground capitalize">
                         {key.replace('_', ' ')}
@@ -479,7 +476,7 @@ export function InventoryPanel() {
             )}
 
             <div className="space-y-2">
-              {selectedItem.item_type === 'consumable' && (
+              {selectedItem.type === 'consumable' && (
                 <Button
                   className="w-full"
                   onClick={() => handleUseItem(selectedItem)}
@@ -488,7 +485,7 @@ export function InventoryPanel() {
                   Use Item
                 </Button>
               )}
-              {['weapon', 'armor', 'helmet', 'boots', 'accessory'].includes(selectedItem.item_type) && (
+              {['weapon', 'armor', 'helmet', 'boots', 'accessory'].includes(selectedItem.type) && (
                 <>
                   <Button
                     className="w-full"

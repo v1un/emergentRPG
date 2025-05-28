@@ -39,10 +39,10 @@ export function Sidebar({ collapsed, isMobile, onClose }: SidebarProps) {
 
   const navItems: NavItem[] = [
     {
-      id: 'home',
-      label: 'Dashboard',
+      id: 'sessions',
+      label: 'Sessions',
       icon: HomeIcon,
-      href: '/',
+      panel: PANELS.SESSIONS,
     },
     {
       id: 'story',

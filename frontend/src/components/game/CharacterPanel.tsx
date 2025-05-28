@@ -7,19 +7,14 @@ import { useCurrentCharacter, useGameStore } from '@/stores/gameStore';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/utils/helpers';
-import { gameFormatters, numberFormatters } from '@/utils/formatting';
-import { Character, CharacterStats, EquipmentSlot } from '@/types';
+import { CharacterStats, EquipmentSlot } from '@/types';
 import {
   UserIcon,
-  HeartIcon,
-  SparklesIcon,
-  TrophyIcon,
   ShieldCheckIcon,
   WrenchScrewdriverIcon,
   CogIcon,
   StarIcon,
   ArrowUpIcon,
-  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import {
   HeartIcon as HeartSolidIcon,
@@ -47,7 +42,7 @@ function LevelUpNotification({ isVisible, onClose, newLevel, statIncreases }: Le
           </div>
           <CardTitle className="text-2xl text-yellow-600">Level Up!</CardTitle>
           <p className="text-muted-foreground">
-            Congratulations! You've reached level {newLevel}
+            Congratulations! You&apos;ve reached level {newLevel}
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -83,10 +78,14 @@ interface EquipmentSlotProps {
 function EquipmentSlotComponent({ slot, item, onEquip, onUnequip }: EquipmentSlotProps) {
   const slotIcons = {
     weapon: <WrenchScrewdriverIcon className="h-6 w-6" />,
-    armor: <ShieldCheckIcon className="h-6 w-6" />,
     helmet: <UserIcon className="h-6 w-6" />,
+    chest: <ShieldCheckIcon className="h-6 w-6" />,
+    legs: <CogIcon className="h-6 w-6" />,
     boots: <CogIcon className="h-6 w-6" />,
-    accessory: <StarIcon className="h-6 w-6" />,
+    gloves: <CogIcon className="h-6 w-6" />,
+    ring: <StarIcon className="h-6 w-6" />,
+    necklace: <StarIcon className="h-6 w-6" />,
+    shield: <ShieldCheckIcon className="h-6 w-6" />,
   };
 
   return (
@@ -432,7 +431,7 @@ export function CharacterPanel() {
                       />
                     ))}
                     {/* Add empty slots for unequipped items */}
-                    {(['weapon', 'armor', 'helmet', 'boots', 'accessory'] as EquipmentSlot[])
+                    {(['weapon', 'helmet', 'chest', 'legs', 'boots', 'gloves', 'ring', 'necklace', 'shield'] as EquipmentSlot[])
                       .filter(slot => !character.equipped_items[slot])
                       .map(slot => (
                         <EquipmentSlotComponent

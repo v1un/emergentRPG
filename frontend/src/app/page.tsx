@@ -2,17 +2,36 @@
 
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { GameLayout } from '@/components/layout/GameLayout';
 import { SessionManager } from '@/components/session/SessionManager';
 import { useGameStore } from '@/stores/gameStore';
+import { gameAPI } from '@/services/api/client';
+import { QUERY_KEYS, PANELS } from '@/utils/constants';
 import { GameSession } from '@/types';
 
 export default function Home() {
-  const { currentSession, setCurrentSession } = useGameStore();
+  const { currentSession, setCurrentSession, setActivePanel } = useGameStore();
+
+  // Fetch available sessions
+  const { data: sessionsData } = useQuery({
+    queryKey: QUERY_KEYS.SESSIONS,
+    queryFn: () => gameAPI.getSessions(),
+  });
+
+  // Auto-select the first session if none is selected and sessions are available
+  useEffect(() => {
+    if (!currentSession && sessionsData?.sessions && sessionsData.sessions.length > 0) {
+      console.log('Auto-selecting first available session:', sessionsData.sessions[0].session_id);
+      setCurrentSession(sessionsData.sessions[0]);
+      setActivePanel(PANELS.STORY); // Set to story panel when auto-loading a session
+    }
+  }, [currentSession, sessionsData, setCurrentSession, setActivePanel]);
 
   const handleSessionSelect = (session: GameSession) => {
     setCurrentSession(session);
+    setActivePanel(PANELS.STORY); // Switch to story panel when selecting a session
   };
 
   // If no session is active, show session manager
@@ -25,5 +44,9 @@ export default function Home() {
   }
 
   // If session is active, let MainContent handle panel navigation
-  return <GameLayout />;
+  return (
+    <GameLayout>
+      {/* MainContent will automatically render the appropriate panels */}
+    </GameLayout>
+  );
 }

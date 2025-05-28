@@ -3,11 +3,10 @@ WebSocket Game Management
 Provides real-time updates for game sessions
 """
 
-import asyncio
 import json
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set, ClassVar
+from typing import Any, Dict, List, Optional, Set
 from fastapi import WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, ConfigDict
 
@@ -231,14 +230,17 @@ class GameWebSocket:
                 ))
                 return {"success": True, "action": "pong"}
             
+            elif action_type == "action":
+                return await self._process_game_action(session_id, action)
+
             elif action_type == "typing":
                 # Broadcast typing indicator to party members (if applicable)
                 return {"success": True, "action": "typing_acknowledged"}
-            
+
             elif action_type == "request_update":
                 # Send current game state
                 return {"success": True, "action": "state_requested"}
-            
+
             else:
                 logger.warning(f"Unknown real-time action: {action_type}")
                 return {
@@ -248,6 +250,69 @@ class GameWebSocket:
                 
         except Exception as e:
             logger.error(f"Error handling real-time action: {e}")
+            return {
+                "success": False,
+                "error": str(e)
+            }
+
+    async def _process_game_action(self, session_id: str, action: Dict[str, Any]) -> Dict[str, Any]:
+        """Process a game action from the client"""
+        action_text = action.get("data", {}).get("action", "")
+        if not action_text:
+            return {
+                "success": False,
+                "error": "Action text is required"
+            }
+
+        # Import here to avoid circular imports
+        from services.database_service import db_service
+        from flows.gameplay.realtime_gameplay_flow import realtime_gameplay_flow
+
+        try:
+            # Get game session
+            session = await db_service.get_game_session(session_id)
+            if not session:
+                return {
+                    "success": False,
+                    "error": "Session not found"
+                }
+
+            # Get lorebook if available
+            lorebook = None
+            if session.lorebook_id:
+                lorebook = await db_service.get_lorebook(session.lorebook_id)
+
+            # Execute turn using realtime gameplay flow
+            result = await realtime_gameplay_flow.execute_full_turn(
+                action_text, session, lorebook
+            )
+
+            if result.get("success"):
+                # Save updated session
+                updated_session = result["updated_session"]
+                await db_service.save_game_session(updated_session)
+
+                # Send narrative response update
+                await self.send_game_update(session_id, GameUpdate(
+                    type="narrative_response",
+                    session_id=session_id,
+                    data={
+                        "gm_response": result["gm_response"],
+                        "updated_session": updated_session.model_dump(),
+                        "action_analysis": result.get("action_analysis", {}),
+                    },
+                    timestamp=datetime.now()
+                ))
+
+                return {"success": True, "action": "processed"}
+            else:
+                return {
+                    "success": False,
+                    "error": result.get("error", "Action processing failed")
+                }
+
+        except Exception as e:
+            logger.error(f"Error processing action: {e}")
             return {
                 "success": False,
                 "error": str(e)

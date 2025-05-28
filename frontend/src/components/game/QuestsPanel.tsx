@@ -3,12 +3,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useCurrentQuests, useGameStore } from '@/stores/gameStore';
+import { useCurrentQuests, useGameStore, useCurrentSession } from '@/stores/gameStore';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/utils/helpers';
 import { gameFormatters } from '@/utils/formatting';
 import { Quest } from '@/types';
+import { dynamicUIService, DynamicUIContent } from '@/services/dynamicUIService';
 import {
   ClipboardDocumentListIcon,
   CheckCircleIcon,
@@ -86,12 +87,36 @@ function QuestCompletionNotification({ quest, isVisible, onClose }: QuestNotific
 
 export function QuestsPanel() {
   const quests = useCurrentQuests();
+  const currentSession = useCurrentSession();
   const { updateSession } = useGameStore();
   const [selectedQuest, setSelectedQuest] = useState<Quest | null>(null);
   const [filter, setFilter] = useState<QuestFilter>('all');
   const [trackedQuests, setTrackedQuests] = useState<Set<string>>(new Set());
   const [completionNotification, setCompletionNotification] = useState<Quest | null>(null);
   const [showNotification, setShowNotification] = useState(false);
+  const [dynamicContent, setDynamicContent] = useState<DynamicUIContent | null>(null);
+
+  // Load dynamic UI content
+  useEffect(() => {
+    const loadDynamicContent = async () => {
+      try {
+        const content = await dynamicUIService.getDynamicUIContent({
+          character: currentSession?.character,
+          session: currentSession,
+          currentLocation: currentSession?.world_state?.current_location,
+          gameState: quests.length === 0 ? 'starting' : 'playing',
+          panelType: 'quests',
+        });
+        setDynamicContent(content);
+      } catch (error) {
+        console.warn('Failed to load dynamic UI content for quests:', error);
+      }
+    };
+
+    if (currentSession) {
+      loadDynamicContent();
+    }
+  }, [currentSession, quests.length]);
 
   // Check for newly completed quests
   useEffect(() => {
@@ -265,10 +290,10 @@ export function QuestsPanel() {
         <div className="text-center">
           <ClipboardDocumentListIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-lg font-medium text-foreground mb-2">
-            No Quests Yet
+            {dynamicContent?.emptyStateTitle || 'No Quests Yet'}
           </h3>
           <p className="text-muted-foreground">
-            Your quest log is empty. Start exploring to discover new adventures!
+            {dynamicContent?.emptyStateMessage || 'Your quest log is empty. Start exploring to discover new adventures!'}
           </p>
         </div>
       </div>

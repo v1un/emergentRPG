@@ -1,10 +1,9 @@
 // WebSocket Service for Real-time Game Communication
 
-import { 
-  WebSocketCallbacks, 
-  ConnectionStatus, 
-  GameMessage, 
-  WebSocketMessage 
+import {
+  WebSocketCallbacks,
+  ConnectionStatus,
+  WebSocketMessage
 } from '@/types';
 import { 
   WEBSOCKET_MESSAGE_TYPES, 
@@ -56,9 +55,16 @@ export class GameWebSocketService {
   }
 
   private getWebSocketURL(sessionId: string): string {
-    const baseURL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8001';
+    const baseURL = process.env.NEXT_PUBLIC_WS_URL ?? 'ws://localhost:8001';
     const wsURL = baseURL.replace(/^http/, 'ws');
-    return `${wsURL}${API_ENDPOINTS.WS_GAME(sessionId)}`;
+    const fullURL = `${wsURL}${API_ENDPOINTS.WS_GAME(sessionId)}`;
+    console.log('GameWebSocket: Constructing WebSocket URL', {
+      baseURL,
+      wsURL,
+      endpoint: API_ENDPOINTS.WS_GAME(sessionId),
+      fullURL
+    });
+    return fullURL;
   }
 
   async connect(sessionId: string, callbacks: WebSocketCallbacks): Promise<void> {
@@ -108,19 +114,33 @@ export class GameWebSocketService {
         return;
       }
 
+      // If already connected, resolve immediately
+      if (this.ws.readyState === WebSocket.OPEN) {
+        resolve();
+        return;
+      }
+
       const timeout = setTimeout(() => {
         reject(new Error('WebSocket connection timeout'));
       }, 10000); // 10 second timeout
 
-      this.ws.onopen = () => {
+      // Use a one-time event listener instead of overwriting handlers
+      const handleOpen = () => {
         clearTimeout(timeout);
+        this.ws?.removeEventListener('open', handleOpen);
+        this.ws?.removeEventListener('error', handleError);
         resolve();
       };
 
-      this.ws.onerror = (error) => {
+      const handleError = (error: Event) => {
         clearTimeout(timeout);
-        reject(error);
+        this.ws?.removeEventListener('open', handleOpen);
+        this.ws?.removeEventListener('error', handleError);
+        reject(new Error('WebSocket connection error'));
       };
+
+      this.ws.addEventListener('open', handleOpen);
+      this.ws.addEventListener('error', handleError);
     });
   }
 
@@ -128,19 +148,18 @@ export class GameWebSocketService {
     if (!this.ws) return;
 
     this.ws.onopen = () => {
-      console.log('WebSocket connected successfully');
-      this.setConnectionStatus('connected');
+      console.log('WebSocket connection established, waiting for server confirmation...');
+      // Don't set to 'connected' immediately - wait for server confirmation message
       this.reconnectAttempts = 0;
       this.isReconnecting = false;
-      
-      // Start ping interval
-      this.startPingInterval();
-      
+
+      // Don't start ping interval yet - wait for server confirmation
+      // this.startPingInterval();
+
       // Send queued messages
       this.sendQueuedMessages();
-      
-      // Notify callback
-      this.callbacks.onConnect?.();
+
+      // Note: onConnect callback will be triggered when server sends connection confirmation
     };
 
     this.ws.onmessage = (event) => {
@@ -174,38 +193,58 @@ export class GameWebSocketService {
   }
 
   private handleMessage(message: WebSocketMessage): void {
-    console.debug('Received WebSocket message:', message.type);
+    console.debug('Received WebSocket message:', message.type, message.data);
 
     switch (message.type) {
       case WEBSOCKET_MESSAGE_TYPES.NARRATIVE_RESPONSE:
         this.callbacks.onNarrativeUpdate?.(message.data);
         break;
-      
+
       case WEBSOCKET_MESSAGE_TYPES.WORLD_CHANGE:
         this.callbacks.onWorldUpdate?.(message.data);
         break;
-      
+
       case WEBSOCKET_MESSAGE_TYPES.CHARACTER_UPDATE:
         this.callbacks.onCharacterUpdate?.(message.data);
         break;
-      
+
       case WEBSOCKET_MESSAGE_TYPES.QUEST_UPDATE:
         this.callbacks.onQuestUpdate?.(message.data);
         break;
-      
+
       case WEBSOCKET_MESSAGE_TYPES.CONNECTION:
-        console.log('Connection message:', message.data);
+        console.log('Connection confirmation received from server:', message.data);
+        // Confirm connection status when server sends confirmation
+        if (message.data?.status === 'connected') {
+          console.log('Server confirmed connection - updating status to connected');
+          const wasConnecting = this.connectionStatus === 'connecting';
+          this.setConnectionStatus('connected');
+
+          // Start ping interval now that connection is confirmed
+          this.startPingInterval();
+
+          // Only trigger onConnect callback if we were in connecting state
+          if (wasConnecting) {
+            console.log('Triggering onConnect callback after server confirmation');
+            this.callbacks.onConnect?.();
+          }
+        }
         break;
-      
+
       case WEBSOCKET_MESSAGE_TYPES.PONG:
         console.debug('Received pong');
         break;
-      
+
+      case 'action_response':
+        console.debug('Received action response:', message.data);
+        // Handle action response from server
+        break;
+
       case WEBSOCKET_MESSAGE_TYPES.ERROR:
         console.error('Server error:', message.data);
-        this.callbacks.onError?.(new Error(message.data.message || 'Server error'));
+        this.callbacks.onError?.(new Error(message.data.message ?? 'Server error'));
         break;
-      
+
       default:
         console.warn('Unknown WebSocket message type:', message.type);
     }
@@ -272,9 +311,12 @@ export class GameWebSocketService {
 
         // Only attempt another reconnection if we haven't exceeded max attempts
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
-          // Use setTimeout to avoid recursive call stack
+          // Use setTimeout to avoid recursive call stack and check if still needed
           setTimeout(() => {
-            this.attemptReconnect();
+            // Only reconnect if we're still disconnected and have a session
+            if (this.sessionId && this.connectionStatus !== 'connected' && !this.isReconnecting) {
+              this.attemptReconnect();
+            }
           }, 1000);
         } else {
           this.setConnectionStatus('error');

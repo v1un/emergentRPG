@@ -1,10 +1,11 @@
 // Mock API Client for Development
 // This provides mock data when the backend is not available
 
-import { 
-  GameSession, 
-  ScenarioTemplate, 
-  Lorebook, 
+import {
+  GameSession,
+  GameSessionSummary,
+  ScenarioTemplate,
+  Lorebook,
   ActionResult,
   HealthStatus,
   PerformanceMetrics,
@@ -42,10 +43,14 @@ export class MockAPIClient {
       background: 'A brave soul seeking adventure',
       equipped_items: {
         weapon: '',
-        armor: '',
         helmet: '',
+        chest: '',
+        legs: '',
         boots: '',
-        accessory: ''
+        gloves: '',
+        ring: '',
+        necklace: '',
+        shield: ''
       },
       max_carry_weight: 100
     },
@@ -56,6 +61,7 @@ export class MockAPIClient {
       weather: 'clear',
       npcs_present: ['Village Elder', 'Merchant'],
       available_actions: ['explore', 'talk to villagers', 'check inventory'],
+      environment_description: 'A peaceful village with cobblestone paths and thatched-roof houses.',
       special_conditions: []
     },
     story: [
@@ -175,9 +181,18 @@ export class MockAPIClient {
     return { session: this.mockSession };
   }
 
-  async getSessions(): Promise<{ sessions: GameSession[] }> {
+  async getSessions(): Promise<{ sessions: GameSessionSummary[] }> {
     await this.delay(300);
-    return { sessions: [this.mockSession] };
+    // Convert full session to summary format
+    const sessionSummary: GameSessionSummary = {
+      session_id: this.mockSession.session_id,
+      character: this.mockSession.character,
+      world_state: this.mockSession.world_state,
+      story_length: this.mockSession.story.length,
+      created_at: this.mockSession.created_at,
+      updated_at: this.mockSession.updated_at,
+    };
+    return { sessions: [sessionSummary] };
   }
 
   async performAction(sessionId: string, action: string): Promise<ActionResult> {

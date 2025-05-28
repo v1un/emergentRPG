@@ -3,7 +3,7 @@
 import React, { ReactElement } from 'react';
 import { render, RenderOptions, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { GameStoreProvider } from '@/stores/gameStore';
+
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
 // Mock data for testing
@@ -141,14 +141,8 @@ export function renderWithProviders(
     ...renderOptions
   }: CustomRenderOptions = {}
 ) {
-  const mockState = { ...mockGameSession, ...initialGameState };
-
   function Wrapper({ children }: { children: React.ReactNode }) {
-    const content = (
-      <GameStoreProvider initialState={mockState}>
-        {children}
-      </GameStoreProvider>
-    );
+    const content = <>{children}</>;
 
     return withErrorBoundary ? (
       <ErrorBoundary>{content}</ErrorBoundary>

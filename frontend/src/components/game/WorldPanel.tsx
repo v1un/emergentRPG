@@ -3,11 +3,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useCurrentWorldState, useGameStore } from '@/stores/gameStore';
+import { useCurrentWorldState, useGameStore, useCurrentSession } from '@/stores/gameStore';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { textFormatters } from '@/utils/formatting';
 import { cn } from '@/utils/helpers';
+import { dynamicUIService, DynamicUIContent } from '@/services/dynamicUIService';
 import {
   GlobeAltIcon,
   MapPinIcon,
@@ -41,10 +42,34 @@ interface WorldEvent {
 
 export function WorldPanel() {
   const worldState = useCurrentWorldState();
+  const currentSession = useCurrentSession();
   const { updateSession } = useGameStore();
   const [activeTab, setActiveTab] = useState<'overview' | 'map' | 'events'>('overview');
   const [worldEvents, setWorldEvents] = useState<WorldEvent[]>([]);
   const [showEventNotifications, setShowEventNotifications] = useState(true);
+  const [dynamicContent, setDynamicContent] = useState<DynamicUIContent | null>(null);
+
+  // Load dynamic UI content
+  useEffect(() => {
+    const loadDynamicContent = async () => {
+      try {
+        const content = await dynamicUIService.getDynamicUIContent({
+          character: currentSession?.character,
+          session: currentSession,
+          currentLocation: worldState?.current_location,
+          gameState: worldState ? 'playing' : 'starting',
+          panelType: 'world',
+        });
+        setDynamicContent(content);
+      } catch (error) {
+        console.warn('Failed to load dynamic UI content for world:', error);
+      }
+    };
+
+    if (currentSession) {
+      loadDynamicContent();
+    }
+  }, [currentSession, worldState?.current_location]);
 
   // Track world state changes and create events
   useEffect(() => {
@@ -82,10 +107,10 @@ export function WorldPanel() {
         <div className="text-center">
           <GlobeAltIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-lg font-medium text-foreground mb-2">
-            No World Data
+            {dynamicContent?.emptyStateTitle || 'No World Data'}
           </h3>
           <p className="text-muted-foreground">
-            Start a game session to explore the world.
+            {dynamicContent?.emptyStateMessage || 'Start a game session to explore the world.'}
           </p>
         </div>
       </div>
@@ -93,14 +118,28 @@ export function WorldPanel() {
   }
 
   const getWeatherIcon = (weather: string) => {
+    // Enhanced weather icons with more variety
     const weatherIcons: Record<string, string> = {
       sunny: '☀️',
+      'partly cloudy': '⛅',
       cloudy: '☁️',
+      overcast: '☁️',
       rainy: '🌧️',
+      'light rain': '🌦️',
+      'heavy rain': '🌧️',
       stormy: '⛈️',
+      thunderstorm: '⛈️',
       snowy: '❄️',
+      'light snow': '🌨️',
+      'heavy snow': '❄️',
       foggy: '🌫️',
+      misty: '🌫️',
       windy: '💨',
+      clear: '🌤️',
+      hot: '🔥',
+      cold: '🧊',
+      humid: '💧',
+      dry: '🏜️',
     };
     return weatherIcons[weather.toLowerCase()] || '🌤️';
   };
@@ -242,7 +281,7 @@ export function WorldPanel() {
               </h4>
               <p className="text-sm text-muted-foreground">
                 You are currently exploring this area. The environment around you is {worldState.weather.toLowerCase()}
-                and it's {worldState.time_of_day.toLowerCase()}.
+                and it&apos;s {worldState.time_of_day.toLowerCase()}.
               </p>
             </div>
 
@@ -371,7 +410,7 @@ export function WorldPanel() {
                   {textFormatters.titleCase(worldState.current_location)}
                 </h2>
                 <p className="text-muted-foreground">
-                  You are currently exploring this area. Look around to discover new opportunities and adventures.
+                  {worldState.environment_description || 'You are currently exploring this area. Look around to discover new opportunities and adventures.'}
                 </p>
               </CardContent>
             </Card>

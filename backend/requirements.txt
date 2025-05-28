@@ -12,7 +12,6 @@ aiofiles==23.2.1
 python-multipart==0.0.6
 cachetools
 redis
-redis.asyncio
 
 # Development dependencies
 flake8==6.1.0

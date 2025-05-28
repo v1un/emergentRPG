@@ -11,11 +11,12 @@ import { SkipToContent, useReducedMotion } from '@/components/ui/Accessibility';
 import { preloadGameComponents } from '@/components/ui/LazyWrapper';
 import { announceToScreenReader, handleKeyboardNavigation } from '@/utils/accessibility';
 
-// Import layout components (to be created)
+// Import layout components
 import Header from './Header';
 import Sidebar from './Sidebar';
 import MainContent from './MainContent';
 import Footer from './Footer';
+import { WebSocketManager } from '@/components/game/WebSocketManager';
 
 interface GameLayoutProps {
   children: React.ReactNode;
@@ -87,52 +88,53 @@ export function GameLayout({ children }: Readonly<GameLayoutProps>) {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-background text-foreground">
-        {/* Skip to content for accessibility */}
-        <SkipToContent targetId="main-content" />
+      <WebSocketManager>
+        <div className="min-h-screen bg-background text-foreground">
+          {/* Skip to content for accessibility */}
+          <SkipToContent targetId="main-content" />
 
-        {/* Header */}
-        <ErrorBoundary>
-          <Header
-            onToggleSidebar={toggleSidebar}
-            sidebarCollapsed={sidebarCollapsed}
-            isMobile={isMobile}
-          />
-        </ErrorBoundary>
-
-        <div className="flex h-[calc(100vh-4rem)]">
-          {/* Sidebar */}
+          {/* Header */}
           <ErrorBoundary>
-            <Sidebar
-              collapsed={sidebarCollapsed}
+            <Header
+              onToggleSidebar={toggleSidebar}
+              sidebarCollapsed={sidebarCollapsed}
               isMobile={isMobile}
-              onClose={() => setSidebarCollapsed(true)}
             />
           </ErrorBoundary>
 
-          {/* Main Content Area */}
-          <main
-            id="main-content"
-            className={cn(
-              'flex-1 flex flex-col transition-all duration-300 ease-in-out',
-              sidebarCollapsed ? 'ml-0' : `ml-${DEFAULT_VALUES.SIDEBAR_WIDTH}px`,
-              isMobile && 'ml-0'
-            )}
-            role="main"
-            aria-label="Game content"
-          >
+          <div className="flex h-[calc(100vh-4rem)]">
+            {/* Sidebar */}
             <ErrorBoundary>
-              <MainContent>
-                {children}
-              </MainContent>
+              <Sidebar
+                collapsed={sidebarCollapsed}
+                isMobile={isMobile}
+                onClose={() => setSidebarCollapsed(true)}
+              />
             </ErrorBoundary>
 
-            {/* Footer */}
-            <ErrorBoundary>
-              <Footer />
-            </ErrorBoundary>
-          </main>
-        </div>
+            {/* Main Content Area */}
+            <main
+              id="main-content"
+              className={cn(
+                'flex-1 flex flex-col transition-all duration-300 ease-in-out',
+                sidebarCollapsed ? 'ml-0' : `ml-${DEFAULT_VALUES.SIDEBAR_WIDTH}px`,
+                isMobile && 'ml-0'
+              )}
+              role="main"
+              aria-label="Game content"
+            >
+              <ErrorBoundary>
+                <MainContent>
+                  {children}
+                </MainContent>
+              </ErrorBoundary>
+
+              {/* Footer */}
+              <ErrorBoundary>
+                <Footer />
+              </ErrorBoundary>
+            </main>
+          </div>
 
         {/* Mobile Sidebar Overlay */}
         {isMobile && !sidebarCollapsed && (
@@ -144,7 +146,8 @@ export function GameLayout({ children }: Readonly<GameLayoutProps>) {
             type="button"
           />
         )}
-      </div>
+        </div>
+      </WebSocketManager>
     </ErrorBoundary>
   );
 }

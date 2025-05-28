@@ -2,14 +2,15 @@
 
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import { 
-  GameSession, 
-  StoryEntry, 
-  WorldState, 
-  PlayerAction, 
-  ConnectionStatus, 
-  ActivePanel, 
-  UIConfig 
+import {
+  GameSession,
+  StoryEntry,
+  WorldState,
+  PlayerAction,
+  ConnectionStatus,
+  ActivePanel,
+  UIConfig,
+  Theme
 } from '@/types';
 import { PANELS, CONNECTION_STATUSES, THEMES } from '@/utils/constants';
 
@@ -26,7 +27,7 @@ interface GameState {
   
   // UI State
   activePanel: ActivePanel;
-  theme: 'light' | 'dark' | 'auto';
+  theme: Theme;
   uiConfig: UIConfig;
   sidebarCollapsed: boolean;
   
@@ -96,8 +97,8 @@ export const useGameStore = create<GameState>()(
     isAIGenerating: false,
     lastUpdate: new Date(),
     connectionStatus: CONNECTION_STATUSES.DISCONNECTED as ConnectionStatus,
-    activePanel: PANELS.STORY as ActivePanel,
-    theme: THEMES.AUTO as 'light' | 'dark' | 'auto',
+    activePanel: PANELS.SESSIONS as ActivePanel,
+    theme: THEMES.AUTO as Theme,
     uiConfig: defaultUIConfig,
     sidebarCollapsed: false,
     pendingActions: [],
@@ -126,9 +127,15 @@ export const useGameStore = create<GameState>()(
     },
 
     addSessionToHistory: (session) => {
-      set((state) => ({
-        sessionHistory: [session, ...state.sessionHistory.filter(s => s.session_id !== session.session_id)]
-      }));
+      set((state) => {
+        const filteredHistory = state.sessionHistory.filter(s => s.session_id !== session.session_id);
+        const newHistory = [session, ...filteredHistory];
+        // Limit session history to prevent memory leaks (keep last 50 sessions)
+        const limitedHistory = newHistory.slice(0, 50);
+        return {
+          sessionHistory: limitedHistory
+        };
+      });
     },
 
     removeSessionFromHistory: (sessionId) => {
@@ -199,16 +206,28 @@ export const useGameStore = create<GameState>()(
     },
 
     setConnectionStatus: (status) => {
-      set({ 
-        connectionStatus: status,
-        isConnected: status === CONNECTION_STATUSES.CONNECTED
+      set((state) => {
+        // Only update if status actually changed
+        if (state.connectionStatus === status) {
+          return state;
+        }
+        return {
+          connectionStatus: status,
+          isConnected: status === CONNECTION_STATUSES.CONNECTED
+        };
       });
     },
 
     setConnected: (connected) => {
-      set({ 
-        isConnected: connected,
-        connectionStatus: connected ? CONNECTION_STATUSES.CONNECTED : CONNECTION_STATUSES.DISCONNECTED
+      set((state) => {
+        // Only update if connection state actually changed
+        if (state.isConnected === connected) {
+          return state;
+        }
+        return {
+          isConnected: connected,
+          connectionStatus: connected ? CONNECTION_STATUSES.CONNECTED : CONNECTION_STATUSES.DISCONNECTED
+        };
       });
     },
 
@@ -244,7 +263,7 @@ export const useGameStore = create<GameState>()(
       set({ activePanel: panel });
     },
 
-    setTheme: (theme) => {
+    setTheme: (theme: Theme) => {
       set({ theme });
     },
 
@@ -306,11 +325,13 @@ export const useLastError = () => useGameStore((state) => state.lastError);
 export const useIsLoadingSession = () => useGameStore((state) => state.isLoadingSession);
 export const useIsPerformingAction = () => useGameStore((state) => state.isPerformingAction);
 
-// Computed selectors
-export const useCurrentStory = () => useGameStore((state) => state.currentSession?.story || []);
+// Computed selectors with stable empty arrays
+const EMPTY_ARRAY: any[] = [];
+
+export const useCurrentStory = () => useGameStore((state) => state.currentSession?.story ?? EMPTY_ARRAY);
 export const useCurrentCharacter = () => useGameStore((state) => state.currentSession?.character);
 export const useCurrentWorldState = () => useGameStore((state) => state.currentSession?.world_state);
-export const useCurrentInventory = () => useGameStore((state) => state.currentSession?.inventory || []);
-export const useCurrentQuests = () => useGameStore((state) => state.currentSession?.quests || []);
+export const useCurrentInventory = () => useGameStore((state) => state.currentSession?.inventory ?? EMPTY_ARRAY);
+export const useCurrentQuests = () => useGameStore((state) => state.currentSession?.quests ?? EMPTY_ARRAY);
 
 export default useGameStore;
