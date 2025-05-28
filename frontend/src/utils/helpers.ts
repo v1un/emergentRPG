@@ -53,14 +53,12 @@ export function toTitleCase(str: string): string {
 }
 
 /**
- * Generates a random UUID v4
+ * Generates a cryptographically secure random UUID v4
  */
+import { v4 as uuidv4 } from 'uuid';
+
 export function generateUUID(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
+  return uuidv4();
 }
 
 /**
@@ -104,7 +102,7 @@ export function deepClone<T>(obj: T): T {
   if (typeof obj === 'object') {
     const clonedObj = {} as T;
     for (const key in obj) {
-      if (obj.hasOwnProperty(key)) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
         clonedObj[key] = deepClone(obj[key]);
       }
     }
