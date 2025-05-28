@@ -28,9 +28,24 @@ export interface DynamicUIContent {
   actionSuggestions?: string[];
 }
 
+export interface AIUIResponse {
+  empty_state_title?: string;
+  empty_state_message?: string;
+  placeholder_text?: string;
+  status_messages?: {
+    connecting?: string;
+    connected?: string;
+    disconnected?: string;
+    error?: string;
+    ai_thinking?: string;
+    ready_to_send?: string;
+  };
+  action_suggestions?: string[];
+}
+
 class DynamicUIService {
-  private contentCache = new Map<string, DynamicUIContent>();
-  private cacheExpiry = new Map<string, number>();
+  private readonly contentCache = new Map<string, DynamicUIContent>();
+  private readonly cacheExpiry = new Map<string, number>();
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
   /**
@@ -70,34 +85,36 @@ class DynamicUIService {
    * Generate AI-driven UI content
    */
   private async generateAIContent(context: UIContext): Promise<DynamicUIContent> {
-    const response = await gameAPI.post('/api/ai/generate-ui-content', {
+    // Use the existing generateAIResponse method as a workaround
+    // until a dedicated UI content endpoint is added to the backend
+    const response = await gameAPI.generateAIResponse({
       character: context.character,
       current_location: context.currentLocation,
       recent_story: context.recentStory?.slice(-3), // Last 3 entries for context
       game_state: context.gameState,
       panel_type: context.panelType,
-    });
+    }, 'generate_ui_content');
 
-    return this.parseAIUIResponse(response.data);
+    return this.parseAIUIResponse(response.response);
   }
 
   /**
    * Parse AI response into UI content
    */
-  private parseAIUIResponse(aiResponse: any): DynamicUIContent {
+  private parseAIUIResponse(aiResponse: AIUIResponse): DynamicUIContent {
     return {
-      emptyStateTitle: aiResponse.empty_state_title || 'Your Adventure Awaits',
-      emptyStateMessage: aiResponse.empty_state_message || 'Begin your journey by taking your first action.',
-      placeholderText: aiResponse.placeholder_text || 'What do you do?',
+      emptyStateTitle: aiResponse.empty_state_title ?? 'Your Adventure Awaits',
+      emptyStateMessage: aiResponse.empty_state_message ?? 'Begin your journey by taking your first action.',
+      placeholderText: aiResponse.placeholder_text ?? 'What do you do?',
       statusMessages: {
-        connecting: aiResponse.status_messages?.connecting || 'Connecting to your adventure...',
-        connected: aiResponse.status_messages?.connected || 'Ready for adventure',
-        disconnected: aiResponse.status_messages?.disconnected || 'Connection lost',
-        error: aiResponse.status_messages?.error || 'Something went wrong',
-        aiThinking: aiResponse.status_messages?.ai_thinking || 'The story unfolds...',
-        readyToSend: aiResponse.status_messages?.ready_to_send || 'Ready to continue',
+        connecting: aiResponse.status_messages?.connecting ?? 'Connecting to your adventure...',
+        connected: aiResponse.status_messages?.connected ?? 'Ready for adventure',
+        disconnected: aiResponse.status_messages?.disconnected ?? 'Connection lost',
+        error: aiResponse.status_messages?.error ?? 'Something went wrong',
+        aiThinking: aiResponse.status_messages?.ai_thinking ?? 'The story unfolds...',
+        readyToSend: aiResponse.status_messages?.ready_to_send ?? 'Ready to continue',
       },
-      actionSuggestions: aiResponse.action_suggestions || [],
+      actionSuggestions: aiResponse.action_suggestions ?? [],
     };
   }
 
@@ -105,10 +122,6 @@ class DynamicUIService {
    * Generate contextual fallback content
    */
   private generateContextualFallback(context: UIContext): DynamicUIContent {
-    const characterName = context.character?.name || 'adventurer';
-    const location = context.currentLocation || 'this place';
-    const panelType = context.panelType || 'story';
-
     return {
       emptyStateTitle: this.getContextualEmptyTitle(context),
       emptyStateMessage: this.getContextualEmptyMessage(context),
@@ -123,7 +136,7 @@ class DynamicUIService {
    */
   private getContextualEmptyTitle(context: UIContext): string {
     const { character, panelType, gameState } = context;
-    const characterName = character?.name || 'Your Character';
+    const characterName = character?.name ?? 'Your Character';
 
     switch (panelType) {
       case 'story':
@@ -131,19 +144,19 @@ class DynamicUIService {
           return `${characterName}'s Adventure Begins`;
         }
         return 'No Story Entries Found';
-      
+
       case 'character':
         return `${characterName}'s Profile`;
-      
+
       case 'inventory':
         return `${characterName}'s Inventory`;
-      
+
       case 'quests':
         return 'Quest Log';
-      
+
       case 'world':
         return 'World Information';
-      
+
       default:
         return 'Your Adventure Awaits';
     }
@@ -154,8 +167,8 @@ class DynamicUIService {
    */
   private getContextualEmptyMessage(context: UIContext): string {
     const { character, panelType, gameState, currentLocation } = context;
-    const characterName = character?.name || 'your character';
-    const location = currentLocation || 'the world';
+    const characterName = character?.name ?? 'your character';
+    const location = currentLocation ?? 'the world';
 
     switch (panelType) {
       case 'story':
@@ -186,8 +199,8 @@ class DynamicUIService {
    */
   private getContextualPlaceholder(context: UIContext): string {
     const { character, currentLocation, recentStory } = context;
-    const characterName = character?.name || 'your character';
-    const location = currentLocation || 'this area';
+    const characterName = character?.name ?? 'your character';
+    const location = currentLocation ?? 'this area';
 
     // Base placeholders
     const placeholders = [
@@ -222,7 +235,7 @@ class DynamicUIService {
    * Get contextual status messages
    */
   private getContextualStatusMessages(context: UIContext): DynamicUIContent['statusMessages'] {
-    const characterName = context.character?.name || 'your character';
+    const characterName = context.character?.name ?? 'your character';
 
     return {
       connecting: `Connecting ${characterName} to the adventure...`,
@@ -300,8 +313,8 @@ class DynamicUIService {
    */
   getExportOptions(context: UIContext): Array<{ label: string; value: string; description: string }> {
     const { character, session } = context;
-    const characterName = character?.name || 'Character';
-    const storyLength = session?.story?.length || 0;
+    const characterName = character?.name ?? 'Character';
+    const storyLength = session?.story?.length ?? 0;
 
     const options = [
       {
@@ -345,7 +358,7 @@ class DynamicUIService {
       location: context.currentLocation,
       gameState: context.gameState,
       panelType: context.panelType,
-      storyLength: context.recentStory?.length || 0,
+      storyLength: context.recentStory?.length ?? 0,
     });
   }
 
