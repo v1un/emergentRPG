@@ -555,7 +555,7 @@ export function InventoryPanel() {
                   {Object.entries(selectedItem.metadata).map(([key, value]) => (
                     <div key={key} className="flex justify-between">
                       <span className="text-muted-foreground capitalize">
-                        {key.replace('_', ' ')}
+                        {key.replace(/_/g, ' ')}
                       </span>
                       <span className="font-medium">{String(value)}</span>
                     </div>
