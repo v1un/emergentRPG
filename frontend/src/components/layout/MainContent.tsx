@@ -139,7 +139,7 @@ export function MainContent({ children }: Readonly<MainContentProps>) {
           {/* Panel Header */}
           <div className="border-b border-gray-200 dark:border-gray-800 bg-card/50 px-6 py-4">
             <h2 className="text-lg font-semibold text-foreground capitalize">
-              {activePanel.replace('_', ' ')}
+              {activePanel.replace(/_/g, ' ')}
             </h2>
             {currentSession && activePanel !== PANELS.SESSIONS && (
               <p className="text-sm text-muted-foreground">
