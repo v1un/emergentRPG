@@ -1,9 +1,9 @@
 // Enhanced Reusable Button Component with Full Accessibility Support
 
-import React, { forwardRef, useCallback, useEffect, useState } from 'react';
+import React, { forwardRef, useCallback, useEffect, useState, useId } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/utils/helpers';
-import { AccessibilityProps, announceToScreenReader, generateId } from '@/utils/accessibility';
+import { AccessibilityProps, announceToScreenReader } from '@/utils/accessibility';
 
 const buttonVariants = cva(
   'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-95 hover:shadow-md',
@@ -112,8 +112,10 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const [internalLoading, setInternalLoading] = useState(false);
     const [internalSuccess, setInternalSuccess] = useState(false);
     const [internalError, setInternalError] = useState(false);
-    const [buttonId] = useState(() => generateId('button'));
-    const [tooltipId] = useState(() => generateId('tooltip'));
+    // Use React's useId hook for stable IDs across server and client rendering
+    const reactId = useId();
+    const buttonId = props.id ?? `button-${reactId}`;
+    const tooltipId = `tooltip-${reactId}`;
 
     const isLoading = loading || internalLoading;
     const isSuccess = showSuccess || internalSuccess;

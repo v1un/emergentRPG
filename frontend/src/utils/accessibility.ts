@@ -49,10 +49,10 @@ export const focusElement = (selector: string | HTMLElement) => {
 export const trapFocus = (container: HTMLElement) => {
   const focusableElements = container.querySelectorAll(
     'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-  ) as NodeListOf<HTMLElement>;
+  );
   
-  const firstElement = focusableElements[0];
-  const lastElement = focusableElements[focusableElements.length - 1];
+  const firstElement = focusableElements[0] as HTMLElement;
+  const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
   
   const handleTabKey = (e: KeyboardEvent) => {
     if (e.key === 'Tab') {
@@ -61,11 +61,9 @@ export const trapFocus = (container: HTMLElement) => {
           lastElement.focus();
           e.preventDefault();
         }
-      } else {
-        if (document.activeElement === lastElement) {
-          firstElement.focus();
-          e.preventDefault();
-        }
+      } else if (document.activeElement === lastElement) {
+        firstElement.focus();
+        e.preventDefault();
       }
     }
   };
@@ -132,8 +130,18 @@ export const handleKeyboardNavigation = (
 };
 
 // ARIA helpers
+// Use a counter for stable IDs across server and client rendering
+let idCounter = 0;
+
 export const generateId = (prefix: string = 'element') => {
-  return `${prefix}-${Math.random().toString(36).substr(2, 9)}`;
+  // For client-side only, we can use this approach
+  if (typeof window !== 'undefined') {
+    // Use a stable counter-based approach instead of random
+    return `${prefix}-${(idCounter++).toString(36)}`;
+  }
+  
+  // For SSR, return a stable placeholder that will be consistent
+  return `${prefix}-ssr`;
 };
 
 export const getAriaProps = (
@@ -155,7 +163,7 @@ export const getAriaProps = (
 };
 
 // Color contrast helpers
-export const getContrastRatio = (color1: string, color2: string): number => {
+export const getContrastRatio = (_color1: string, _color2: string): number => {
   // Simplified contrast ratio calculation
   // In a real implementation, you'd use a proper color library
   return 4.5; // Placeholder - meets WCAG AA standard
