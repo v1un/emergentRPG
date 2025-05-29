@@ -16,6 +16,7 @@ import {
   Cog6ToothIcon,
   HomeIcon,
   XMarkIcon,
+  CpuChipIcon,
 } from '@heroicons/react/24/outline';
 
 interface SidebarProps {
@@ -33,9 +34,43 @@ interface NavItem {
   badge?: string | number;
 }
 
-export function Sidebar({ collapsed, isMobile, onClose }: SidebarProps) {
+export function Sidebar({ collapsed, isMobile, onClose }: Readonly<SidebarProps>) {
   const { setActivePanel } = useGameStore();
   const activePanel = useActivePanel();
+
+  // Touch handling for mobile swipe-to-close
+  const [touchStart, setTouchStart] = React.useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = React.useState<number | null>(null);
+
+  // Prevent body scroll when mobile sidebar is open
+  React.useEffect(() => {
+    if (isMobile && !collapsed) {
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = 'unset';
+      };
+    }
+  }, [isMobile, collapsed]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+
+    if (isLeftSwipe && isMobile) {
+      onClose();
+    }
+  };
 
   const navItems: NavItem[] = [
     {
@@ -75,6 +110,12 @@ export function Sidebar({ collapsed, isMobile, onClose }: SidebarProps) {
       panel: PANELS.WORLD,
     },
     {
+      id: 'ai_insights',
+      label: 'AI Insights',
+      icon: CpuChipIcon,
+      panel: PANELS.AI_INSIGHTS,
+    },
+    {
       id: 'settings',
       label: 'Settings',
       icon: Cog6ToothIcon,
@@ -86,24 +127,42 @@ export function Sidebar({ collapsed, isMobile, onClose }: SidebarProps) {
     if (item.panel) {
       setActivePanel(item.panel as any);
     }
-    
+
     if (isMobile) {
       onClose();
     }
   };
 
-  const sidebarWidth = collapsed ? 'w-0' : 'w-64';
-  const sidebarTransform = collapsed ? '-translate-x-full' : 'translate-x-0';
-
   return (
     <>
+      {/* Mobile Backdrop */}
+      {isMobile && !collapsed && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40"
+          onClick={onClose}
+          onKeyDown={(e) => e.key === 'Escape' && onClose()}
+          tabIndex={-1}
+          aria-hidden="true"
+        />
+      )}
+
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed left-0 top-16 h-[calc(100vh-4rem)] bg-card border-r border-gray-200 dark:border-gray-800 transition-all duration-300 ease-in-out z-50',
-          isMobile ? 'w-64' : sidebarWidth,
-          isMobile ? sidebarTransform : ''
+          'bg-card border-r border-gray-200 dark:border-gray-800',
+          'transition-all duration-300 ease-in-out flex-shrink-0',
+          'flex flex-col h-full',
+          // Desktop: use width transitions
+          !isMobile && (collapsed ? 'w-0 overflow-hidden' : 'w-64'),
+          // Mobile: use absolute positioning with full width
+          isMobile && (collapsed
+            ? 'absolute -left-64 w-64 z-50'
+            : 'absolute left-0 w-64 z-50'
+          )
         )}
+        onTouchStart={isMobile ? handleTouchStart : undefined}
+        onTouchMove={isMobile ? handleTouchMove : undefined}
+        onTouchEnd={isMobile ? handleTouchEnd : undefined}
       >
         <div className="flex flex-col h-full">
           {/* Mobile Close Button */}
@@ -167,16 +226,6 @@ export function Sidebar({ collapsed, isMobile, onClose }: SidebarProps) {
           </div>
         </div>
       </aside>
-
-      {/* Spacer for non-mobile */}
-      {!isMobile && (
-        <div
-          className={cn(
-            'transition-all duration-300 ease-in-out flex-shrink-0',
-            collapsed ? 'w-0' : 'w-64'
-          )}
-        />
-      )}
     </>
   );
 }

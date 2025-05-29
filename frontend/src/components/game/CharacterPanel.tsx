@@ -130,9 +130,32 @@ export function CharacterPanel() {
     if (character) {
       const expectedLevel = Math.floor(character.experience / 1000) + 1;
       if (expectedLevel > character.level) {
+        // Calculate stat increases based on character class
+        const statIncreases: Partial<CharacterStats> = {};
+        
+        // Determine stat increases based on character class
+        switch(character.class_name?.toLowerCase()) {
+          case 'warrior':
+            statIncreases.strength = 2;
+            statIncreases.constitution = 1;
+            break;
+          case 'mage':
+            statIncreases.intelligence = 2;
+            statIncreases.wisdom = 1;
+            break;
+          case 'rogue':
+            statIncreases.dexterity = 2;
+            statIncreases.charisma = 1;
+            break;
+          default:
+            // Default stat increases if class not recognized
+            statIncreases.strength = 1;
+            statIncreases.constitution = 1;
+        }
+        
         setLevelUpData({
           newLevel: expectedLevel,
-          statIncreases: { strength: 1, constitution: 1 } // Example stat increases
+          statIncreases
         });
         setShowLevelUp(true);
 
@@ -143,6 +166,14 @@ export function CharacterPanel() {
             level: expectedLevel,
             max_health: character.max_health + 5, // Level up bonus
             max_mana: character.max_mana + 3,
+            stats: {
+              ...character.stats,
+              ...Object.entries(statIncreases).reduce((acc, [stat, increase]) => {
+                const statKey = stat as keyof CharacterStats;
+                acc[statKey] = (character.stats[statKey] || 0) + (increase || 0);
+                return acc;
+              }, {} as Partial<CharacterStats>)
+            }
           }
         });
       }

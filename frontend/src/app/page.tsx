@@ -56,12 +56,10 @@ export default function Home() {
     );
   }
 
-  // If session is active, let MainContent handle panel navigation
+  // If session is active, render MainContent to handle panel navigation
   return (
     <GameLayout>
-      <div className="flex-1">
-        {/* MainContent will automatically render the appropriate panels based on activePanel */}
-      </div>
+      {/* MainContent will automatically render the appropriate panels based on activePanel */}
     </GameLayout>
   );
 }

@@ -8,7 +8,13 @@ export interface StoryEntry {
   type: ActionType;
   text: string;
   timestamp: string;
-  metadata?: Record<string, any>;
+  metadata?: {
+    ai_confidence?: number; // 0-1 scale for AI confidence
+    ai_context?: string[]; // Context the AI considered
+    ai_generated?: boolean; // Whether this was AI-generated
+    ai_insight_id?: string; // ID of associated AI insight
+    [key: string]: any;
+  };
 }
 
 export interface CharacterStats {

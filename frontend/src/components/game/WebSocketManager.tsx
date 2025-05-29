@@ -76,7 +76,7 @@ export function WebSocketManager({ children }: WebSocketManagerProps) {
       console.log('WebSocketManager: No active session, disconnecting WebSocket');
       disconnect();
     }
-  }, [currentSession?.session_id]); // Only depend on session ID, functions are stable
+  }, [currentSession?.session_id]); // Only depend on session ID to prevent infinite loops
 
   // Handle WebSocket errors
   useEffect(() => {
@@ -84,11 +84,11 @@ export function WebSocketManager({ children }: WebSocketManagerProps) {
       console.error('WebSocket error detected:', error);
       setLastError(error.message);
     }
-  }, [error]); // setLastError is stable
+  }, [error, setLastError]); // Include setLastError in dependencies
 
   // Note: Cleanup is handled by useGameWebSocket hook when manageConnection=true
 
-  // Log connection status changes for debugging
+  // Log connection status changes for debugging (simplified to prevent infinite loops)
   useEffect(() => {
     console.log('WebSocket connection status changed:', connectionStatus, 'Connected:', isConnected);
   }, [connectionStatus, isConnected]);

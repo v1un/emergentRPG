@@ -7,12 +7,6 @@ export interface APIResponse<T = any> {
   message?: string;
 }
 
-export interface APIError {
-  message: string;
-  statusCode: number;
-  details?: any;
-}
-
 export class APIError extends Error {
   statusCode: number;
   details?: any;

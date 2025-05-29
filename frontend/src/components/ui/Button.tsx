@@ -208,7 +208,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ]);
 
     // Determine button content based on state
-    const getButtonContent = () => {
+    const getButtonContent = useCallback(() => {
       if (isLoading) {
         return loadingText;
       }
@@ -219,14 +219,14 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         return errorText ?? errorMessage;
       }
       return children;
-    };
+    }, [isLoading, loadingText, isSuccess, successText, isError, errorText, errorMessage, children]);
 
     // Determine variant based on state
-    const getVariant = () => {
+    const getVariant = useCallback(() => {
       if (isSuccess) return 'success';
       if (isError) return 'destructive';
       return variant;
-    };
+    }, [isSuccess, isError, variant]);
 
     // Build accessibility props
     const accessibilityProps: AccessibilityProps = {

@@ -136,6 +136,7 @@ export const PANELS = {
   INVENTORY: 'inventory',
   QUESTS: 'quests',
   WORLD: 'world',
+  AI_INSIGHTS: 'ai_insights',
 } as const;
 
 export const ACTION_TYPES = {

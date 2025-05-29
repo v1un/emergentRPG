@@ -20,6 +20,7 @@ import {
   LazyWrapper
 } from '@/components/ui/LazyWrapper';
 import { SessionsPanel } from '@/components/game/SessionsPanel';
+import { AIInsightsGamePanel } from '@/components/game/AIInsightsGamePanel';
 
 interface MainContentProps {
   children?: React.ReactNode;
@@ -120,6 +121,8 @@ export function MainContent({ children }: Readonly<MainContentProps>) {
             <LazyWorldPanel />
           </LazyWrapper>
         );
+      case PANELS.AI_INSIGHTS:
+        return <AIInsightsGamePanel variant="modal" className="h-full" />;
       default:
         return (
           <LazyWrapper fallback={<StoryPanelLoading />}>

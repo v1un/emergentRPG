@@ -154,8 +154,17 @@ export class GameWebSocketService {
       this.reconnectAttempts = 0;
       this.isReconnecting = false;
 
-      // Don't start ping interval yet - wait for server confirmation
-      // this.startPingInterval();
+      // Send initial connection message to server
+      this.sendMessage({
+        type: WEBSOCKET_MESSAGE_TYPES.CONNECTION,
+        data: { 
+          session_id: this.sessionId,
+          client_info: {
+            timestamp: Date.now(),
+            userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown'
+          }
+        }
+      });
 
       // Send queued messages
       this.sendQueuedMessages();
@@ -196,41 +205,42 @@ export class GameWebSocketService {
   private handleMessage(message: WebSocketMessage): void {
     console.debug('Received WebSocket message:', message.type, message.data);
 
-    switch (message.type) {
-      case WEBSOCKET_MESSAGE_TYPES.NARRATIVE_RESPONSE:
-        this.callbacks.onNarrativeUpdate?.(message.data);
-        break;
+    try {
+      switch (message.type) {
+        case WEBSOCKET_MESSAGE_TYPES.NARRATIVE_RESPONSE:
+          this.callbacks.onNarrativeUpdate?.(message.data);
+          break;
 
-      case WEBSOCKET_MESSAGE_TYPES.WORLD_CHANGE:
-        this.callbacks.onWorldUpdate?.(message.data);
-        break;
+        case WEBSOCKET_MESSAGE_TYPES.WORLD_CHANGE:
+          this.callbacks.onWorldUpdate?.(message.data);
+          break;
 
-      case WEBSOCKET_MESSAGE_TYPES.CHARACTER_UPDATE:
-        this.callbacks.onCharacterUpdate?.(message.data);
-        break;
+        case WEBSOCKET_MESSAGE_TYPES.CHARACTER_UPDATE:
+          this.callbacks.onCharacterUpdate?.(message.data);
+          break;
 
-      case WEBSOCKET_MESSAGE_TYPES.QUEST_UPDATE:
-        this.callbacks.onQuestUpdate?.(message.data);
-        break;
+        case WEBSOCKET_MESSAGE_TYPES.QUEST_UPDATE:
+          this.callbacks.onQuestUpdate?.(message.data);
+          break;
 
-      case WEBSOCKET_MESSAGE_TYPES.CONNECTION:
-        console.log('Connection confirmation received from server:', message.data);
-        // Confirm connection status when server sends confirmation
-        if (message.data?.status === 'connected') {
-          console.log('Server confirmed connection - updating status to connected');
-          const wasConnecting = this.connectionStatus === 'connecting';
-          this.setConnectionStatus('connected');
+        case WEBSOCKET_MESSAGE_TYPES.CONNECTION:
+          console.log('Connection confirmation received from server:', message.data);
+          // Confirm connection status when server sends confirmation
+          if (message.data?.status === 'connected') {
+            console.log('Server confirmed connection - updating status to connected');
+            const wasConnecting = this.connectionStatus === 'connecting';
+            this.setConnectionStatus('connected');
 
-          // Start ping interval now that connection is confirmed
-          this.startPingInterval();
+            // Start ping interval now that connection is confirmed
+            this.startPingInterval();
 
-          // Only trigger onConnect callback if we were in connecting state
-          if (wasConnecting) {
-            console.log('Triggering onConnect callback after server confirmation');
-            this.callbacks.onConnect?.();
+            // Only trigger onConnect callback if we were in connecting state
+            if (wasConnecting) {
+              console.log('Triggering onConnect callback after server confirmation');
+              this.callbacks.onConnect?.();
+            }
           }
-        }
-        break;
+          break;
 
       case WEBSOCKET_MESSAGE_TYPES.PONG:
         console.debug('Received pong');
@@ -248,6 +258,10 @@ export class GameWebSocketService {
 
       default:
         console.warn('Unknown WebSocket message type:', message.type);
+    }
+    } catch (error) {
+      console.error('Error handling WebSocket message:', error);
+      this.callbacks.onError?.(error instanceof Error ? error : new Error('Error processing message'));
     }
   }
 
@@ -335,24 +349,46 @@ export class GameWebSocketService {
   }
 
   sendMessage(message: any): void {
+    // Ensure message has required fields
+    if (!message.type) {
+      console.error('Cannot send message without type:', message);
+      return;
+    }
+    
+    // Add timestamp and session ID if not present
+    const enhancedMessage = {
+      ...message,
+      timestamp: message.timestamp || Date.now(),
+      session_id: message.session_id || this.sessionId
+    };
+    
     if (this.ws?.readyState === WebSocket.OPEN) {
       try {
-        this.ws.send(JSON.stringify(message));
-        console.debug('Sent WebSocket message:', message.type);
+        this.ws.send(JSON.stringify(enhancedMessage));
+        console.debug('Sent WebSocket message:', enhancedMessage.type);
       } catch (error) {
         console.error('Failed to send WebSocket message:', error);
-        this.messageQueue.push(message);
+        this.messageQueue.push(enhancedMessage);
       }
     } else {
       console.warn('WebSocket not connected, queueing message');
-      this.messageQueue.push(message);
+      this.messageQueue.push(enhancedMessage);
     }
   }
 
   sendAction(action: string): void {
+    if (!action || typeof action !== 'string') {
+      console.error('Invalid action provided to sendAction:', action);
+      return;
+    }
+    
     this.sendMessage({
       type: WEBSOCKET_MESSAGE_TYPES.ACTION,
-      data: { action }
+      data: { 
+        action,
+        timestamp: Date.now(),
+        session_id: this.sessionId
+      }
     });
   }
 

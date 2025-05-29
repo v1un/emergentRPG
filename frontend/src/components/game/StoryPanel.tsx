@@ -9,6 +9,10 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { TypingIndicator } from '@/components/ui/Loading';
+import { AIGeneratedContent, AIProcessStatus } from '@/components/ui/AIGeneratedContent';
+import { AIConfidenceIndicator } from '@/components/ui/AIConfidenceIndicator';
+import { AIInsightsWidget, AIInsightTooltip } from '@/components/ui/AIInsightsWidget';
+import { useAIInsights } from '@/services/aiInsightsService';
 import { cn, truncateText } from '@/utils/helpers';
 import { gameFormatters } from '@/utils/formatting';
 import { actionSchema } from '@/utils/validation';
@@ -22,6 +26,7 @@ import {
   MagnifyingGlassIcon,
   DocumentTextIcon,
   XMarkIcon,
+  CpuChipIcon,
 } from '@heroicons/react/24/outline';
 import {
   BookmarkIcon as BookmarkSolidIcon,
@@ -49,6 +54,9 @@ export function StoryPanel() {
 
   const storyEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // AI Insights integration
+  const { insights, generateMockInsight } = useAIInsights();
 
   const { performAction, isLoading, error } = useGameAction(
     currentSession?.session_id || '',
@@ -367,6 +375,18 @@ export function StoryPanel() {
               <ArrowDownTrayIcon className="h-4 w-4" />
               <span className="hidden sm:inline ml-1">Export</span>
             </Button>
+
+            {/* AI Insights Demo (for testing) */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => generateMockInsight('narrative')}
+              aria-label="Generate AI insight demo"
+              className="bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300"
+            >
+              <CpuChipIcon className="h-4 w-4" />
+              <span className="hidden sm:inline ml-1">AI Demo</span>
+            </Button>
           </div>
         </div>
 
@@ -497,18 +517,47 @@ export function StoryPanel() {
                     </span>
                   </div>
 
-                  {/* Enhanced Content */}
+                  {/* Enhanced Content with AI styling */}
                   <div className="prose prose-sm dark:prose-invert max-w-none">
-                    <p className={cn(
-                      'text-foreground whitespace-pre-wrap leading-relaxed',
-                      entry.type === ACTION_TYPES.NARRATION && 'text-gray-700 dark:text-gray-300 italic',
-                      entry.type === ACTION_TYPES.PLAYER && 'font-medium text-blue-900 dark:text-blue-100',
-                      entry.type === ACTION_TYPES.ACTION && 'text-green-900 dark:text-green-100',
-                      entry.type === ACTION_TYPES.SYSTEM && 'text-yellow-900 dark:text-yellow-100 font-mono text-sm'
-                    )}>
-                      {entry.text}
-                    </p>
+                    {entry.type === ACTION_TYPES.NARRATION ? (
+                      <AIGeneratedContent
+                        confidence={entry.metadata?.ai_confidence}
+                        type="narrative"
+                        variant="subtle"
+                        showBadge={false}
+                        showConfidence={!!entry.metadata?.ai_confidence}
+                      >
+                        <p className="text-foreground whitespace-pre-wrap leading-relaxed italic">
+                          {entry.text}
+                        </p>
+                      </AIGeneratedContent>
+                    ) : (
+                      <p className={cn(
+                        'text-foreground whitespace-pre-wrap leading-relaxed',
+                        entry.type === ACTION_TYPES.PLAYER && 'font-medium text-blue-900 dark:text-blue-100',
+                        entry.type === ACTION_TYPES.ACTION && 'text-green-900 dark:text-green-100',
+                        entry.type === ACTION_TYPES.SYSTEM && 'text-yellow-900 dark:text-yellow-100 font-mono text-sm'
+                      )}>
+                        {entry.text}
+                      </p>
+                    )}
                   </div>
+
+                  {/* AI Insights for AI-generated content */}
+                  {entry.type === ACTION_TYPES.NARRATION && entry.metadata?.ai_insight_id && (
+                    <div className="mt-3">
+                      {(() => {
+                        const insight = insights.find(i => i.id === entry.metadata?.ai_insight_id);
+                        return insight ? (
+                          <AIInsightsWidget
+                            insight={insight}
+                            variant="compact"
+                            showToggle={true}
+                          />
+                        ) : null;
+                      })()}
+                    </div>
+                  )}
                 </div>
               </div>
             </Card>
@@ -517,12 +566,11 @@ export function StoryPanel() {
 
         {/* AI Generating Indicator */}
         {isAIGenerating && (
-          <Card className="p-4 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
-            <div className="flex items-center space-x-3">
-              <span className="text-lg">🤖</span>
-              <TypingIndicator message="AI is crafting your story..." />
-            </div>
-          </Card>
+          <AIProcessStatus
+            status="generating"
+            message="AI is crafting your story..."
+            className="mx-auto max-w-md"
+          />
         )}
 
         <div ref={storyEndRef} />

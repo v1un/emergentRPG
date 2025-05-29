@@ -4,12 +4,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { useGameStore } from '@/stores/gameStore';
-import { cn } from '@/utils/helpers';
-import { DEFAULT_VALUES } from '@/utils/constants';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
-import { SkipToContent, useReducedMotion } from '@/components/ui/Accessibility';
+import { SkipToContent } from '@/components/ui/Accessibility';
 import { preloadGameComponents } from '@/components/ui/LazyWrapper';
-import { announceToScreenReader, handleKeyboardNavigation } from '@/utils/accessibility';
+import { announceToScreenReader } from '@/utils/accessibility';
 
 // Import layout components
 import Header from './Header';
@@ -25,7 +23,7 @@ interface GameLayoutProps {
 export function GameLayout({ children }: Readonly<GameLayoutProps>) {
   const { sidebarCollapsed, setSidebarCollapsed } = useGameStore();
   const [isMobile, setIsMobile] = useState(false);
-  const prefersReducedMotion = useReducedMotion();
+  // Note: useReducedMotion available if needed for animations
 
   // Preload game components for better performance
   useEffect(() => {
@@ -36,7 +34,6 @@ export function GameLayout({ children }: Readonly<GameLayoutProps>) {
   useEffect(() => {
     const checkMobile = () => {
       const mobile = window.innerWidth < 768;
-      const tablet = window.innerWidth >= 768 && window.innerWidth < 1024;
       setIsMobile(mobile);
 
       // Auto-collapse sidebar on mobile and small tablets
@@ -78,14 +75,6 @@ export function GameLayout({ children }: Readonly<GameLayoutProps>) {
     setSidebarCollapsed(!sidebarCollapsed);
   };
 
-  const handleOverlayKeyDown = (e: React.KeyboardEvent) => {
-    handleKeyboardNavigation(e, {
-      onEscape: () => setSidebarCollapsed(true),
-      onEnter: () => setSidebarCollapsed(true),
-      onSpace: () => setSidebarCollapsed(true),
-    });
-  };
-
   return (
     <ErrorBoundary>
       <WebSocketManager>
@@ -102,7 +91,8 @@ export function GameLayout({ children }: Readonly<GameLayoutProps>) {
             />
           </ErrorBoundary>
 
-          <div className="flex h-[calc(100vh-4rem)]">
+          {/* Main Layout Container - Fixed height with flex layout */}
+          <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
             {/* Sidebar */}
             <ErrorBoundary>
               <Sidebar
@@ -112,14 +102,10 @@ export function GameLayout({ children }: Readonly<GameLayoutProps>) {
               />
             </ErrorBoundary>
 
-            {/* Main Content Area */}
+            {/* Main Content Area - Flex-based layout */}
             <main
               id="main-content"
-              className={cn(
-                'flex-1 flex flex-col transition-all duration-300 ease-in-out',
-                sidebarCollapsed ? 'ml-0' : `ml-${DEFAULT_VALUES.SIDEBAR_WIDTH}px`,
-                isMobile && 'ml-0'
-              )}
+              className="flex-1 flex flex-col overflow-hidden"
               role="main"
               aria-label="Game content"
             >
@@ -135,17 +121,6 @@ export function GameLayout({ children }: Readonly<GameLayoutProps>) {
               </ErrorBoundary>
             </main>
           </div>
-
-        {/* Mobile Sidebar Overlay */}
-        {isMobile && !sidebarCollapsed && (
-          <button
-            className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden border-none cursor-pointer"
-            onClick={() => setSidebarCollapsed(true)}
-            onKeyDown={handleOverlayKeyDown}
-            aria-label="Close sidebar overlay"
-            type="button"
-          />
-        )}
         </div>
       </WebSocketManager>
     </ErrorBoundary>

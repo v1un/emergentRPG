@@ -116,7 +116,20 @@ export function useGameWebSocket(
       setLastError(wsError.message);
       onError?.(wsError);
     },
-  }), []); // Empty deps - all functions are either stable or captured in closure
+  }), [
+    // Include callback dependencies
+    onConnect, 
+    onDisconnect, 
+    onError, 
+    setConnectionStatus, 
+    setConnected, 
+    setError, 
+    setLastError,
+    addStoryEntry,
+    updateWorldState,
+    setAIGenerating,
+    setLastMessage
+  ]);
 
   // Connect function
   const connect = useCallback(async (targetSessionId: string) => {
@@ -209,7 +222,7 @@ export function useGameWebSocket(
     }, 100);
 
     return () => clearTimeout(timeoutId);
-  }, [autoConnect, sessionId]); // Remove connect from deps since it's stable now
+  }, [autoConnect, sessionId, connect]); // Include connect in dependencies
 
   // Cleanup effect - only disconnect if this hook manages the connection
   useEffect(() => {
@@ -218,7 +231,7 @@ export function useGameWebSocket(
         disconnect();
       }
     };
-  }, [manageConnection]); // Only cleanup if this hook manages the connection
+  }, [manageConnection, disconnect]); // Include disconnect in dependencies
 
   // Sync connection status with WebSocket service on mount only
   useEffect(() => {
@@ -233,7 +246,7 @@ export function useGameWebSocket(
     if (wsConnected !== isConnected) {
       setConnected(wsConnected);
     }
-  }, []); // Only run on mount, callbacks handle real-time updates
+  }, []); // Empty dependency array - only run on mount
 
   return {
     isConnected,
