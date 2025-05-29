@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { AIInsightsPanel } from '@/components/ui/AIInsightsPanel';
 import { AIInsightsWidget } from '@/components/ui/AIInsightsWidget';
 import { useAIInsights } from '@/services/aiInsightsService';
-import { useCurrentSession } from '@/hooks/useGameStore';
+import { useCurrentSession } from '@/stores/gameStore';
 import { 
   CpuChipIcon,
   ChartBarIcon,

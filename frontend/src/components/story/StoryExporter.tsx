@@ -276,7 +276,7 @@ export function StoryExporter({ onClose, className }: StoryExporterProps) {
                 'flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
                 exportOptions.format === format.format
                   ? 'border-primary bg-primary/5'
-                  : 'border-border hover:bg-muted/50'
+                  : 'border-gray-200 dark:border-gray-800 hover:bg-muted/50'
               )}
               onClick={() => setExportOptions(prev => ({ ...prev, format: format.format }))}
             >

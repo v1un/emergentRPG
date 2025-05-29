@@ -3,11 +3,11 @@
 import React, { forwardRef } from 'react';
 import { Button, ButtonProps } from './Button';
 import { IconButton } from './IconButton';
-import { 
-  PlayIcon, 
-  TrashIcon, 
-  PencilIcon, 
-  EyeIcon, 
+import {
+  PlayIcon,
+  TrashIcon,
+  PencilIcon,
+  EyeIcon,
   EyeSlashIcon,
   ArrowDownTrayIcon,
   ArrowUpTrayIcon,
@@ -17,14 +17,19 @@ import {
   PlusIcon,
   MinusIcon,
   CheckIcon,
-  XMarkIcon
+  XMarkIcon,
+  CursorArrowRaysIcon,
+  WrenchScrewdriverIcon,
+  ArrowsRightLeftIcon,
+  FunnelIcon
 } from '@heroicons/react/24/outline';
 
 // Common game action types
-export type GameActionType = 
+export type GameActionType =
   | 'play' | 'load' | 'save' | 'delete' | 'edit' | 'view' | 'hide'
   | 'download' | 'upload' | 'bookmark' | 'share' | 'settings'
-  | 'add' | 'remove' | 'confirm' | 'cancel' | 'track' | 'untrack';
+  | 'add' | 'remove' | 'confirm' | 'cancel' | 'track' | 'untrack'
+  | 'use' | 'equip' | 'compare' | 'filter';
 
 export interface ActionButtonProps extends Omit<ButtonProps, 'leftIcon' | 'rightIcon'> {
   action: GameActionType;
@@ -53,6 +58,10 @@ const actionIcons: Record<GameActionType, React.ReactNode> = {
   cancel: <XMarkIcon className="h-4 w-4" />,
   track: <EyeIcon className="h-4 w-4" />,
   untrack: <EyeSlashIcon className="h-4 w-4" />,
+  use: <CursorArrowRaysIcon className="h-4 w-4" />,
+  equip: <WrenchScrewdriverIcon className="h-4 w-4" />,
+  compare: <ArrowsRightLeftIcon className="h-4 w-4" />,
+  filter: <FunnelIcon className="h-4 w-4" />,
 };
 
 // Default labels for actions
@@ -75,6 +84,10 @@ const actionLabels: Record<GameActionType, string> = {
   cancel: 'Cancel',
   track: 'Track',
   untrack: 'Untrack',
+  use: 'Use',
+  equip: 'Equip',
+  compare: 'Compare',
+  filter: 'Filter',
 };
 
 // Default variants for actions
@@ -97,6 +110,9 @@ const actionVariants: Record<GameActionType, ButtonProps['variant']> = {
   cancel: 'outline',
   track: 'default',
   untrack: 'outline',
+  use: 'default',
+  equip: 'default',
+  compare: 'outline',
 };
 
 // Default confirmation messages

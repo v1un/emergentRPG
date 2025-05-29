@@ -56,10 +56,10 @@ export default function Home() {
     );
   }
 
-  // If session is active, render MainContent to handle panel navigation
+  // If session is active, render GameLayout with null children so MainContent handles panel navigation
   return (
     <GameLayout>
-      {/* MainContent will automatically render the appropriate panels based on activePanel */}
+      {null}
     </GameLayout>
   );
 }

@@ -366,33 +366,45 @@ export function SessionManager({ onSessionSelect }: SessionManagerProps) {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Game Sessions</h1>
-          <p className="text-muted-foreground">
-            Create a new adventure or continue an existing one
+    <div className="max-w-6xl mx-auto p-6 relative">
+      {/* Magical background effects */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none rounded-3xl"></div>
+
+      {/* Enhanced Magical Header */}
+      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-8 relative z-10">
+        <div className="text-center lg:text-left mb-6 lg:mb-0">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-2">
+            ✨ Game Sessions
+          </h1>
+          <p className="text-muted-foreground text-lg">
+            Create a new magical adventure or continue an existing journey
           </p>
+          <div className="flex justify-center lg:justify-start space-x-2 mt-3">
+            <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+            <div className="w-2 h-2 bg-accent rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+            <div className="w-2 h-2 bg-primary rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+          </div>
         </div>
-        <ButtonGroup spacing="md">
+        <ButtonGroup spacing="lg" className="justify-center lg:justify-end">
           <ActionButton
             action="play"
             onClick={handleCreateDemoSession}
             aria-label="Create demo session"
-            tooltip="Try a demo session to explore the interface"
+            tooltip="Try a demo session to explore the magical interface"
             loadingText="Creating demo..."
             successText="Demo loaded!"
+            className="bg-gradient-secondary hover:bg-gradient-primary hover:text-primary-foreground transition-all duration-300 hover:glow-primary"
           >
-            Demo Session
+            🎮 Demo Session
           </ActionButton>
           <ActionButton
             action="add"
             onClick={() => setShowCreateForm(true)}
             aria-label="Create new session"
-            tooltip="Create a new game session"
+            tooltip="Create a new magical adventure"
+            className="bg-gradient-primary hover:bg-gradient-accent transition-all duration-300 glow-primary hover:glow-accent"
           >
-            New Session
+            ✨ New Session
           </ActionButton>
         </ButtonGroup>
       </div>
@@ -405,15 +417,17 @@ export function SessionManager({ onSessionSelect }: SessionManagerProps) {
           ))}
         </div>
       ) : sessions.length === 0 ? (
-        <div className="text-center py-12">
-          <BookOpenIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-foreground mb-2">
-            No Game Sessions
+        <div className="text-center py-16 relative z-10">
+          <div className="w-24 h-24 bg-gradient-primary rounded-full flex items-center justify-center mx-auto mb-6 glow-primary animate-float">
+            <BookOpenIcon className="h-12 w-12 text-primary-foreground" />
+          </div>
+          <h3 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-4">
+            No Game Sessions Yet
           </h3>
-          <p className="text-muted-foreground mb-4">
-            Create your first game session to begin your AI-driven adventure.
+          <p className="text-muted-foreground text-lg mb-8 max-w-md mx-auto">
+            Create your first magical game session to begin your AI-driven adventure in a world of endless possibilities.
           </p>
-          <ButtonGroup spacing="md" className="justify-center">
+          <ButtonGroup spacing="lg" className="justify-center">
             <ActionButton
               action="play"
               variant="outline"
@@ -422,31 +436,36 @@ export function SessionManager({ onSessionSelect }: SessionManagerProps) {
               tooltip="Experience the AI storytelling with a demo session"
               loadingText="Creating demo..."
               successText="Demo ready!"
+              className="border-primary/30 hover:bg-gradient-primary hover:text-primary-foreground transition-all duration-300 hover:glow-primary"
             >
-              Try Demo Session
+              🎮 Try Demo Session
             </ActionButton>
             <ActionButton
               action="add"
               onClick={() => setShowCreateForm(true)}
               aria-label="Create first session"
               tooltip="Create your first AI-driven adventure"
+              className="bg-gradient-primary hover:bg-gradient-accent transition-all duration-300 glow-primary hover:glow-accent"
             >
-              Create First Session
+              ✨ Create First Session
             </ActionButton>
           </ButtonGroup>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 relative z-10">
           {sessions.map((session) => (
-            <Card key={session.session_id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
+            <Card key={session.session_id} className="group hover:shadow-2xl transition-all duration-500 hover:scale-105 glass border border-gray-200/50 dark:border-gray-800/50 hover:glow-primary">
+              <CardHeader className="bg-gradient-secondary/30 border-b border-gray-200/50 dark:border-gray-800/50">
                 <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg">
-                      {session.character.name}
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      Level {session.character.level} {session.character.class_name}
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <div className="w-3 h-3 bg-gradient-primary rounded-full animate-pulse"></div>
+                      <CardTitle className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                        {session.character.name}
+                      </CardTitle>
+                    </div>
+                    <p className="text-sm text-muted-foreground font-medium">
+                      ⚔️ Level {session.character.level} {session.character.class_name}
                     </p>
                   </div>
                   <ButtonGroup spacing="sm">
@@ -456,9 +475,10 @@ export function SessionManager({ onSessionSelect }: SessionManagerProps) {
                       onClick={() => handleLoadSession(session)}
                       disabled={deleteSessionMutation.isPending}
                       aria-label={`Load session for ${session.character.name}`}
-                      tooltip="Load this session"
+                      tooltip="Load this magical session"
                       loadingText="Loading session..."
                       successText="Session loaded!"
+                      className="hover:bg-gradient-primary hover:text-primary-foreground transition-all duration-300 hover:glow-primary"
                     />
                     <ActionButton
                       action="delete"
@@ -471,32 +491,44 @@ export function SessionManager({ onSessionSelect }: SessionManagerProps) {
                       confirmMessage={`Are you sure you want to delete the session for ${session.character.name}? This action cannot be undone.`}
                       loadingText="Deleting..."
                       successText="Deleted!"
+                      className="hover:bg-destructive hover:text-destructive-foreground transition-all duration-300"
                     />
                   </ButtonGroup>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <CalendarIcon className="h-4 w-4 mr-2" />
-                    {dateFormatters.relative(session.updated_at)}
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex items-center text-sm text-muted-foreground bg-gradient-secondary/20 rounded-lg p-3">
+                    <CalendarIcon className="h-4 w-4 mr-2 text-primary" />
+                    <span className="font-medium">Last played {dateFormatters.relative(session.updated_at)}</span>
                   </div>
-                  
-                  <div className="text-sm">
-                    <p className="text-muted-foreground">Location:</p>
-                    <p className="font-medium">{session.world_state.current_location}</p>
+
+                  <div className="bg-gradient-secondary/20 rounded-lg p-3">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <span className="text-lg">📍</span>
+                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Current Location</p>
+                    </div>
+                    <p className="font-semibold text-foreground">{session.world_state.current_location}</p>
                   </div>
-                  
-                  <div className="text-sm">
-                    <p className="text-muted-foreground">Health:</p>
-                    <p className="font-medium">
-                      {gameFormatters.health(session.character.health, session.character.max_health)}
-                    </p>
-                  </div>
-                  
-                  <div className="text-sm">
-                    <p className="text-muted-foreground">Story Entries:</p>
-                    <p className="font-medium">{session.story_length || 0}</p>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-gradient-secondary/20 rounded-lg p-3">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <span className="text-lg">❤️</span>
+                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Health</p>
+                      </div>
+                      <p className="font-semibold text-foreground">
+                        {gameFormatters.health(session.character.health, session.character.max_health)}
+                      </p>
+                    </div>
+
+                    <div className="bg-gradient-secondary/20 rounded-lg p-3">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <span className="text-lg">📖</span>
+                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Story</p>
+                      </div>
+                      <p className="font-semibold text-foreground">{session.story_length || 0} entries</p>
+                    </div>
                   </div>
                 </div>
               </CardContent>

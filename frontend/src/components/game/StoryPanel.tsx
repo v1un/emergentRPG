@@ -294,98 +294,108 @@ export function StoryPanel() {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Story Header with Enhanced Controls */}
-      <div className="border-b border-gray-200 dark:border-gray-800 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center space-x-3">
-            <h2 className="text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              AI Story
-            </h2>
-            <div className="flex items-center space-x-1 text-xs text-muted-foreground">
-              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-              <span>Live</span>
+      {/* Enhanced Magical Story Header */}
+      <div className="border-b border-gray-200 dark:border-gray-800 p-6 bg-gradient-story relative overflow-hidden">
+        {/* Magical background effects */}
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10"></div>
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-accent to-primary animate-shimmer"></div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+          <div className="flex items-center space-x-4">
+            <div className="relative">
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                ✨ AI Story Weaver
+              </h2>
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-accent rounded-full animate-pulse glow-accent"></div>
+            </div>
+            <div className="flex items-center space-x-2 px-3 py-1 bg-gradient-primary rounded-full text-primary-foreground text-xs font-medium">
+              <span className="w-2 h-2 bg-accent rounded-full animate-pulse"></span>
+              <span>Live Narrative</span>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2 flex-wrap">
-            {/* Quick Search Toggle */}
+          <div className="flex items-center space-x-3 flex-wrap">
+            {/* Enhanced Quick Search Toggle */}
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowSearch(!showSearch)}
               className={cn(
-                'transition-all duration-200',
-                showSearch && 'bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-700'
+                'transition-all duration-300 hover:glow-primary border-primary/30',
+                showSearch && 'bg-gradient-primary text-primary-foreground glow-primary'
               )}
               aria-label="Toggle quick search"
             >
               <MagnifyingGlassIcon className="h-4 w-4" />
-              <span className="hidden sm:inline ml-1">Quick Search</span>
+              <span className="hidden sm:inline ml-2">Search</span>
             </Button>
 
-            {/* Advanced Search */}
+            {/* Enhanced Advanced Search */}
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowAdvancedSearch(true)}
+              className="transition-all duration-300 hover:bg-primary/10 border-primary/30"
               aria-label="Advanced search"
             >
               <MagnifyingGlassIcon className="h-4 w-4" />
-              <span className="hidden sm:inline ml-1">Advanced</span>
+              <span className="hidden sm:inline ml-2">Advanced</span>
             </Button>
 
-            {/* Bookmarks Toggle */}
+            {/* Enhanced Bookmarks Toggle */}
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowBookmarks(!showBookmarks)}
               className={cn(
-                'transition-all duration-200',
-                showBookmarks && 'bg-yellow-100 dark:bg-yellow-900 border-yellow-300 dark:border-yellow-700'
+                'transition-all duration-300 hover:glow-accent border-accent/30',
+                showBookmarks && 'bg-gradient-accent text-accent-foreground glow-accent'
               )}
               aria-label={`Toggle bookmarks (${bookmarkedEntries.size} saved)`}
             >
               <BookmarkIcon className="h-4 w-4" />
-              <span className="hidden sm:inline ml-1">Bookmarks</span>
+              <span className="hidden sm:inline ml-2">Bookmarks</span>
               {bookmarkedEntries.size > 0 && (
-                <span className="ml-1 text-xs bg-yellow-500 text-white rounded-full px-1.5 py-0.5">
+                <span className="ml-2 text-xs bg-accent text-accent-foreground rounded-full px-2 py-1 font-bold animate-pulse">
                   {bookmarkedEntries.size}
                 </span>
               )}
             </Button>
 
-            {/* Bookmark Manager */}
+            {/* Enhanced Bookmark Manager */}
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowBookmarkManager(true)}
+              className="transition-all duration-300 hover:bg-accent/10 border-accent/30"
               aria-label="Manage bookmarks"
             >
               <BookmarkIcon className="h-4 w-4" />
-              <span className="hidden sm:inline ml-1">Manage</span>
+              <span className="hidden sm:inline ml-2">Manage</span>
             </Button>
 
-            {/* Export */}
+            {/* Enhanced Export */}
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowStoryExporter(true)}
+              className="transition-all duration-300 hover:bg-primary/10 border-primary/30"
               aria-label="Export story"
             >
               <ArrowDownTrayIcon className="h-4 w-4" />
-              <span className="hidden sm:inline ml-1">Export</span>
+              <span className="hidden sm:inline ml-2">Export</span>
             </Button>
 
-            {/* AI Insights Demo (for testing) */}
+            {/* Enhanced AI Insights Demo */}
             <Button
               variant="outline"
               size="sm"
               onClick={() => generateMockInsight('narrative')}
+              className="bg-gradient-secondary border-primary/30 text-primary hover:bg-gradient-primary hover:text-primary-foreground transition-all duration-300 hover:glow-primary"
               aria-label="Generate AI insight demo"
-              className="bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300"
             >
-              <CpuChipIcon className="h-4 w-4" />
-              <span className="hidden sm:inline ml-1">AI Demo</span>
+              <CpuChipIcon className="h-4 w-4 animate-pulse" />
+              <span className="hidden sm:inline ml-2">✨ AI Demo</span>
             </Button>
           </div>
         </div>
@@ -423,31 +433,45 @@ export function StoryPanel() {
         )}
       </div>
 
-      {/* Story Display */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      {/* Enhanced Magical Story Display */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gradient-story relative">
+        {/* Magical background effects */}
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-accent/5 pointer-events-none"></div>
+
         {displayedStory.length === 0 ? (
-          <div className="text-center py-12">
+          <div className="text-center py-16 relative z-10">
             {story.length === 0 ? (
-              <>
-                <h3 className="text-lg font-medium text-foreground mb-2">
-                  {dynamicContent?.emptyStateTitle || 'Your Adventure Begins'}
+              <div className="max-w-md mx-auto">
+                <div className="w-20 h-20 bg-gradient-primary rounded-full flex items-center justify-center mx-auto mb-6 glow-primary animate-float">
+                  <span className="text-2xl">✨</span>
+                </div>
+                <h3 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-4">
+                  {dynamicContent?.emptyStateTitle || 'Your Magical Adventure Begins'}
                 </h3>
-                <p className="text-muted-foreground mb-4">
-                  {dynamicContent?.emptyStateMessage || 'Enter your first action to start your AI-driven story adventure.'}
+                <p className="text-muted-foreground text-lg leading-relaxed">
+                  {dynamicContent?.emptyStateMessage || 'Step into a world where AI weaves your story in real-time. Enter your first action to begin your epic journey.'}
                 </p>
-              </>
+                <div className="flex justify-center space-x-2 mt-6">
+                  <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                  <div className="w-2 h-2 bg-accent rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                  <div className="w-2 h-2 bg-primary rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                </div>
+              </div>
             ) : (
-              <>
-                <h3 className="text-lg font-medium text-foreground mb-2">
+              <div className="max-w-md mx-auto">
+                <div className="w-16 h-16 bg-gradient-secondary rounded-full flex items-center justify-center mx-auto mb-6">
+                  <span className="text-xl">🔍</span>
+                </div>
+                <h3 className="text-xl font-semibold text-foreground mb-4">
                   No Entries Found
                 </h3>
-                <p className="text-muted-foreground mb-4">
+                <p className="text-muted-foreground">
                   {showBookmarks
                     ? "No bookmarked entries found. Bookmark entries by clicking the star icon."
                     : "No entries match your search criteria."
                   }
                 </p>
-              </>
+              </div>
             )}
           </div>
         ) : (
@@ -456,41 +480,45 @@ export function StoryPanel() {
               key={entry.id}
               id={`story-entry-${entry.id}`}
               className={cn(
-                'p-4 transition-all duration-300 group relative hover:shadow-lg hover:scale-[1.01] transform',
-                'animate-in slide-in-from-bottom-2 fade-in duration-500',
+                'p-6 transition-all duration-500 group relative hover:shadow-2xl hover:scale-[1.02] transform glass',
+                'animate-story-appear border border-gray-200/50 dark:border-gray-800/50 backdrop-blur-sm',
                 getEntryStyle(entry.type as ActionType),
-                bookmarkedEntries.has(entry.id) && 'ring-2 ring-yellow-400 dark:ring-yellow-600 shadow-yellow-100 dark:shadow-yellow-900'
+                bookmarkedEntries.has(entry.id) && 'ring-2 ring-accent glow-accent',
+                entry.type === 'narration' && 'hover:glow-primary'
               )}
-              style={{ animationDelay: `${index * 100}ms` }}
+              style={{ animationDelay: `${index * 150}ms` }}
             >
-              {/* Enhanced Bookmark Button */}
+              {/* Enhanced Magical Bookmark Button */}
               <button
                 onClick={() => handleBookmarkEntry(entry.id)}
                 className={cn(
-                  'absolute top-3 right-3 p-1 rounded-full transition-all duration-200',
-                  'opacity-0 group-hover:opacity-100 hover:bg-yellow-100 dark:hover:bg-yellow-900',
-                  bookmarkedEntries.has(entry.id) && 'opacity-100 bg-yellow-50 dark:bg-yellow-950'
+                  'absolute top-4 right-4 p-2 rounded-full transition-all duration-300 z-10',
+                  'opacity-0 group-hover:opacity-100 hover:bg-accent/20 hover:glow-accent',
+                  bookmarkedEntries.has(entry.id) && 'opacity-100 bg-gradient-accent text-accent-foreground glow-accent'
                 )}
                 aria-label={bookmarkedEntries.has(entry.id) ? 'Remove bookmark' : 'Add bookmark'}
               >
                 {bookmarkedEntries.has(entry.id) ? (
-                  <BookmarkSolidIcon className="h-4 w-4 text-yellow-500 animate-in zoom-in duration-200" />
+                  <BookmarkSolidIcon className="h-5 w-5 animate-magical-pulse" />
                 ) : (
-                  <BookmarkIcon className="h-4 w-4 text-gray-400 hover:text-yellow-500 transition-colors duration-150" />
+                  <BookmarkIcon className="h-5 w-5 text-muted-foreground hover:text-accent transition-colors duration-300" />
                 )}
               </button>
 
               <div className="flex items-start space-x-4">
-                {/* Enhanced Entry Icon */}
+                {/* Enhanced Magical Entry Icon */}
                 <div className={cn(
-                  'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm mt-1',
-                  'bg-gradient-to-br shadow-sm',
-                  entry.type === ACTION_TYPES.PLAYER && 'from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800',
-                  entry.type === ACTION_TYPES.NARRATION && 'from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700',
-                  entry.type === ACTION_TYPES.ACTION && 'from-green-100 to-green-200 dark:from-green-900 dark:to-green-800',
-                  entry.type === ACTION_TYPES.SYSTEM && 'from-yellow-100 to-yellow-200 dark:from-yellow-900 dark:to-yellow-800'
+                  'flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-lg mt-1 relative',
+                  'transition-all duration-300 group-hover:scale-110',
+                  entry.type === ACTION_TYPES.PLAYER && 'bg-gradient-to-br from-blue-400 to-blue-600 text-white shadow-lg',
+                  entry.type === ACTION_TYPES.NARRATION && 'bg-gradient-primary text-primary-foreground shadow-lg glow-primary',
+                  entry.type === ACTION_TYPES.ACTION && 'bg-gradient-to-br from-green-400 to-green-600 text-white shadow-lg',
+                  entry.type === ACTION_TYPES.SYSTEM && 'bg-gradient-accent text-accent-foreground shadow-lg glow-accent'
                 )}>
                   {getEntryIcon(entry.type as ActionType)}
+                  {entry.type === ACTION_TYPES.NARRATION && (
+                    <div className="absolute inset-0 bg-gradient-primary rounded-full opacity-50 animate-pulse"></div>
+                  )}
                 </div>
 
                 <div className="flex-1 min-w-0">
@@ -576,9 +604,13 @@ export function StoryPanel() {
         <div ref={storyEndRef} />
       </div>
 
-      {/* Enhanced Action Input */}
-      <div className="border-t border-gray-200 dark:border-gray-800 bg-gradient-to-r from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-950 p-4 sm:p-6">
-        <form onSubmit={handleSubmitAction} className="space-y-4">
+      {/* Enhanced Magical Action Input */}
+      <div className="border-t border-gray-200 dark:border-gray-800 bg-gradient-story p-6 relative overflow-hidden">
+        {/* Magical background effects */}
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10"></div>
+        <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-accent to-primary animate-shimmer"></div>
+
+        <form onSubmit={handleSubmitAction} className="space-y-4 relative z-10">
           {/* Input Area */}
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1 relative">
@@ -616,15 +648,16 @@ export function StoryPanel() {
               disabled={isLoading || isAIGenerating || !actionInput.trim()}
               loading={isLoading}
               className={cn(
-                'px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700',
-                'transition-all duration-200 transform hover:scale-105 active:scale-95',
-                'shadow-lg hover:shadow-xl',
-                'disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none'
+                'px-8 py-3 bg-gradient-primary hover:bg-gradient-to-r hover:from-primary hover:to-accent',
+                'transition-all duration-300 transform hover:scale-105 active:scale-95 glow-primary',
+                'shadow-xl hover:shadow-2xl font-semibold',
+                'disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none'
               )}
               aria-label="Submit action"
             >
-              <PaperAirplaneIcon className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Send</span>
+              <PaperAirplaneIcon className="h-5 w-5 mr-2" />
+              <span className="hidden sm:inline">✨ Send</span>
+              <span className="sm:hidden">Send</span>
             </Button>
           </div>
 

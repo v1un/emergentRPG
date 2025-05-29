@@ -23,7 +23,7 @@ import { Input } from '@/components/ui/Input';
 import { StoryBookmark, BookmarkFilter, StoryEntry } from '@/types';
 import { bookmarkService } from '@/services/bookmarkService';
 import { useCurrentSession } from '@/stores/gameStore';
-import { cn } from '@/utils/cn';
+import { cn } from '@/utils/helpers';
 import { toast } from 'react-hot-toast';
 
 interface BookmarkManagerProps {
