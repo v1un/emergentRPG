@@ -8,11 +8,13 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
 // Mock data for testing
 export const mockCharacter = {
-  id: 'test-character-1',
   name: 'Test Hero',
   level: 5,
+  health: 45,
+  max_health: 50,
+  mana: 30,
+  max_mana: 40,
   experience: 1250,
-  experience_to_next_level: 1500,
   stats: {
     strength: 15,
     dexterity: 12,
@@ -21,26 +23,14 @@ export const mockCharacter = {
     wisdom: 13,
     charisma: 11,
   },
-  health: {
-    current: 45,
-    maximum: 50,
-  },
-  equipment: {
-    weapon: {
-      id: 'sword-1',
-      name: 'Iron Sword',
-      type: 'weapon',
-      rarity: 'common',
-      stats: { attack: 10 },
-    },
-    armor: {
-      id: 'armor-1',
-      name: 'Leather Armor',
-      type: 'armor',
-      rarity: 'common',
-      stats: { defense: 5 },
-    },
-  },
+  class_name: 'Warrior',
+  background: 'A brave warrior from the northern lands',
+  equipped_items: {
+    weapon: 'Iron Sword',
+    chest: 'Leather Armor',
+  } as Record<string, string>,
+  max_carry_weight: 100,
+  metadata: {},
 };
 
 export const mockInventory = [

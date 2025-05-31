@@ -11,16 +11,13 @@ import { ActionButton } from '@/components/ui/ActionButton';
 import { ButtonGroup } from '@/components/ui/ButtonGroup';
 import { Input } from '@/components/ui/Input';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
-import { LoadingSpinner, LoadingCard } from '@/components/ui/Loading';
-import { cn } from '@/utils/helpers';
+import { LoadingCard } from '@/components/ui/Loading';
 import { dateFormatters, gameFormatters } from '@/utils/formatting';
 import { createSessionSchema } from '@/utils/validation';
 import { GameSession, GameSessionSummary, CreateSessionRequest } from '@/types';
 import { QUERY_KEYS } from '@/utils/constants';
 import {
   PlusIcon,
-  PlayIcon,
-  TrashIcon,
   BookOpenIcon,
   UserIcon,
   CalendarIcon,
@@ -37,7 +34,7 @@ export function SessionManager({ onSessionSelect }: SessionManagerProps) {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   
   const queryClient = useQueryClient();
-  const { setCurrentSession, setLoadingSession } = useGameStore();
+  const { setLoadingSession } = useGameStore();
 
   // Fetch existing sessions
   const { data: sessionsData, isLoading: isLoadingSessions } = useQuery({
@@ -78,7 +75,7 @@ export function SessionManager({ onSessionSelect }: SessionManagerProps) {
         toast.error('Session created but failed to load');
       }
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(error.message || 'Failed to create session');
     },
   });
@@ -90,7 +87,7 @@ export function SessionManager({ onSessionSelect }: SessionManagerProps) {
       toast.success('Session deleted successfully');
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SESSIONS });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(error.message || 'Failed to delete session');
     },
   });
@@ -121,8 +118,8 @@ export function SessionManager({ onSessionSelect }: SessionManagerProps) {
       const sessionData = await gameAPI.getSession(session.session_id);
       onSessionSelect(sessionData.session);
       toast.success(`Loaded session: ${session.character.name}`);
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to load session');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to load session');
     } finally {
       setLoadingSession(false);
     }

@@ -30,6 +30,7 @@ interface GameState {
   theme: Theme;
   uiConfig: UIConfig;
   sidebarCollapsed: boolean;
+  isMobile: boolean;
   
   // Game State
   pendingActions: PlayerAction[];
@@ -65,6 +66,8 @@ interface GameState {
   setActivePanel: (panel: ActivePanel) => void;
   setTheme: (theme: 'light' | 'dark' | 'auto') => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
+  toggleSidebar: () => void;
+  setIsMobile: (isMobile: boolean) => void;
   updateUIConfig: (config: Partial<UIConfig>) => void;
   
   setLoadingSession: (loading: boolean) => void;
@@ -101,6 +104,7 @@ export const useGameStore = create<GameState>()(
     theme: THEMES.AUTO as Theme,
     uiConfig: defaultUIConfig,
     sidebarCollapsed: false,
+    isMobile: false,
     pendingActions: [],
     actionHistory: [],
     isLoadingSession: false,
@@ -269,6 +273,14 @@ export const useGameStore = create<GameState>()(
 
     setSidebarCollapsed: (collapsed) => {
       set({ sidebarCollapsed: collapsed });
+    },
+
+    toggleSidebar: () => {
+      set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed }));
+    },
+
+    setIsMobile: (isMobile) => {
+      set({ isMobile });
     },
 
     updateUIConfig: (config) => {

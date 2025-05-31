@@ -113,6 +113,7 @@ const actionVariants: Record<GameActionType, ButtonProps['variant']> = {
   use: 'default',
   equip: 'default',
   compare: 'outline',
+  filter: 'outline',
 };
 
 // Default confirmation messages

@@ -11,18 +11,20 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { LoadingSpinner } from '@/components/ui/Loading';
 import { cn } from '@/utils/helpers';
 import { dateFormatters } from '@/utils/formatting';
-import { GameSession, GameSessionSummary } from '@/types';
+import { GameSessionSummary } from '@/types';
 import { QUERY_KEYS, PANELS } from '@/utils/constants';
 import toast from 'react-hot-toast';
 import {
-  PlayIcon,
-  TrashIcon,
   PlusIcon,
   UserIcon,
   ClockIcon,
   MapPinIcon,
   StarIcon,
 } from '@heroicons/react/24/outline';
+import {
+  PlayIcon,
+  TrashIcon,
+} from '@heroicons/react/24/solid';
 
 export function SessionsPanel() {
   const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
@@ -52,7 +54,7 @@ export function SessionsPanel() {
         setCurrentSession(null);
       }
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(error.message ?? 'Failed to delete session');
     },
   });
@@ -76,8 +78,8 @@ export function SessionsPanel() {
       setCurrentSession(sessionData.session);
       setActivePanel(PANELS.STORY); // Switch to story panel after loading
       toast.success(`Loaded session: ${session.character.name}`);
-    } catch (error: any) {
-      toast.error(error.message ?? 'Failed to load session');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to load session');
     } finally {
       setLoadingSessionId(null);
       setLoadingSession(false);
@@ -98,16 +100,24 @@ export function SessionsPanel() {
 
   if (isLoadingSessions) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="h-full flex items-center justify-center p-6 bg-gradient-story relative overflow-hidden">
+        <div className="absolute inset-0 bg-magical-dots opacity-20 pointer-events-none"></div>
+        <div className="floating-orb absolute top-10 right-10 w-4 h-4 bg-accent/30 rounded-full animate-float"></div>
+        <div className="floating-orb absolute bottom-20 left-8 w-3 h-3 bg-primary/20 rounded-full animate-float-delayed"></div>
         <LoadingSpinner size="lg" />
       </div>
     );
   }
 
   return (
-    <div className="h-full overflow-auto p-6">
+    <div className="h-full flex flex-col bg-gradient-story relative overflow-hidden">
+      {/* Magical Background Effects */}
+      <div className="absolute inset-0 bg-magical-dots opacity-20 pointer-events-none"></div>
+      <div className="floating-orb absolute top-10 right-10 w-4 h-4 bg-accent/30 rounded-full animate-float"></div>
+      <div className="floating-orb absolute bottom-20 left-8 w-3 h-3 bg-primary/20 rounded-full animate-float-delayed"></div>
+
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-6 z-10 relative">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Game Sessions</h2>
           <p className="text-muted-foreground">
@@ -122,16 +132,16 @@ export function SessionsPanel() {
 
       {/* Current Session Indicator */}
       {currentSession && (
-        <Card className="mb-6 border-primary/50 bg-primary/5">
+        <Card className="mb-6 border-primary/50 bg-gradient-primary/30 backdrop-blur-sm glow-primary/30">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                 <div>
-                  <CardTitle className="text-lg text-primary">
+                  <CardTitle className="text-lg bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                     Currently Playing: {currentSession.character.name}
                   </CardTitle>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-primary-foreground/80">
                     Level {currentSession.character.level} {currentSession.character.class_name} in {currentSession.world_state.current_location}
                   </p>
                 </div>
@@ -151,14 +161,14 @@ export function SessionsPanel() {
       {/* Sessions List */}
       {sessions.length === 0 ? (
         <div className="text-center py-12">
-          <UserIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-foreground mb-2">
+          <UserIcon className="h-12 w-12 text-accent mx-auto mb-4 animate-pulse" />
+          <h3 className="text-lg font-medium bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-2">
             No Game Sessions
           </h3>
-          <p className="text-muted-foreground mb-4">
+          <p className="text-primary-foreground/80 mb-4">
             Create your first game session to begin your AI-driven adventure.
           </p>
-          <Button onClick={handleCreateNewSession}>
+          <Button onClick={handleCreateNewSession} className="glow-accent">
             <PlusIcon className="h-4 w-4 mr-2" />
             Create First Session
           </Button>
@@ -173,27 +183,26 @@ export function SessionsPanel() {
               <Card 
                 key={session.session_id} 
                 className={cn(
-                  "hover:shadow-lg transition-all duration-200",
-                  isCurrentSession && "ring-2 ring-primary/50 bg-primary/5"
+                  "hover:shadow-lg transition-all duration-200 bg-gradient-accent/20 border-accent/20 hover:glow-accent",
+                  isCurrentSession && "ring-2 ring-accent bg-gradient-primary/30"
                 )}
               >
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-1">
-                        <CardTitle className="text-lg">
+                        <CardTitle className="text-lg bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                           {session.character.name}
                         </CardTitle>
                         {isCurrentSession && (
-                          <StarIcon className="h-4 w-4 text-primary fill-current" />
+                          <StarIcon className="h-4 w-4 text-accent fill-current animate-pulse" />
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground mb-2">
+                      <p className="text-sm text-primary-foreground/80 mb-2">
                         Level {session.character.level} {session.character.class_name}
                       </p>
-                      
                       {/* Session Details */}
-                      <div className="space-y-1 text-xs text-muted-foreground">
+                      <div className="space-y-1 text-xs text-primary-foreground/70">
                         <div className="flex items-center space-x-1">
                           <MapPinIcon className="h-3 w-3" />
                           <span>{session.world_state.current_location}</span>
@@ -209,7 +218,6 @@ export function SessionsPanel() {
                         </div>
                       </div>
                     </div>
-                    
                     {/* Action Buttons */}
                     <div className="flex flex-col space-y-1 ml-2">
                       <Button
@@ -237,11 +245,10 @@ export function SessionsPanel() {
                     </div>
                   </div>
                 </CardHeader>
-                
                 {/* Session Preview */}
                 <CardContent className="pt-0">
                   {(session.story_length ?? 0) > 0 && (
-                    <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                    <div className="text-xs text-primary-foreground/70 bg-gradient-primary/10 p-2 rounded">
                       <p className="line-clamp-2">
                         Last played {dateFormatters.relative(new Date(session.updated_at))}
                       </p>

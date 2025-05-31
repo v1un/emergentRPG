@@ -116,7 +116,6 @@ class StoryExportService {
     try {
       // Get session data to determine best formats
       const session = await gameAPI.getSession(sessionId);
-      const storyLength = session.session.story.length;
       
       const formats = [
         {
@@ -139,15 +138,15 @@ class StoryExportService {
         },
       ];
 
-      // Add PDF option for longer stories
-      if (storyLength > 20) {
-        formats.unshift({
-          format: 'pdf' as const,
-          name: 'PDF Document',
-          description: 'Professional document format with rich formatting',
-          recommended: storyLength > 50,
-        });
-      }
+      // PDF format is commented out until backend implementation is ready
+      // if (storyLength > 20) {
+      //   formats.unshift({
+      //     format: 'pdf' as const,
+      //     name: 'PDF Document',
+      //     description: 'Professional document format with rich formatting',
+      //     recommended: storyLength > 50,
+      //   });
+      // }
 
       return formats;
     } catch (error) {
@@ -286,6 +285,9 @@ class StoryExportService {
         case 'json':
           content = this.generateJsonContent(session.session, request.options, bookmarks);
           break;
+        case 'pdf':
+          // PDF generation would require a proper library
+          throw new Error('PDF export not yet implemented in fallback mode');
         default:
           throw new Error(`Unsupported format: ${request.options.format}`);
       }

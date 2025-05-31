@@ -19,7 +19,7 @@ import { Input } from '@/components/ui/Input';
 import { StorySearchResult, StorySearchOptions, StoryEntry } from '@/types';
 import { storySearchService } from '@/services/storySearchService';
 import { useCurrentSession } from '@/stores/gameStore';
-import { cn } from '@/utils/cn';
+import { cn } from '@/utils/helpers';
 import { toast } from 'react-hot-toast';
 
 interface StorySearchProps {
@@ -129,7 +129,7 @@ export function StorySearch({ onResultSelect, onClose, className }: StorySearchP
       saveRecentSearch(query.trim());
 
       if (results.length === 0) {
-        toast.info('No results found for your search');
+        toast('No results found for your search');
       }
     } catch (error) {
       console.error('Search failed:', error);

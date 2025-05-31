@@ -32,7 +32,7 @@ export function AIInsightsGamePanel({
   maxHeight = "400px"
 }: Readonly<AIInsightsGamePanelProps>) {
   const currentSession = useCurrentSession();
-  const { insights, generateMockInsight, stats, clearInsights } = useAIInsights();
+  const { insights, generateMockInsight, stats } = useAIInsights();
   
   const [isExpanded, setIsExpanded] = useState(false);
   const [showStats, setShowStats] = useState(false);
@@ -49,10 +49,14 @@ export function AIInsightsGamePanel({
 
   if (variant === 'inline') {
     return (
-      <div className={cn('space-y-3', className)}>
-        <div className="flex items-center justify-between">
-          <h4 className="text-sm font-medium text-foreground flex items-center space-x-2">
-            <CpuChipIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+      <div className={cn('space-y-3 bg-gradient-story relative overflow-hidden', className)}>
+        {/* Magical Background Effects */}
+        <div className="absolute inset-0 bg-magical-dots opacity-20 pointer-events-none"></div>
+        <div className="floating-orb absolute top-10 right-10 w-4 h-4 bg-accent/30 rounded-full animate-float"></div>
+        <div className="floating-orb absolute bottom-20 left-8 w-3 h-3 bg-primary/20 rounded-full animate-float-delayed"></div>
+        <div className="flex items-center justify-between relative z-10">
+          <h4 className="text-sm font-medium bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent flex items-center space-x-2">
+            <CpuChipIcon className="h-4 w-4 text-accent" />
             <span>Recent AI Decisions</span>
           </h4>
           {recentInsights.length > 0 && (
@@ -170,11 +174,15 @@ export function AIInsightsGamePanel({
 
   // Default sidebar variant
   return (
-    <Card className={cn('h-full flex flex-col', className)}>
-      <CardHeader className="pb-3">
+    <Card className={cn('h-full flex flex-col bg-gradient-story border-primary/20 backdrop-blur-sm glow-primary/30 relative overflow-hidden', className)}>
+      {/* Magical Background Effects */}
+      <div className="absolute inset-0 bg-magical-dots opacity-20 pointer-events-none"></div>
+      <div className="floating-orb absolute top-10 right-10 w-4 h-4 bg-accent/30 rounded-full animate-float"></div>
+      <div className="floating-orb absolute bottom-20 left-8 w-3 h-3 bg-primary/20 rounded-full animate-float-delayed"></div>
+      <CardHeader className="pb-3 relative z-10">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center space-x-2">
-            <CpuChipIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          <CardTitle className="text-base flex items-center space-x-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            <CpuChipIcon className="h-4 w-4 text-accent" />
             <span>AI Insights</span>
           </CardTitle>
           <div className="flex items-center space-x-1">
@@ -224,8 +232,7 @@ export function AIInsightsGamePanel({
           </div>
         )}
       </CardHeader>
-
-      <CardContent className="flex-1 overflow-hidden p-0">
+      <CardContent className="flex-1 overflow-hidden p-0 relative z-10">
         {sessionInsights.length === 0 ? (
           <div className="p-4 text-center">
             <CpuChipIcon className="h-8 w-8 text-muted-foreground mx-auto mb-2" />

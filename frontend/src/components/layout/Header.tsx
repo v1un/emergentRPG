@@ -1,156 +1,122 @@
-// Header Component with Navigation and Controls
+// Header component with navigation and status indicators
 
 'use client';
 
 import React from 'react';
-import { useGameStore, useConnectionStatus, useCurrentSession } from '@/stores/gameStore';
-import { useTheme } from '@/components/providers/ThemeProvider';
-import { Button } from '@/components/ui/Button';
-import { cn, formatConnectionStatus } from '@/utils/helpers';
-import { 
-  Bars3Icon, 
-  SunIcon, 
-  MoonIcon, 
-  ComputerDesktopIcon,
-  WifiIcon,
-  ExclamationTriangleIcon,
-  CheckCircleIcon
+import { useTheme } from 'next-themes';
+import {
+  Bars3Icon,
+  BellIcon,
+  Cog6ToothIcon,
+  MoonIcon,
+  SunIcon,
+  UserCircleIcon,
 } from '@heroicons/react/24/outline';
+import { IconButton } from '@/components/ui/IconButton';
+import { useGameStore } from '@/stores/gameStore';
+import { useGameWebSocket } from '@/hooks/useGameWebSocket';
+import { formatConnectionStatus } from '@/utils/helpers';
 
-interface HeaderProps {
-  onToggleSidebar: () => void;
-  sidebarCollapsed: boolean;
-  isMobile: boolean;
-}
+export function Header() {
+  const { theme, setTheme } = useTheme();
+  const { 
+    currentSession, 
+    toggleSidebar
+  } = useGameStore();
+  const { connectionStatus } = useGameWebSocket();
 
-export function Header({ onToggleSidebar, sidebarCollapsed, isMobile }: HeaderProps) {
-  const { theme, setTheme, resolvedTheme } = useTheme();
-  const connectionStatus = useConnectionStatus();
-  const currentSession = useCurrentSession();
-  const { clearError, lastError } = useGameStore();
-
-  const connectionInfo = formatConnectionStatus(connectionStatus);
-
-  const getThemeIcon = () => {
-    switch (theme) {
-      case 'light':
-        return <SunIcon className="h-4 w-4" />;
-      case 'dark':
-        return <MoonIcon className="h-4 w-4" />;
-      default:
-        return <ComputerDesktopIcon className="h-4 w-4" />;
-    }
+  const handleThemeToggle = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
-  const cycleTheme = () => {
-    const themes: Array<'light' | 'dark' | 'auto'> = ['light', 'dark', 'auto'];
-    const currentIndex = themes.indexOf(theme);
-    const nextIndex = (currentIndex + 1) % themes.length;
-    setTheme(themes[nextIndex]);
-  };
+  const connectionStatusInfo = formatConnectionStatus(connectionStatus);
 
-  const getConnectionIcon = () => {
-    switch (connectionStatus) {
-      case 'connected':
-        return <CheckCircleIcon className="h-4 w-4 text-green-500" />;
-      case 'connecting':
-        return <WifiIcon className="h-4 w-4 text-yellow-500 animate-pulse" />;
-      case 'error':
-        return <ExclamationTriangleIcon className="h-4 w-4 text-red-500" />;
-      default:
-        return <WifiIcon className="h-4 w-4 text-gray-400" />;
-    }
-  };
+  // Determine connection status dot classes
+  let connectionDotClasses = 'h-2 w-2 rounded-full transition-all duration-300 ';
+  if (connectionStatus === 'connected') {
+    connectionDotClasses += 'bg-green-500 shadow-lg shadow-green-500/50';
+  } else if (connectionStatus === 'connecting') {
+    connectionDotClasses += 'bg-yellow-500 animate-pulse shadow-lg shadow-yellow-500/50';
+  } else {
+    connectionDotClasses += 'bg-red-500 shadow-lg shadow-red-500/50';
+  }
 
   return (
-    <header className="h-16 bg-gradient-story border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 sticky top-0 z-50 backdrop-blur-md glass">
+    <header className="flex h-16 items-center justify-between border-b border-primary/20 bg-gradient-to-r from-card/95 to-background/95 px-4 backdrop-blur-xl relative overflow-hidden">
+      {/* Magical background effect */}
+      <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-accent/5 pointer-events-none"></div>
+      
       {/* Left Section */}
-      <div className="flex items-center space-x-4">
-        {/* Sidebar Toggle */}
-        <Button
+      <div className="flex items-center gap-4 relative z-10">
+        <IconButton
+          icon={<Bars3Icon className="h-5 w-5" />}
+          onClick={toggleSidebar}
           variant="ghost"
-          size="icon"
-          onClick={onToggleSidebar}
-          className="md:hidden hover:bg-primary/10 transition-all duration-200"
+          size="sm"
+          className="hover:bg-primary/10 hover:glow-primary transition-all duration-300"
           aria-label="Toggle sidebar"
-        >
-          <Bars3Icon className="h-5 w-5" />
-        </Button>
-
-        {/* Enhanced Logo and Title */}
-        <div className="flex items-center space-x-3">
-          <div className="relative w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center glow-primary">
-            <span className="text-primary-foreground font-bold text-sm">eR</span>
-            <div className="absolute inset-0 bg-gradient-primary rounded-xl opacity-50 animate-pulse-glow"></div>
-          </div>
-          <div className="hidden sm:block">
-            <h1 className="text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              emergentRPG
-            </h1>
-            {currentSession && (
-              <p className="text-xs text-muted-foreground font-medium">
-                <span className="text-accent">{currentSession.character.name}</span> - Level {currentSession.character.level}
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Enhanced Center Section - Session Info */}
-      <div className="hidden md:flex items-center space-x-4">
+        />
+        
         {currentSession && (
-          <div className="text-center px-4 py-2 bg-gradient-secondary rounded-lg border border-gray-200/50 dark:border-gray-800/50">
-            <p className="text-sm font-semibold text-foreground">
-              {currentSession.character.name}
-            </p>
+          <div className="flex flex-col">
+            <h1 className="text-lg font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              {currentSession.character?.name || 'New Adventure'}
+            </h1>
             <p className="text-xs text-muted-foreground">
-              📍 {currentSession.world_state.current_location}
+              Session: {currentSession.session_id.slice(0, 8)}...
             </p>
           </div>
         )}
       </div>
 
-      {/* Enhanced Right Section */}
-      <div className="flex items-center space-x-3">
-        {/* Enhanced Connection Status */}
-        <div className="flex items-center space-x-2 px-3 py-1 bg-gradient-secondary rounded-full border border-gray-200/50 dark:border-gray-800/50">
-          {getConnectionIcon()}
-          <span className={cn('text-xs hidden sm:inline font-medium', connectionInfo.className)}>
-            {connectionInfo.text}
+      {/* Right Section */}
+      <div className="flex items-center gap-2 relative z-10">
+        {/* Connection Status */}
+        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-card/50 backdrop-blur-sm border border-primary/20">
+          <div className={connectionDotClasses} />
+          <span className={`text-xs ${connectionStatusInfo.className} font-medium`}>
+            {connectionStatusInfo.text}
           </span>
         </div>
 
-        {/* Enhanced Error Indicator */}
-        {lastError && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={clearError}
-            className="text-destructive hover:text-destructive/80 hover:bg-destructive/10 transition-all duration-200"
-          >
-            <ExclamationTriangleIcon className="h-4 w-4 mr-1" />
-            <span className="hidden sm:inline">Error</span>
-          </Button>
-        )}
-
-        {/* Enhanced Theme Toggle */}
-        <Button
+        {/* Theme Toggle */}
+        <IconButton
+          icon={theme === 'dark' ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
+          onClick={handleThemeToggle}
           variant="ghost"
-          size="icon"
-          onClick={cycleTheme}
-          className="hover:bg-primary/10 transition-all duration-200 hover:glow-primary"
-          aria-label={`Switch to ${theme === 'light' ? 'dark' : theme === 'dark' ? 'auto' : 'light'} theme`}
-        >
-          {getThemeIcon()}
-        </Button>
+          size="sm"
+          className="hover:bg-primary/10 hover:glow-primary transition-all duration-300"
+          aria-label="Toggle theme"
+        />
 
-        {/* Enhanced User Menu */}
-        <div className="w-8 h-8 bg-gradient-accent rounded-full flex items-center justify-center border border-gray-200/50 dark:border-gray-800/50 hover:glow-accent transition-all duration-200 cursor-pointer">
-          <span className="text-xs font-bold text-accent-foreground">U</span>
-        </div>
+        {/* Notifications */}
+        <IconButton
+          icon={<BellIcon className="h-5 w-5" />}
+          variant="ghost"
+          size="sm"
+          className="hover:bg-accent/10 hover:glow-accent transition-all duration-300"
+          aria-label="Notifications"
+          badge={{ content: 1, variant: 'destructive' }}
+        />
+
+        {/* Settings */}
+        <IconButton
+          icon={<Cog6ToothIcon className="h-5 w-5" />}
+          variant="ghost"
+          size="sm"
+          className="hover:bg-primary/10 hover:glow-primary transition-all duration-300"
+          aria-label="Settings"
+        />
+
+        {/* User Profile */}
+        <IconButton
+          icon={<UserCircleIcon className="h-5 w-5" />}
+          variant="ghost"
+          size="sm"
+          className="hover:bg-accent/10 hover:glow-accent transition-all duration-300"
+          aria-label="User profile"
+        />
       </div>
     </header>
   );
 }
-
-export default Header;

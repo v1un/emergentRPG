@@ -114,7 +114,7 @@ export function AIInsightsWidget({
       </div>
 
       {/* Quick Summary */}
-      {!isExpanded && variant !== 'minimal' && (
+      {!isExpanded && (variant === 'compact' || variant === 'detailed') && (
         <div className="mt-2">
           <p className="text-blue-800 dark:text-blue-200 text-xs leading-relaxed">
             {insight.reasoning.length > 100 

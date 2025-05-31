@@ -3,15 +3,13 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { useCurrentSession, useCurrentStory, useIsAIGenerating, useGameStore, useConnectionStatus } from '@/stores/gameStore';
+import { useCurrentSession, useCurrentStory, useIsAIGenerating, useConnectionStatus } from '@/stores/gameStore';
 import { useGameAction } from '@/hooks/useGameAction';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
-import { TypingIndicator } from '@/components/ui/Loading';
 import { AIGeneratedContent, AIProcessStatus } from '@/components/ui/AIGeneratedContent';
-import { AIConfidenceIndicator } from '@/components/ui/AIConfidenceIndicator';
-import { AIInsightsWidget, AIInsightTooltip } from '@/components/ui/AIInsightsWidget';
+import { AIInsightsWidget } from '@/components/ui/AIInsightsWidget';
 import { useAIInsights } from '@/services/aiInsightsService';
 import { cn, truncateText } from '@/utils/helpers';
 import { gameFormatters } from '@/utils/formatting';
@@ -24,8 +22,7 @@ import {
   BookmarkIcon,
   ArrowDownTrayIcon,
   MagnifyingGlassIcon,
-  DocumentTextIcon,
-  XMarkIcon,
+    XMarkIcon,
   CpuChipIcon,
 } from '@heroicons/react/24/outline';
 import {
@@ -44,8 +41,7 @@ export function StoryPanel() {
   const [showSearch, setShowSearch] = useState(false);
   const [bookmarkedEntries, setBookmarkedEntries] = useState<Set<string>>(new Set());
   const [showBookmarks, setShowBookmarks] = useState(false);
-  const [showExportMenu, setShowExportMenu] = useState(false);
-  const [dynamicContent, setDynamicContent] = useState<DynamicUIContent | null>(null);
+    const [dynamicContent, setDynamicContent] = useState<DynamicUIContent | null>(null);
 
   // Enhanced modal states
   const [showBookmarkManager, setShowBookmarkManager] = useState(false);
@@ -109,7 +105,7 @@ export function StoryPanel() {
     if (currentSession) {
       loadDynamicContent();
     }
-  }, [currentSession, story.length, currentSession?.world_state?.current_location]);
+  }, [currentSession, story, currentSession?.world_state?.current_location]);
 
   const handleSubmitAction = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,7 +124,7 @@ export function StoryPanel() {
 
     try {
       await performAction(actionInput.trim());
-    } catch (err) {
+    } catch {
       // Error is handled by the hook
     }
   };
@@ -208,73 +204,8 @@ export function StoryPanel() {
     }
   };
 
-  const handleBookmarkSelect = (bookmark: any) => {
-    // Scroll to the bookmarked entry
-    const entryElement = document.getElementById(`story-entry-${bookmark.storyEntryId}`);
-    if (entryElement) {
-      entryElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      // Highlight the entry briefly
-      entryElement.classList.add('ring-4', 'ring-blue-400', 'ring-opacity-50');
-      setTimeout(() => {
-        entryElement.classList.remove('ring-4', 'ring-blue-400', 'ring-opacity-50');
-      }, 2000);
-    }
-    setShowBookmarkManager(false);
-  };
-
-  const handleSearchResultSelect = (result: any) => {
-    // Scroll to the search result entry
-    const entryElement = document.getElementById(`story-entry-${result.entryId}`);
-    if (entryElement) {
-      entryElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      // Highlight the entry briefly
-      entryElement.classList.add('ring-4', 'ring-green-400', 'ring-opacity-50');
-      setTimeout(() => {
-        entryElement.classList.remove('ring-4', 'ring-green-400', 'ring-opacity-50');
-      }, 2000);
-    }
-    setShowAdvancedSearch(false);
-  };
-
-  const handleExportStory = (format: 'markdown' | 'pdf' | 'txt') => {
-    const storyText = story.map(entry => {
-      const timestamp = new Date(entry.timestamp).toLocaleString();
-      const type = gameFormatters.actionType(entry.type as ActionType);
-      return `[${timestamp}] ${type}: ${entry.text}`;
-    }).join('\n\n');
-
-    const filename = `${currentSession?.session_id || 'story'}_${new Date().toISOString().split('T')[0]}`;
-
-    if (format === 'markdown') {
-      const markdownContent = story.map(entry => {
-        const timestamp = new Date(entry.timestamp).toLocaleString();
-        const type = gameFormatters.actionType(entry.type as ActionType);
-        return `## ${type}\n*${timestamp}*\n\n${entry.text}\n`;
-      }).join('\n---\n\n');
-
-      downloadFile(markdownContent, `${filename}.md`, 'text/markdown');
-    } else if (format === 'txt') {
-      downloadFile(storyText, `${filename}.txt`, 'text/plain');
-    } else if (format === 'pdf') {
-      // TODO: Implement PDF export
-      console.log('PDF export not yet implemented');
-    }
-
-    setShowExportMenu(false);
-  };
-
-  const downloadFile = (content: string, filename: string, mimeType: string) => {
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
+  
+  
   const filteredStory = story.filter(entry => {
     if (!searchQuery) return true;
     return entry.text.toLowerCase().includes(searchQuery.toLowerCase());

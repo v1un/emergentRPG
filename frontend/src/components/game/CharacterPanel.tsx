@@ -215,8 +215,6 @@ export function CharacterPanel() {
     );
   }
 
-  const healthPercentage = (character.health / character.max_health) * 100;
-  const manaPercentage = (character.mana / character.max_mana) * 100;
   const experienceToNext = character.level * 1000; // Simple calculation
 
   const getStatColor = (value: number) => {
@@ -244,7 +242,7 @@ export function CharacterPanel() {
   const renderStatBlock = (stats: CharacterStats) => (
     <div className="grid grid-cols-2 gap-4">
       {Object.entries(stats).map(([statName, value]) => (
-        <div key={statName} className="text-center p-3 bg-muted rounded-lg">
+        <div key={statName} className="text-center p-3 bg-gradient-primary/20 rounded-lg border border-primary/20 hover:glow-primary transition-all duration-300">
           <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
             {statName.slice(0, 3)}
           </div>
@@ -275,121 +273,141 @@ export function CharacterPanel() {
         statIncreases={levelUpData.statIncreases}
       />
 
-      <div className="h-full flex flex-col">
+      <div className="h-full flex flex-col bg-gradient-story relative overflow-hidden">
+        {/* Magical Background Effects */}
+        <div className="absolute inset-0 bg-magical-dots opacity-20"></div>
+        <div className="floating-orb absolute top-10 right-10 w-4 h-4 bg-accent/30 rounded-full animate-float"></div>
+        <div className="floating-orb absolute bottom-20 left-8 w-3 h-3 bg-primary/20 rounded-full animate-float-delayed"></div>
+        
         {/* Character Header */}
-        <div className="p-6 border-b border-gray-200 dark:border-gray-800">
+        <div className="p-6 border-b border-primary/20 bg-gradient-primary relative z-10">
           <div className="flex items-center space-x-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-              <UserIcon className="h-8 w-8 text-white" />
+            <div className="w-16 h-16 bg-gradient-to-br from-accent to-primary rounded-full flex items-center justify-center glow-primary relative">
+              <UserIcon className="h-8 w-8 text-primary-foreground" />
+              <div className="absolute -top-1 -right-1 w-4 h-4 bg-accent rounded-full animate-pulse glow-accent"></div>
             </div>
             <div>
-              <h2 className="text-2xl font-bold">{character.name}</h2>
-              <p className="text-muted-foreground">
-                Level {character.level} {character.class_name}
-              </p>
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-primary-foreground to-accent bg-clip-text text-transparent">
+                {character.name}
+              </h2>
+              <div className="text-primary-foreground/80 flex items-center space-x-2">
+                <span>Level {character.level} {character.class_name}</span>
+                <div className="w-2 h-2 bg-accent rounded-full animate-pulse"></div>
+              </div>
               {character.background && (
-                <p className="text-sm text-muted-foreground">{character.background}</p>
+                <p className="text-sm text-primary-foreground/60">{character.background}</p>
               )}
             </div>
           </div>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-gray-200 dark:border-gray-800">
+        <div className="flex border-b border-primary/20 bg-gradient-accent/50 relative z-10">
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id as 'overview' | 'stats' | 'equipment')}
               className={cn(
-                'flex items-center space-x-2 px-6 py-3 text-sm font-medium transition-colors',
-                'border-b-2 border-transparent hover:text-foreground',
-                activeTab === tab.id
-                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                  : 'text-muted-foreground'
+                'flex-1 px-4 py-3 text-sm font-medium transition-all duration-200 relative',
+                'hover:bg-gradient-primary/20 border-b-2',
+                activeTab === tab.id 
+                  ? 'text-primary border-accent glow-accent bg-gradient-primary/30' 
+                  : 'text-muted-foreground border-transparent hover:text-primary'
               )}
             >
-              {tab.icon}
-              <span>{tab.label}</span>
+              <div className="flex items-center justify-center space-x-2">
+                <span className="text-current">{tab.icon}</span>
+                <span>{tab.label}</span>
+              </div>
+              {activeTab === tab.id && (
+                <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-accent rounded-full glow-accent"></div>
+              )}
             </button>
           ))}
         </div>
 
         {/* Tab Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 relative z-10">
           {activeTab === 'overview' && (
             <div className="space-y-6">
               {/* Vital Stats */}
-              <Card>
+              <Card className="bg-gradient-primary/30 border-primary/20 backdrop-blur-sm glow-primary/30">
                 <CardHeader>
-                  <CardTitle className="text-lg">Vital Statistics</CardTitle>
+                  <CardTitle className="text-lg bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent flex items-center space-x-2">
+                    <HeartSolidIcon className="h-5 w-5 text-accent" />
+                    <span>Vital Statistics</span>
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <HeartSolidIcon className="h-4 w-4 text-red-500" />
+                        <HeartSolidIcon className="h-4 w-4 text-red-500 glow-red" />
                         <span className="text-sm font-medium">Health</span>
                       </div>
                       <span className="text-sm text-muted-foreground">
                         {character.health}/{character.max_health}
                       </span>
                     </div>
-                    {renderProgressBar(character.health, character.max_health, 'bg-red-500')}
+                    {renderProgressBar(character.health, character.max_health, 'bg-red-500 glow-red')}
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <SparklesSolidIcon className="h-4 w-4 text-blue-500" />
+                        <SparklesSolidIcon className="h-4 w-4 text-blue-500 glow-blue" />
                         <span className="text-sm font-medium">Mana</span>
                       </div>
                       <span className="text-sm text-muted-foreground">
                         {character.mana}/{character.max_mana}
                       </span>
                     </div>
-                    {renderProgressBar(character.mana, character.max_mana, 'bg-blue-500')}
+                    {renderProgressBar(character.mana, character.max_mana, 'bg-blue-500 glow-blue')}
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <TrophySolidIcon className="h-4 w-4 text-yellow-500" />
+                        <TrophySolidIcon className="h-4 w-4 text-accent animate-pulse" />
                         <span className="text-sm font-medium">Experience</span>
                       </div>
                       <span className="text-sm text-muted-foreground">
                         Level {character.level + 1}
                       </span>
                     </div>
-                    {renderProgressBar(character.experience % experienceToNext, experienceToNext, 'bg-yellow-500')}
+                    {renderProgressBar(character.experience % experienceToNext, experienceToNext, 'bg-gradient-to-r from-accent to-primary')}
                   </div>
                 </CardContent>
               </Card>
 
               {/* Quick Stats */}
-              <Card>
+              <Card className="bg-gradient-accent/30 border-accent/20 backdrop-blur-sm glow-accent/30">
                 <CardHeader>
-                  <CardTitle className="text-lg">Quick Overview</CardTitle>
+                  <CardTitle className="text-lg bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent flex items-center space-x-2">
+                    <StarIcon className="h-5 w-5 text-primary" />
+                    <span>Quick Overview</span>
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-green-600">
+                    <div className="text-center p-3 bg-gradient-primary/20 rounded-lg border border-primary/20 hover:glow-primary transition-all duration-300">
+                      <div className="text-2xl font-bold text-green-400 glow-green">
                         {Math.floor((character.health / character.max_health) * 100)}%
                       </div>
                       <div className="text-sm text-muted-foreground">Health</div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-600">
+                    <div className="text-center p-3 bg-gradient-accent/20 rounded-lg border border-accent/20 hover:glow-accent transition-all duration-300">
+                      <div className="text-2xl font-bold text-blue-400 glow-blue">
                         {Math.floor((character.mana / character.max_mana) * 100)}%
                       </div>
                       <div className="text-sm text-muted-foreground">Mana</div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-purple-600">
+                    <div className="text-center p-3 bg-gradient-primary/20 rounded-lg border border-primary/20 hover:glow-primary transition-all duration-300">
+                      <div className="text-2xl font-bold text-purple-400 glow-purple">
                         {character.max_carry_weight}
                       </div>
                       <div className="text-sm text-muted-foreground">Carry Weight</div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-orange-600">
+                    <div className="text-center p-3 bg-gradient-accent/20 rounded-lg border border-accent/20 hover:glow-accent transition-all duration-300">
+                      <div className="text-2xl font-bold text-orange-400 glow-orange">
                         {character.level}
                       </div>
                       <div className="text-sm text-muted-foreground">Level</div>
@@ -402,9 +420,12 @@ export function CharacterPanel() {
 
           {activeTab === 'stats' && (
             <div className="space-y-6">
-              <Card>
+              <Card className="bg-gradient-primary/30 border-primary/20 backdrop-blur-sm glow-primary/30">
                 <CardHeader>
-                  <CardTitle className="text-lg">Ability Scores</CardTitle>
+                  <CardTitle className="text-lg bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent flex items-center space-x-2">
+                    <StarIcon className="h-5 w-5 text-accent" />
+                    <span>Ability Scores</span>
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {renderStatBlock(character.stats)}
@@ -412,28 +433,31 @@ export function CharacterPanel() {
               </Card>
 
               {/* Derived Stats */}
-              <Card>
+              <Card className="bg-gradient-accent/30 border-accent/20 backdrop-blur-sm glow-accent/30">
                 <CardHeader>
-                  <CardTitle className="text-lg">Derived Statistics</CardTitle>
+                  <CardTitle className="text-lg bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent flex items-center space-x-2">
+                    <ShieldCheckIcon className="h-5 w-5 text-primary" />
+                    <span>Derived Statistics</span>
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                      <div className="text-lg font-semibold">{character.max_health}</div>
+                    <div className="p-3 bg-gradient-primary/20 rounded-lg border border-primary/20 hover:glow-primary transition-all duration-300">
+                      <div className="text-lg font-semibold text-red-400 glow-red">{character.max_health}</div>
                       <div className="text-sm text-muted-foreground">Max Health</div>
                     </div>
-                    <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                      <div className="text-lg font-semibold">{character.max_mana}</div>
+                    <div className="p-3 bg-gradient-accent/20 rounded-lg border border-accent/20 hover:glow-accent transition-all duration-300">
+                      <div className="text-lg font-semibold text-blue-400 glow-blue">{character.max_mana}</div>
                       <div className="text-sm text-muted-foreground">Max Mana</div>
                     </div>
-                    <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                      <div className="text-lg font-semibold">
+                    <div className="p-3 bg-gradient-primary/20 rounded-lg border border-primary/20 hover:glow-primary transition-all duration-300">
+                      <div className="text-lg font-semibold text-green-400 glow-green">
                         {10 + Math.floor((character.stats.dexterity - 10) / 2)}
                       </div>
                       <div className="text-sm text-muted-foreground">Armor Class</div>
                     </div>
-                    <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                      <div className="text-lg font-semibold">
+                    <div className="p-3 bg-gradient-accent/20 rounded-lg border border-accent/20 hover:glow-accent transition-all duration-300">
+                      <div className="text-lg font-semibold text-purple-400 glow-purple">
                         +{Math.floor(character.level / 4) + 2}
                       </div>
                       <div className="text-sm text-muted-foreground">Proficiency</div>
@@ -446,9 +470,12 @@ export function CharacterPanel() {
 
           {activeTab === 'equipment' && (
             <div className="space-y-6">
-              <Card>
+              <Card className="bg-gradient-primary/30 border-primary/20 backdrop-blur-sm glow-primary/30">
                 <CardHeader>
-                  <CardTitle className="text-lg">Equipment Slots</CardTitle>
+                  <CardTitle className="text-lg bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent flex items-center space-x-2">
+                    <ShieldCheckIcon className="h-5 w-5 text-accent" />
+                    <span>Equipment Slots</span>
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-3 md:grid-cols-5 gap-4 justify-items-center">
@@ -477,23 +504,32 @@ export function CharacterPanel() {
               </Card>
 
               {/* Equipment Effects */}
-              <Card>
+              <Card className="bg-gradient-accent/30 border-accent/20 backdrop-blur-sm glow-accent/30">
                 <CardHeader>
-                  <CardTitle className="text-lg">Equipment Effects</CardTitle>
+                  <CardTitle className="text-lg bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent flex items-center space-x-2">
+                    <StarIcon className="h-5 w-5 text-primary" />
+                    <span>Equipment Effects</span>
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
                     {Object.entries(character.equipped_items).length > 0 ? (
                       Object.entries(character.equipped_items).map(([slot, item]) => (
-                        <div key={slot} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                          <span className="capitalize">{slot}</span>
+                        <div key={slot} className="flex justify-between items-center p-2 bg-gradient-primary/20 rounded border border-primary/20 hover:glow-primary transition-all duration-300">
+                          <span className="capitalize text-primary font-medium">{slot}</span>
                           <span className="text-sm text-muted-foreground">{item}</span>
                         </div>
                       ))
                     ) : (
-                      <p className="text-muted-foreground text-center py-4">
-                        No equipment equipped
-                      </p>
+                      <div className="text-center py-8">
+                        <WrenchScrewdriverIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+                        <p className="text-muted-foreground">
+                          No equipment equipped
+                        </p>
+                        <p className="text-sm text-muted-foreground/60">
+                          Visit your inventory to equip items
+                        </p>
+                      </div>
                     )}
                   </div>
                 </CardContent>

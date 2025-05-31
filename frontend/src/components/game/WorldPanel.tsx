@@ -144,27 +144,25 @@ export function WorldPanel() {
     return weatherIcons[weather.toLowerCase()] || '🌤️';
   };
 
-
-
   const renderInfoCard = (
     title: string,
     value: string,
     icon: React.ReactNode,
     description?: string
   ) => (
-    <Card>
+    <Card className="bg-gradient-primary/30 border-primary/20 backdrop-blur-sm glow-primary/30">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center">
+        <CardTitle className="text-lg flex items-center bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
           {icon}
           <span className="ml-2">{title}</span>
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-2xl font-bold text-foreground mb-1">
+        <p className="text-2xl font-bold text-primary-foreground mb-1">
           {textFormatters.titleCase(value)}
         </p>
         {description && (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-primary-foreground/80">
             {description}
           </p>
         )}
@@ -178,27 +176,27 @@ export function WorldPanel() {
     icon: React.ReactNode,
     emptyMessage: string
   ) => (
-    <Card>
+    <Card className="bg-gradient-accent/30 border-accent/20 backdrop-blur-sm glow-accent/30">
       <CardHeader>
-        <CardTitle className="text-lg flex items-center">
+        <CardTitle className="text-lg flex items-center bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent">
           {icon}
           <span className="ml-2">{title}</span>
-          <span className="ml-auto text-sm font-normal text-muted-foreground">
+          <span className="ml-auto text-sm font-normal text-primary-foreground/70">
             {items.length}
           </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
         {items.length === 0 ? (
-          <p className="text-muted-foreground text-center py-4">
+          <p className="text-primary-foreground/70 text-center py-4">
             {emptyMessage}
           </p>
         ) : (
           <div className="space-y-2">
-            {items.map((item, index) => (
+            {items.map((item) => (
               <div
-                key={index}
-                className="p-2 bg-muted rounded-lg text-sm"
+                key={item}
+                className="p-2 bg-gradient-primary/10 rounded-lg text-sm border border-primary/10 hover:glow-primary transition-all duration-300"
               >
                 {textFormatters.titleCase(item)}
               </div>
@@ -234,9 +232,9 @@ export function WorldPanel() {
 
   const renderSimpleMap = () => (
     <div className="space-y-6">
-      <Card>
+      <Card className="bg-gradient-primary/30 border-primary/20 backdrop-blur-sm glow-primary/30">
         <CardHeader>
-          <CardTitle className="text-lg">World Map</CardTitle>
+          <CardTitle className="text-lg bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">World Map</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="relative bg-gradient-to-br from-green-100 to-blue-100 dark:from-green-900 dark:to-blue-900 rounded-lg p-8 min-h-64">
@@ -244,53 +242,48 @@ export function WorldPanel() {
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="relative">
                 {/* Current location marker */}
-                <div className="w-4 h-4 bg-red-500 rounded-full animate-pulse"></div>
-                <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-xs font-medium text-center whitespace-nowrap">
+                <div className="w-4 h-4 bg-accent rounded-full animate-pulse glow-accent"></div>
+                <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-xs font-medium text-center whitespace-nowrap text-primary-foreground">
                   {textFormatters.titleCase(worldState.current_location)}
                 </div>
               </div>
             </div>
-
             {/* Compass */}
-            <div className="absolute top-4 right-4 w-16 h-16 border-2 border-gray-400 rounded-full flex items-center justify-center bg-white dark:bg-gray-800">
-              <div className="text-xs font-bold">N</div>
-              <div className="absolute top-1 text-xs">↑</div>
+            <div className="absolute top-4 right-4 w-16 h-16 border-2 border-primary/30 rounded-full flex items-center justify-center bg-white/80 dark:bg-gray-800/80">
+              <div className="text-xs font-bold text-primary">N</div>
+              <div className="absolute top-1 text-xs text-primary">↑</div>
             </div>
-
             {/* Legend */}
-            <div className="absolute bottom-4 left-4 bg-white dark:bg-gray-800 p-3 rounded-lg shadow-md">
-              <div className="text-xs font-semibold mb-2">Legend</div>
+            <div className="absolute bottom-4 left-4 bg-white/80 dark:bg-gray-800/80 p-3 rounded-lg shadow-md">
+              <div className="text-xs font-semibold mb-2 text-primary-foreground/80">Legend</div>
               <div className="flex items-center space-x-2 text-xs">
-                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                <span>Current Location</span>
+                <div className="w-2 h-2 bg-accent rounded-full"></div>
+                <span className="text-primary-foreground/80">Current Location</span>
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
-
-      <Card>
+      <Card className="bg-gradient-accent/30 border-accent/20 backdrop-blur-sm glow-accent/30">
         <CardHeader>
-          <CardTitle className="text-lg">Location Details</CardTitle>
+          <CardTitle className="text-lg bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent">Location Details</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div>
-              <h4 className="font-semibold text-foreground mb-2">
+              <h4 className="font-semibold text-primary-foreground mb-2">
                 {textFormatters.titleCase(worldState.current_location)}
               </h4>
-              <p className="text-sm text-muted-foreground">
-                You are currently exploring this area. The environment around you is {worldState.weather.toLowerCase()}
-                and it&apos;s {worldState.time_of_day.toLowerCase()}.
+              <p className="text-sm text-primary-foreground/80">
+                You are currently exploring this area. The environment around you is {worldState.weather.toLowerCase()} and it&apos;s {worldState.time_of_day.toLowerCase()}.
               </p>
             </div>
-
             {worldState.npcs_present && worldState.npcs_present.length > 0 && (
               <div>
-                <h5 className="font-medium text-foreground mb-1">NPCs Present:</h5>
+                <h5 className="font-medium text-primary-foreground mb-1">NPCs Present:</h5>
                 <div className="flex flex-wrap gap-2">
-                  {worldState.npcs_present.map((npc, index) => (
-                    <span key={index} className="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded">
+                  {worldState.npcs_present.map((npc) => (
+                    <span key={npc} className="px-2 py-1 bg-gradient-primary/20 text-primary-foreground text-xs rounded">
                       {textFormatters.titleCase(npc)}
                     </span>
                   ))}
@@ -305,19 +298,19 @@ export function WorldPanel() {
 
   const renderEvents = () => (
     <div className="space-y-6">
-      <Card>
+      <Card className="bg-gradient-primary/30 border-primary/20 backdrop-blur-sm glow-primary/30">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">World Events</CardTitle>
+            <CardTitle className="text-lg bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">World Events</CardTitle>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowEventNotifications(!showEventNotifications)}
             >
               {showEventNotifications ? (
-                <BellSolidIcon className="h-4 w-4 text-blue-500" />
+                <BellSolidIcon className="h-4 w-4 text-accent" />
               ) : (
-                <BellIcon className="h-4 w-4" />
+                <BellIcon className="h-4 w-4 text-primary" />
               )}
             </Button>
           </div>
@@ -325,18 +318,18 @@ export function WorldPanel() {
         <CardContent>
           <div className="space-y-3">
             {worldEvents.length === 0 ? (
-              <p className="text-muted-foreground text-center py-4">
+              <p className="text-primary-foreground/70 text-center py-4">
                 No world events recorded yet.
               </p>
             ) : (
               worldEvents.map((event) => (
-                <div key={event.id} className="flex items-start space-x-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div key={event.id} className="flex items-start space-x-3 p-3 bg-gradient-accent/10 rounded-lg">
                   {getEventIcon(event.type)}
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-foreground">
+                    <p className="text-sm font-medium text-primary-foreground">
                       {event.message}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-primary-foreground/70">
                       {new Date(event.timestamp).toLocaleString()}
                     </p>
                   </div>
@@ -346,24 +339,23 @@ export function WorldPanel() {
           </div>
         </CardContent>
       </Card>
-
-      <Card>
+      <Card className="bg-gradient-accent/30 border-accent/20 backdrop-blur-sm glow-accent/30">
         <CardHeader>
-          <CardTitle className="text-lg">Event Statistics</CardTitle>
+          <CardTitle className="text-lg bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent">Event Statistics</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-4">
-            <div className="text-center p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">
+            <div className="text-center p-3 bg-gradient-primary/20 rounded-lg border border-primary/20 hover:glow-primary transition-all duration-300">
+              <div className="text-2xl font-bold text-blue-400 glow-blue">
                 {worldEvents.filter(e => e.type === 'location_change').length}
               </div>
-              <div className="text-sm text-muted-foreground">Locations Visited</div>
+              <div className="text-sm text-primary-foreground/70">Locations Visited</div>
             </div>
-            <div className="text-center p-3 bg-green-50 dark:bg-green-950 rounded-lg">
-              <div className="text-2xl font-bold text-green-600">
+            <div className="text-center p-3 bg-gradient-accent/20 rounded-lg border border-accent/20 hover:glow-accent transition-all duration-300">
+              <div className="text-2xl font-bold text-green-400 glow-green">
                 {worldEvents.filter(e => e.type === 'npc_encounter').length}
               </div>
-              <div className="text-sm text-muted-foreground">NPC Encounters</div>
+              <div className="text-sm text-primary-foreground/70">NPC Encounters</div>
             </div>
           </div>
         </CardContent>
@@ -372,23 +364,32 @@ export function WorldPanel() {
   );
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col bg-gradient-story relative overflow-hidden">
+      {/* Magical Background Effects */}
+      <div className="absolute inset-0 bg-magical-dots opacity-20 pointer-events-none"></div>
+      <div className="floating-orb absolute top-10 right-10 w-4 h-4 bg-accent/30 rounded-full animate-float"></div>
+      <div className="floating-orb absolute bottom-20 left-8 w-3 h-3 bg-primary/20 rounded-full animate-float-delayed"></div>
       {/* Tab Navigation */}
-      <div className="flex border-b border-gray-200 dark:border-gray-800">
+      <div className="flex border-b border-primary/20 bg-gradient-accent/50 relative z-10">
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
+            onClick={() => setActiveTab(tab.id as typeof activeTab)}
             className={cn(
-              'flex items-center space-x-2 px-6 py-3 text-sm font-medium transition-colors',
-              'border-b-2 border-transparent hover:text-foreground',
-              activeTab === tab.id
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                : 'text-muted-foreground'
+              'flex-1 px-4 py-3 text-sm font-medium transition-all duration-200 relative',
+              'hover:bg-gradient-primary/20 border-b-2',
+              activeTab === tab.id 
+                ? 'text-primary border-accent glow-accent bg-gradient-primary/30' 
+                : 'text-muted-foreground border-transparent hover:text-primary'
             )}
           >
-            {tab.icon}
-            <span>{tab.label}</span>
+            <div className="flex items-center justify-center space-x-2">
+              <span className="text-current">{tab.icon}</span>
+              <span>{tab.label}</span>
+            </div>
+            {activeTab === tab.id && (
+              <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-accent rounded-full glow-accent"></div>
+            )}
           </button>
         ))}
       </div>

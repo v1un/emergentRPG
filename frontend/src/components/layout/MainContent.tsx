@@ -1,164 +1,106 @@
-// Main Content Area Component
+// Main content area that renders different panels based on active selection
 
 'use client';
 
-import React from 'react';
-import { useGameStore, useActivePanel, useCurrentSession } from '@/stores/gameStore';
-import { LoadingState } from '@/components/ui/Loading';
+import React, { Suspense } from 'react';
+import { useGameStore } from '@/stores/gameStore';
 import { PANELS } from '@/utils/constants';
-import {
-  LazyStoryPanel,
-  LazyCharacterPanel,
-  LazyInventoryPanel,
-  LazyQuestsPanel,
-  LazyWorldPanel,
-  StoryPanelLoading,
-  CharacterPanelLoading,
-  InventoryPanelLoading,
-  QuestsPanelLoading,
-  WorldPanelLoading,
-  LazyWrapper
-} from '@/components/ui/LazyWrapper';
-import { SessionsPanel } from '@/components/game/SessionsPanel';
-import { AIInsightsGamePanel } from '@/components/game/AIInsightsGamePanel';
+import { LoadingSpinner } from '@/components/ui/Loading';
+import { LazyWrapper } from '@/components/ui/LazyWrapper';
 
-interface MainContentProps {
-  children?: React.ReactNode;
-}
+// Lazy load panels for better performance
+const StoryPanel = React.lazy(() => import('@/components/game/StoryPanel'));
+const CharacterPanel = React.lazy(() => import('@/components/game/CharacterPanel'));
+const InventoryPanel = React.lazy(() => import('@/components/game/InventoryPanel'));
+const WorldPanel = React.lazy(() => import('@/components/game/WorldPanel'));
+const QuestsPanel = React.lazy(() => import('@/components/game/QuestsPanel'));
+const AIInsightsGamePanel = React.lazy(() => import('@/components/game/AIInsightsGamePanel'));
+const SessionsPanel = React.lazy(() => import('@/components/game/SessionsPanel'));
 
-export function MainContent({ children }: Readonly<MainContentProps>) {
-  const activePanel = useActivePanel();
-  const currentSession = useCurrentSession();
-  const { isLoadingSession, lastError } = useGameStore();
+export function MainContent() {
+  const { activePanel } = useGameStore();
 
-  // If children are provided (from pages), render them instead of panels
-  if (children) {
-    return (
-      <div className="flex-1 overflow-hidden">
-        <LoadingState
-          isLoading={isLoadingSession}
-          message="Loading game session..."
-        >
-          {children}
-        </LoadingState>
-      </div>
-    );
-  }
-
-  // If no session is loaded and we're not on the sessions panel, show welcome message
-  if (!currentSession && !isLoadingSession && activePanel !== PANELS.SESSIONS) {
-    return (
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="text-center space-y-4">
-          <h2 className="text-2xl font-bold text-foreground">Welcome to emergentRPG</h2>
-          <p className="text-muted-foreground max-w-md">
-            Start your AI-driven storytelling adventure by creating a new game session or loading an existing one.
-          </p>
-          <div className="space-y-2">
-            <button className="bg-primary text-primary-foreground px-6 py-2 rounded-md hover:bg-primary/90 transition-colors">
-              Create New Session
-            </button>
-            <br />
-            <button className="text-primary hover:text-primary/80 transition-colors">
-              Load Existing Session
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show error state if there's an error
-  if (lastError && !isLoadingSession) {
-    return (
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="text-center space-y-4">
-          <h2 className="text-xl font-semibold text-destructive">Something went wrong</h2>
-          <p className="text-muted-foreground max-w-md">{lastError}</p>
-          <button 
-            className="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
-            onClick={() => window.location.reload()}
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Render the appropriate panel based on activePanel with lazy loading
   const renderPanel = () => {
     switch (activePanel) {
-      case PANELS.SESSIONS:
-        return <SessionsPanel />;
       case PANELS.STORY:
         return (
-          <LazyWrapper fallback={<StoryPanelLoading />}>
-            <LazyStoryPanel />
+          <LazyWrapper>
+            <StoryPanel />
           </LazyWrapper>
         );
       case PANELS.CHARACTER:
         return (
-          <LazyWrapper fallback={<CharacterPanelLoading />}>
-            <LazyCharacterPanel />
+          <LazyWrapper>
+            <CharacterPanel />
           </LazyWrapper>
         );
       case PANELS.INVENTORY:
         return (
-          <LazyWrapper fallback={<InventoryPanelLoading />}>
-            <LazyInventoryPanel />
-          </LazyWrapper>
-        );
-      case PANELS.QUESTS:
-        return (
-          <LazyWrapper fallback={<QuestsPanelLoading />}>
-            <LazyQuestsPanel />
+          <LazyWrapper>
+            <InventoryPanel />
           </LazyWrapper>
         );
       case PANELS.WORLD:
         return (
-          <LazyWrapper fallback={<WorldPanelLoading />}>
-            <LazyWorldPanel />
+          <LazyWrapper>
+            <WorldPanel />
+          </LazyWrapper>
+        );
+      case PANELS.QUESTS:
+        return (
+          <LazyWrapper>
+            <QuestsPanel />
           </LazyWrapper>
         );
       case PANELS.AI_INSIGHTS:
-        return <AIInsightsGamePanel variant="modal" className="h-full" />;
+        return (
+          <LazyWrapper>
+            <AIInsightsGamePanel />
+          </LazyWrapper>
+        );
+      case PANELS.SESSIONS:
+        return (
+          <LazyWrapper>
+            <SessionsPanel />
+          </LazyWrapper>
+        );
       default:
         return (
-          <LazyWrapper fallback={<StoryPanelLoading />}>
-            <LazyStoryPanel />
-          </LazyWrapper>
-        ); // Default to story panel
+          <div className="flex h-full items-center justify-center relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none"></div>
+            <div className="text-center relative z-10">
+              <div className="w-20 h-20 bg-gradient-primary rounded-full flex items-center justify-center mx-auto mb-6 glow-primary animate-float">
+                <span className="text-2xl">✨</span>
+              </div>
+              <h3 className="text-xl font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-4">
+                Choose Your Adventure
+              </h3>
+              <p className="text-muted-foreground">
+                Select a panel from the sidebar to begin your magical journey
+              </p>
+            </div>
+          </div>
+        );
     }
   };
 
   return (
-    <div className="flex-1 overflow-hidden">
-      <LoadingState
-        isLoading={isLoadingSession}
-        message="Loading game session..."
-      >
-        <div className="h-full flex flex-col">
-          {/* Panel Header */}
-          <div className="border-b border-gray-200 dark:border-gray-800 bg-card/50 px-6 py-4">
-            <h2 className="text-lg font-semibold text-foreground capitalize">
-              {activePanel.replace('_', ' ')}
-            </h2>
-            {currentSession && activePanel !== PANELS.SESSIONS && (
-              <p className="text-sm text-muted-foreground">
-                {currentSession.character.name} in {currentSession.world_state.current_location}
-              </p>
-            )}
-          </div>
-
-          {/* Panel Content */}
-          <div className="flex-1 overflow-hidden">
-            {renderPanel()}
+    <div className="h-full overflow-hidden bg-gradient-story relative">
+      {/* Magical background effects */}
+      <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-accent/5 pointer-events-none"></div>
+      
+      <Suspense fallback={
+        <div className="flex h-full items-center justify-center relative z-10">
+          <div className="text-center">
+            <LoadingSpinner size="lg" />
+            <p className="mt-4 text-muted-foreground">Loading magical content...</p>
           </div>
         </div>
-      </LoadingState>
+      }>
+        <div className="relative z-10 h-full">
+          {renderPanel()}
+        </div>
+      </Suspense>
     </div>
   );
 }
-
-export default MainContent;

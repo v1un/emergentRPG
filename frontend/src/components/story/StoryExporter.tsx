@@ -21,7 +21,7 @@ import { Input } from '@/components/ui/Input';
 import { StoryExportOptions, ExportProgress } from '@/types';
 import { storyExportService } from '@/services/storyExportService';
 import { useCurrentSession } from '@/stores/gameStore';
-import { cn } from '@/utils/cn';
+import { cn } from '@/utils/helpers';
 import { toast } from 'react-hot-toast';
 
 interface StoryExporterProps {

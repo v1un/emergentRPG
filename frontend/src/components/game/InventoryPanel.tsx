@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useCurrentInventory, useCurrentCharacter, useGameStore, useCurrentSession } from '@/stores/gameStore';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -11,7 +11,6 @@ import { Input } from '@/components/ui/Input';
 import { cn } from '@/utils/helpers';
 import { gameFormatters } from '@/utils/formatting';
 import { InventoryItem, EquipmentSlot } from '@/types';
-import { gameAPI } from '@/services/api/client';
 import { toast } from 'react-hot-toast';
 import {
   ShoppingBagIcon,
@@ -19,14 +18,9 @@ import {
   Squares2X2Icon,
   ListBulletIcon,
   WrenchScrewdriverIcon,
-  ShieldCheckIcon,
-  UserIcon,
-  CogIcon,
-  StarIcon,
   TrashIcon,
   ArrowsRightLeftIcon,
   InformationCircleIcon,
-  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 
 type ViewMode = 'grid' | 'list';
@@ -43,9 +37,7 @@ export function InventoryPanel() {
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [draggedItem, setDraggedItem] = useState<InventoryItem | null>(null);
-  const [showComparison, setShowComparison] = useState(false);
-  const [comparisonItem, setComparisonItem] = useState<InventoryItem | null>(null);
-
+  
   // Get unique item types for filtering
   const itemTypes = ['all', ...new Set(inventory.map(item => item.type))];
 
@@ -148,7 +140,6 @@ export function InventoryPanel() {
     }
 
     try {
-      const previousItem = character.equipped_items[slot];
       const updatedEquipment = { ...character.equipped_items };
       updatedEquipment[slot] = item.name;
 
@@ -165,11 +156,7 @@ export function InventoryPanel() {
 
       toast.success(`Equipped ${item.name}`);
 
-      // Show comparison if there was an item already equipped
-      if (previousItem) {
-        setComparisonItem(item);
-        setShowComparison(true);
-      }
+      // TODO: Show comparison if there was an item already equipped
     } catch (error) {
       console.error('Failed to equip item:', error);
       toast.error('Failed to equip item');
@@ -216,8 +203,8 @@ export function InventoryPanel() {
   };
 
   const handleCompareItem = (item: InventoryItem) => {
-    setComparisonItem(item);
-    setShowComparison(true);
+    // TODO: Implement item comparison
+    console.log('Compare item:', item.name);
   };
 
   // Drag and drop handlers
@@ -396,13 +383,16 @@ export function InventoryPanel() {
 
   if (inventory.length === 0) {
     return (
-      <div className="h-full flex items-center justify-center p-6">
-        <div className="text-center">
-          <ShoppingBagIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-foreground mb-2">
+      <div className="h-full flex items-center justify-center p-6 bg-gradient-story relative overflow-hidden">
+        <div className="absolute inset-0 bg-magical-dots opacity-20 pointer-events-none"></div>
+        <div className="floating-orb absolute top-10 right-10 w-4 h-4 bg-accent/30 rounded-full animate-float"></div>
+        <div className="floating-orb absolute bottom-20 left-8 w-3 h-3 bg-primary/20 rounded-full animate-float-delayed"></div>
+        <div className="text-center relative z-10">
+          <ShoppingBagIcon className="h-12 w-12 text-accent mx-auto mb-4 animate-pulse" />
+          <h3 className="text-lg font-medium bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-2">
             Empty Inventory
           </h3>
-          <p className="text-muted-foreground">
+          <p className="text-primary-foreground/80">
             Your adventure awaits! Find items to fill your inventory.
           </p>
         </div>
@@ -411,29 +401,33 @@ export function InventoryPanel() {
   }
 
   return (
-    <div className="h-full flex">
+    <div className="h-full flex bg-gradient-story relative overflow-hidden">
+      {/* Magical Background Effects */}
+      <div className="absolute inset-0 bg-magical-dots opacity-20 pointer-events-none"></div>
+      <div className="floating-orb absolute top-10 right-10 w-4 h-4 bg-accent/30 rounded-full animate-float"></div>
+      <div className="floating-orb absolute bottom-20 left-8 w-3 h-3 bg-primary/20 rounded-full animate-float-delayed"></div>
       {/* Main Inventory */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col relative z-10">
         {/* Header with Stats */}
-        <div className="p-6 border-b border-gray-200 dark:border-gray-800">
+        <div className="p-6 border-b border-primary/20 bg-gradient-primary/30 backdrop-blur-sm glow-primary/30">
           <div className="grid grid-cols-3 gap-4 mb-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-foreground">
+              <p className="text-2xl font-bold text-primary-foreground glow-primary">
                 {inventory.length}
               </p>
-              <p className="text-sm text-muted-foreground">Items</p>
+              <p className="text-sm text-primary-foreground/70">Items</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-foreground">
+              <p className="text-2xl font-bold text-accent glow-accent">
                 {gameFormatters.weight(totalWeight)}
               </p>
-              <p className="text-sm text-muted-foreground">Weight</p>
+              <p className="text-sm text-primary-foreground/70">Weight</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-foreground">
+              <p className="text-2xl font-bold text-blue-400 glow-blue">
                 {inventory.filter(item => item.equipped).length}
               </p>
-              <p className="text-sm text-muted-foreground">Equipped</p>
+              <p className="text-sm text-primary-foreground/70">Equipped</p>
             </div>
           </div>
 
@@ -445,13 +439,14 @@ export function InventoryPanel() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 leftIcon={<MagnifyingGlassIcon className="h-4 w-4" />}
+                className="bg-gradient-accent/20 border-accent/20 text-primary-foreground"
               />
             </div>
             <div className="flex space-x-2">
               <select
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value)}
-                className="px-3 py-2 border border-input rounded-md bg-background text-foreground text-sm"
+                className="px-3 py-2 border border-accent/30 rounded-md bg-gradient-accent/10 text-primary-foreground text-sm focus:ring-accent"
               >
                 {itemTypes.map(type => (
                   <option key={type} value={type}>
@@ -462,14 +457,14 @@ export function InventoryPanel() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortBy)}
-                className="px-3 py-2 border border-input rounded-md bg-background text-foreground text-sm"
+                className="px-3 py-2 border border-accent/30 rounded-md bg-gradient-accent/10 text-primary-foreground text-sm focus:ring-accent"
               >
                 <option value="name">Name</option>
                 <option value="type">Type</option>
                 <option value="weight">Weight</option>
                 <option value="rarity">Rarity</option>
               </select>
-              <div className="flex border border-input rounded-md">
+              <div className="flex border border-accent/30 rounded-md bg-gradient-accent/10">
                 <Button
                   variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
                   size="sm"
@@ -495,7 +490,7 @@ export function InventoryPanel() {
         <div className="flex-1 overflow-y-auto p-6">
           {filteredInventory.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">No items match your search criteria.</p>
+              <p className="text-primary-foreground/70">No items match your search criteria.</p>
             </div>
           ) : viewMode === 'grid' ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -511,11 +506,11 @@ export function InventoryPanel() {
 
       {/* Item Detail Sidebar */}
       {selectedItem && (
-        <div className="w-80 border-l border-gray-200 dark:border-gray-800 bg-card p-6">
+        <div className="w-80 border-l border-accent/30 bg-gradient-accent/30 p-6 backdrop-blur-sm glow-accent/30 relative z-20">
           <div className="space-y-4">
             <div className="text-center">
-              <span className="text-4xl">{getItemIcon(selectedItem.type)}</span>
-              <h3 className="text-lg font-semibold text-foreground mt-2">
+              <span className="text-4xl animate-float glow-primary">{getItemIcon(selectedItem.type)}</span>
+              <h3 className="text-lg font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mt-2">
                 {selectedItem.name}
               </h3>
               <p className={cn('text-sm font-medium', gameFormatters.itemRarity(selectedItem.rarity).className)}>
@@ -524,37 +519,37 @@ export function InventoryPanel() {
             </div>
 
             <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-primary-foreground/80">
                 {selectedItem.description || 'No description available'}
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <p className="text-muted-foreground">Type</p>
+                <p className="text-primary-foreground/70">Type</p>
                 <p className="font-medium capitalize">{selectedItem.type}</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Quantity</p>
+                <p className="text-primary-foreground/70">Quantity</p>
                 <p className="font-medium">{selectedItem.quantity}</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Equipped</p>
+                <p className="text-primary-foreground/70">Equipped</p>
                 <p className="font-medium">{selectedItem.equipped ? 'Yes' : 'No'}</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Weight</p>
+                <p className="text-primary-foreground/70">Weight</p>
                 <p className="font-medium">{gameFormatters.weight(selectedItem.weight)}</p>
               </div>
             </div>
 
             {selectedItem.metadata && Object.keys(selectedItem.metadata).length > 0 && (
               <div>
-                <h4 className="font-medium text-foreground mb-2">Properties</h4>
+                <h4 className="font-medium bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-2">Properties</h4>
                 <div className="space-y-1 text-sm">
                   {Object.entries(selectedItem.metadata).map(([key, value]) => (
                     <div key={key} className="flex justify-between">
-                      <span className="text-muted-foreground capitalize">
+                      <span className="text-primary-foreground/70 capitalize">
                         {key.replace('_', ' ')}
                       </span>
                       <span className="font-medium">{String(value)}</span>

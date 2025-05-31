@@ -76,7 +76,7 @@ export function WebSocketManager({ children }: WebSocketManagerProps) {
       console.log('WebSocketManager: No active session, disconnecting WebSocket');
       disconnect();
     }
-  }, [currentSession?.session_id]); // Only depend on session ID to prevent infinite loops
+  }, [currentSession?.session_id, clearError, clearWebSocketError, connect, disconnect, setLastError, connectionStatus, isConnected]); // Include all dependencies
 
   // Handle WebSocket errors
   useEffect(() => {
