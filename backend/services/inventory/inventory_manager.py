@@ -9,13 +9,11 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from models.game_models import Character, InventoryItem, WorldState, EquipmentSlot, GameSession
+from models.game_models import Character, InventoryItem, GameSession
 from models.scenario_models import Lorebook
-from utils.gemini_client import gemini_client
 from utils.exceptions import (
-    InventoryError, ItemNotFoundError, EquipmentSlotOccupiedError,
-    InvalidEquipmentSlotError, InventoryFullError, InsufficientCarryCapacityError,
-    InvalidItemQuantityError, ValidationError
+    ItemNotFoundError, InvalidEquipmentSlotError,
+    InsufficientCarryCapacityError, InvalidItemQuantityError, ValidationError
 )
 
 # Import AI-driven systems
@@ -109,24 +107,14 @@ class LootContext:
         }
 
 
-class ItemTemplate:
-    """Template for generating items"""
-    def __init__(self, template_id: str, name_pattern: str, item_type: str,
-                 rarity: str, level_range: tuple, base_stats: Dict[str, Any]):
-        self.template_id = template_id
-        self.name_pattern = name_pattern
-        self.item_type = item_type
-        self.rarity = rarity
-        self.level_range = level_range
-        self.base_stats = base_stats
-        self.created_at = datetime.now()
+
 
 
 class InventoryManager:
     """Manages character inventory, equipment, and item interactions"""
 
     def __init__(self):
-        self.item_templates: Dict[str, ItemTemplate] = {}
+        # AI-driven rarity weights for dynamic item generation
         self.rarity_weights = {
             "common": 50,
             "uncommon": 30,
@@ -134,48 +122,7 @@ class InventoryManager:
             "epic": 4,
             "legendary": 1
         }
-        self._initialize_item_templates()
-
-    def _initialize_item_templates(self):
-        """Initialize default item templates"""
-        templates = [
-            # Weapons
-            ItemTemplate("sword_basic", "Iron Sword", "weapon", "common", (1, 5),
-                        {"damage": 10, "durability": 100}),
-            ItemTemplate("sword_steel", "Steel Sword", "weapon", "uncommon", (3, 10),
-                        {"damage": 15, "durability": 150}),
-            ItemTemplate("sword_enchanted", "Enchanted Blade", "weapon", "rare", (8, 15),
-                        {"damage": 25, "magic_damage": 5, "durability": 200}),
-
-            # Armor
-            ItemTemplate("armor_leather", "Leather Armor", "armor", "common", (1, 5),
-                        {"defense": 5, "durability": 80}),
-            ItemTemplate("armor_chain", "Chain Mail", "armor", "uncommon", (3, 10),
-                        {"defense": 10, "durability": 120}),
-            ItemTemplate("armor_plate", "Plate Armor", "armor", "rare", (8, 15),
-                        {"defense": 20, "magic_resistance": 5, "durability": 180}),
-
-            # Consumables
-            ItemTemplate("potion_health", "Health Potion", "consumable", "common", (1, 20),
-                        {"heal_amount": 50, "uses": 1}),
-            ItemTemplate("potion_mana", "Mana Potion", "consumable", "common", (1, 20),
-                        {"mana_amount": 30, "uses": 1}),
-            ItemTemplate("potion_greater_health", "Greater Health Potion", "consumable", "uncommon", (5, 20),
-                        {"heal_amount": 100, "uses": 1}),
-
-            # Miscellaneous
-            ItemTemplate("gem_basic", "Precious Gem", "misc", "uncommon", (1, 20),
-                        {"value": 100, "tradeable": True}),
-            ItemTemplate("scroll_spell", "Spell Scroll", "misc", "rare", (3, 20),
-                        {"spell_level": 1, "uses": 1}),
-            ItemTemplate("key_special", "Ancient Key", "misc", "epic", (10, 20),
-                        {"unlocks": "special_door", "unique": True})
-        ]
-
-        for template in templates:
-            self.item_templates[template.template_id] = template
-
-        logger.info(f"Initialized {len(templates)} item templates")
+        logger.info("InventoryManager initialized with AI-driven item generation")
 
     async def add_item(self, session_id: str, item: InventoryItem,
                       inventory: List[InventoryItem], character: Character) -> InventoryUpdate:
@@ -486,22 +433,22 @@ class InventoryManager:
         )
 
     async def _generate_template_loot(self, context: LootContext) -> List[InventoryItem]:
-        """Fallback template-based loot generation"""
+        """Fallback AI-driven loot generation when full AI generation fails"""
         try:
             loot_items = []
             num_items = self._calculate_loot_quantity(context)
 
             for _ in range(num_items):
                 rarity = self._select_rarity(context)
-                item = await self._generate_item_by_rarity(rarity, context)
+                item = await self._generate_basic_item_by_rarity(rarity, context)
                 if item:
                     loot_items.append(item)
 
-            logger.info(f"Generated {len(loot_items)} template-based loot items for level {context.character_level}")
+            logger.info(f"Generated {len(loot_items)} fallback loot items for level {context.character_level}")
             return loot_items
 
         except Exception as e:
-            logger.error(f"Error generating template loot: {str(e)}")
+            logger.error(f"Error generating fallback loot: {str(e)}")
             return []
 
     def _calculate_loot_quantity(self, context: LootContext) -> int:
@@ -563,56 +510,79 @@ class InventoryManager:
 
         return "common"  # Fallback
 
-    async def _generate_item_by_rarity(self, rarity: str, context: LootContext) -> Optional[InventoryItem]:
-        """Generate an item of specific rarity"""
+    async def _generate_basic_item_by_rarity(self, rarity: str, context: LootContext) -> Optional[InventoryItem]:
+        """Generate a basic item of specific rarity as fallback"""
         try:
-            # Find suitable templates
-            suitable_templates = []
-            for template in self.item_templates.values():
-                if (template.rarity == rarity and
-                    template.level_range[0] <= context.character_level <= template.level_range[1]):
-                    suitable_templates.append(template)
+            # Define basic item types by rarity
+            item_types_by_rarity = {
+                "common": ["consumable", "misc"],
+                "uncommon": ["weapon", "armor", "consumable"],
+                "rare": ["weapon", "armor", "misc"],
+                "epic": ["weapon", "armor"],
+                "legendary": ["weapon", "armor", "misc"]
+            }
 
-            if not suitable_templates:
-                # Fallback to any template of the rarity
-                suitable_templates = [t for t in self.item_templates.values() if t.rarity == rarity]
+            item_types = item_types_by_rarity.get(rarity, ["misc"])
+            item_type = random.choice(item_types)
 
-            if not suitable_templates:
-                return None
-
-            # Select random template
-            template = random.choice(suitable_templates)
-
-            # Generate item from template
-            item = await self._create_item_from_template(template, context)
+            # Generate basic item
+            item = await self._create_basic_item(item_type, rarity, context)
             return item
 
         except Exception as e:
-            logger.error(f"Error generating item by rarity: {str(e)}")
+            logger.error(f"Error generating basic item by rarity: {str(e)}")
             return None
 
-    async def _create_item_from_template(self, template: ItemTemplate, context: LootContext) -> InventoryItem:
-        """Create an item from a template"""
+    async def _create_basic_item(self, item_type: str, rarity: str, context: LootContext) -> InventoryItem:
+        """Create a basic item as fallback when AI generation fails"""
         try:
-            # Generate item name with some variation
-            item_name = await self._generate_item_name(template, context)
+            # Basic item names by type and rarity
+            item_names = {
+                "weapon": {
+                    "common": ["Iron Sword", "Wooden Staff", "Simple Bow"],
+                    "uncommon": ["Steel Blade", "Magic Wand", "Composite Bow"],
+                    "rare": ["Enchanted Sword", "Crystal Staff", "Elven Bow"],
+                    "epic": ["Legendary Blade", "Arcane Staff", "Dragon Bow"],
+                    "legendary": ["Mythic Weapon", "Divine Staff", "Celestial Bow"]
+                },
+                "armor": {
+                    "common": ["Leather Armor", "Cloth Robes", "Simple Shield"],
+                    "uncommon": ["Chain Mail", "Reinforced Robes", "Iron Shield"],
+                    "rare": ["Plate Armor", "Enchanted Robes", "Magic Shield"],
+                    "epic": ["Dragon Scale Armor", "Arcane Vestments", "Tower Shield"],
+                    "legendary": ["Divine Armor", "Celestial Robes", "Aegis Shield"]
+                },
+                "consumable": {
+                    "common": ["Health Potion", "Mana Potion", "Bread"],
+                    "uncommon": ["Greater Health Potion", "Greater Mana Potion", "Magic Food"],
+                    "rare": ["Superior Healing", "Elixir of Power", "Ambrosia"],
+                    "epic": ["Legendary Potion", "Divine Elixir", "Nectar"],
+                    "legendary": ["Potion of Immortality", "Divine Essence", "Amrita"]
+                },
+                "misc": {
+                    "common": ["Copper Coin", "Simple Gem", "Basic Tool"],
+                    "uncommon": ["Silver Coin", "Precious Gem", "Quality Tool"],
+                    "rare": ["Gold Coin", "Rare Crystal", "Masterwork Tool"],
+                    "epic": ["Platinum Coin", "Magic Crystal", "Legendary Tool"],
+                    "legendary": ["Ancient Artifact", "Divine Crystal", "Relic"]
+                }
+            }
 
-            # Calculate stats based on level and template
-            stats = self._calculate_item_stats(template, context)
+            names = item_names.get(item_type, {}).get(rarity, ["Unknown Item"])
+            item_name = random.choice(names)
 
-            # Create item
+            # Create basic item
             item = InventoryItem(
                 id=str(uuid.uuid4()),
                 name=item_name,
-                type=template.item_type,
-                rarity=template.rarity,
-                description=await self._generate_item_description(item_name, template, stats),
+                type=item_type,
+                rarity=rarity,
+                description=f"A {rarity} {item_type} found during your adventure.",
                 quantity=1,
                 equipped=False,
                 metadata={
-                    "template_id": template.template_id,
+                    "fallback_generated": True,
                     "level": context.character_level,
-                    "stats": stats,
                     "generated_at": datetime.now().isoformat(),
                     "location_found": context.location
                 }
@@ -621,91 +591,18 @@ class InventoryManager:
             return item
 
         except Exception as e:
-            logger.error(f"Error creating item from template: {str(e)}")
-            # Return a basic fallback item
+            logger.error(f"Error creating basic item: {str(e)}")
+            # Return absolute fallback
             return InventoryItem(
                 id=str(uuid.uuid4()),
-                name=template.name_pattern,
-                type=template.item_type,
-                rarity=template.rarity,
+                name="Mysterious Item",
+                type="misc",
+                rarity="common",
+                description="A mysterious item of unknown origin.",
                 quantity=1
             )
 
-    async def _generate_item_name(self, template: ItemTemplate, context: LootContext) -> str:
-        """Generate a name for the item"""
-        try:
-            # For now, use template name with slight variations
-            base_name = template.name_pattern
 
-            # Add level-appropriate prefixes for higher rarity items
-            if template.rarity == "rare":
-                prefixes = ["Fine", "Superior", "Masterwork", "Exceptional"]
-                base_name = f"{random.choice(prefixes)} {base_name}"
-            elif template.rarity == "epic":
-                prefixes = ["Legendary", "Heroic", "Mythical", "Ancient"]
-                base_name = f"{random.choice(prefixes)} {base_name}"
-            elif template.rarity == "legendary":
-                prefixes = ["Divine", "Celestial", "Eternal", "Godforged"]
-                base_name = f"{random.choice(prefixes)} {base_name}"
-
-            return base_name
-
-        except Exception as e:
-            logger.warning(f"Error generating item name: {str(e)}")
-            return template.name_pattern
-
-    def _calculate_item_stats(self, template: ItemTemplate, context: LootContext) -> Dict[str, Any]:
-        """Calculate item stats based on template and context"""
-        stats = template.base_stats.copy()
-
-        # Level scaling
-        level_multiplier = 1 + (context.character_level - 1) * 0.1
-
-        # Rarity scaling
-        rarity_multipliers = {
-            "common": 1.0,
-            "uncommon": 1.3,
-            "rare": 1.6,
-            "epic": 2.0,
-            "legendary": 2.5
-        }
-
-        rarity_multiplier = rarity_multipliers.get(template.rarity, 1.0)
-
-        # Apply scaling to numeric stats
-        for key, value in stats.items():
-            if isinstance(value, (int, float)):
-                stats[key] = int(value * level_multiplier * rarity_multiplier)
-
-        return stats
-
-    async def _generate_item_description(self, name: str, template: ItemTemplate, stats: Dict[str, Any]) -> str:
-        """Generate description for the item"""
-        try:
-            # Build description based on stats
-            description_parts = []
-
-            if "damage" in stats:
-                description_parts.append(f"Deals {stats['damage']} damage")
-
-            if "defense" in stats:
-                description_parts.append(f"Provides {stats['defense']} defense")
-
-            if "heal_amount" in stats:
-                description_parts.append(f"Restores {stats['heal_amount']} health when used")
-
-            if "mana_amount" in stats:
-                description_parts.append(f"Restores {stats['mana_amount']} mana when used")
-
-            base_description = f"A {template.rarity} {template.item_type}"
-            if description_parts:
-                base_description += f". {'. '.join(description_parts)}."
-
-            return base_description
-
-        except Exception as e:
-            logger.warning(f"Error generating item description: {str(e)}")
-            return f"A {template.rarity} {template.item_type}."
 
     def get_equipped_items(self, inventory: List[InventoryItem]) -> List[InventoryItem]:
         """Get all equipped items from inventory"""

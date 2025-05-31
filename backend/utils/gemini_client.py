@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 
 class GeminiClient:
     def __init__(self):
-        genai.configure(api_key=settings.GOOGLE_API_KEY)
-        self.model_name = settings.GEMINI_MODEL
+        genai.configure(api_key=settings.ai.google_api_key)
+        self.model_name = settings.ai.gemini_model
         self.model = genai.GenerativeModel(
             model_name=self.model_name,
             safety_settings={

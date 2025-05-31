@@ -78,10 +78,10 @@ class CacheManager:
     async def initialize(self):
         """Initialize Redis connection"""
         try:
-            redis_url = getattr(settings, 'REDIS_URL', None)
+            redis_url = settings.cache.redis_url
             # Check if REDIS_ENABLED is set to true in environment
-            redis_enabled = getattr(settings, 'REDIS_ENABLED', 'false').lower() == 'true'
-            
+            redis_enabled = settings.cache.redis_enabled
+
             if redis_enabled and redis and redis_url:
                 self.redis_client = redis.from_url(
                     redis_url,

@@ -34,8 +34,8 @@ class DatabaseService:
     def __init__(self):
         self.client = None
         self.db = None
-        self._connection_pool_size = 10
-        self._connection_timeout = 30
+        self._connection_pool_size = settings.database.connection_pool_size
+        self._connection_timeout = settings.database.connection_timeout
 
     async def connect(self) -> None:
         """
@@ -48,13 +48,13 @@ class DatabaseService:
         try:
             # Create client with connection pool settings
             self.client = motor.motor_asyncio.AsyncIOMotorClient(
-                settings.MONGO_URL,
+                settings.database.mongo_url,
                 maxPoolSize=self._connection_pool_size,
                 serverSelectionTimeoutMS=self._connection_timeout * 1000
             )
 
             if self.client:
-                self.db = self.client[settings.DATABASE_NAME]
+                self.db = self.client[settings.database.database_name]
 
                 # Test connection
                 await self.client.admin.command("ping")
@@ -113,10 +113,17 @@ class DatabaseService:
             logger.error(f"Error creating indexes: {str(e)}")
 
     async def disconnect(self):
-        """Close database connection"""
+        """Close database connection gracefully"""
         if self.client:
-            self.client.close()
-            logger.info("Disconnected from MongoDB")
+            try:
+                # Close all connections in the pool
+                self.client.close()
+                logger.info("Disconnected from MongoDB")
+            except Exception as e:
+                logger.error(f"Error during database disconnect: {str(e)}")
+            finally:
+                self.client = None
+                self.db = None
 
     # Game Session Operations
     async def save_game_session(self, session: GameSession) -> bool:
@@ -203,6 +210,30 @@ class DatabaseService:
         except Exception as e:
             logger.error(f"Error listing game sessions: {str(e)}")
             return []
+
+    async def update_game_session(self, session_id: str, update_data: Dict[str, Any]) -> bool:
+        """Update game session with new data"""
+        if self.db is None:
+            raise RuntimeError(DB_NOT_CONNECTED_ERROR)
+
+        try:
+            # Add updated timestamp
+            update_data["updated_at"] = datetime.now()
+
+            result = await self.db.game_sessions.update_one(
+                {"session_id": session_id}, {"$set": update_data}
+            )
+
+            if result.matched_count > 0:
+                logger.info(f"Updated game session {session_id}")
+                return True
+            else:
+                logger.warning(f"No game session found with ID {session_id}")
+                return False
+
+        except Exception as e:
+            logger.error(f"Error updating game session: {str(e)}")
+            return False
 
     # Lorebook Operations
     async def save_lorebook(self, lorebook: Lorebook) -> bool:

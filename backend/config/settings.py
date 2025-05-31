@@ -153,20 +153,7 @@ class Settings:
             default_ttl=int(os.getenv("CACHE_TTL", "300"))
         )
 
-        # Legacy compatibility properties
-        self.MONGO_URL = self.database.mongo_url
-        self.DATABASE_NAME = self.database.database_name
-        self.GOOGLE_API_KEY = self.ai.google_api_key
-        self.GEMINI_MODEL = self.ai.gemini_model
-        self.CORS_ORIGINS = self.api.cors_origins
-        self.DEBUG = self.api.debug
-        self.LOG_LEVEL = self.api.log_level
-        self.GEMINI_REQUESTS_PER_MINUTE = self.ai.requests_per_minute
-        self.MAX_CONTEXT_LENGTH = self.ai.max_context_length
-        self.MAX_STORY_LENGTH = self.game.max_story_length
-        self.AUTO_SAVE_INTERVAL = self.game.auto_save_interval
-        self.REDIS_ENABLED = self.cache.redis_enabled
-        self.REDIS_URL = self.cache.redis_url
+        # Environment-specific configuration
         self.GENKIT_ENV = os.getenv("GENKIT_ENV", "dev")
 
     def _validate_critical_settings(self):

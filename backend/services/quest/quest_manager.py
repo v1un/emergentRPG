@@ -21,31 +21,7 @@ from utils.exceptions import (
 logger = logging.getLogger(__name__)
 
 
-class QuestTemplate:
-    """Template for generating dynamic quests"""
-    def __init__(self, template_id: str, name_pattern: str, description_pattern: str,
-                 requirements: Dict[str, Any], rewards: Dict[str, Any],
-                 difficulty_range: Tuple[int, int], scenario_types: List[str]):
-        self.template_id = template_id
-        self.name_pattern = name_pattern
-        self.description_pattern = description_pattern
-        self.requirements = requirements
-        self.rewards = rewards
-        self.difficulty_range = difficulty_range
-        self.scenario_types = scenario_types
-        self.created_at = datetime.now()
 
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "template_id": self.template_id,
-            "name_pattern": self.name_pattern,
-            "description_pattern": self.description_pattern,
-            "requirements": self.requirements,
-            "rewards": self.rewards,
-            "difficulty_range": self.difficulty_range,
-            "scenario_types": self.scenario_types,
-            "created_at": self.created_at.isoformat()
-        }
 
 
 class QuestRequirements:
@@ -143,90 +119,19 @@ class QuestManager:
     """Manages dynamic quest generation, progress tracking, and completion"""
 
     def __init__(self):
-        self.quest_templates: Dict[str, QuestTemplate] = {}
         self.active_quests: Dict[str, Quest] = {}  # Stores Quest objects
         self.completed_quests: Dict[str, QuestCompletion] = {} # Stores QuestCompletion objects
-        self._initialize_default_templates()
-
-    def _initialize_default_templates(self):
-        """Initialize default quest templates"""
-        templates = [
-            QuestTemplate(
-                "exploration_basic",
-                "Explore the {location}",
-                "Venture into the mysterious {location} and discover what lies within.",
-                {"min_level": 1, "max_level": 5},
-                {"experience": 100, "gold": 50},
-                (1, 3),
-                ["fantasy", "adventure", "exploration"]
-            ),
-            QuestTemplate(
-                "fetch_item",
-                "Retrieve the {item}",
-                "A local {npc} has asked you to retrieve their lost {item} from {location}.",
-                {"min_level": 1, "max_level": 10},
-                {"experience": 150, "gold": 75},
-                (2, 4),
-                ["fantasy", "adventure", "fetch"]
-            ),
-            QuestTemplate(
-                "defeat_monster",
-                "Slay the {monster}",
-                "A dangerous {monster} has been terrorizing {location}. Eliminate the threat.",
-                {"min_level": 3, "max_level": 15},
-                {"experience": 200, "gold": 100},
-                (3, 6),
-                ["fantasy", "combat", "adventure"]
-            ),
-            QuestTemplate(
-                "rescue_npc",
-                "Rescue {npc}",
-                "{npc} has gone missing near {location}. Find them and bring them to safety.",
-                {"min_level": 2, "max_level": 12},
-                {"experience": 175, "gold": 85},
-                (3, 5),
-                ["fantasy", "adventure", "rescue"]
-            ),
-            QuestTemplate(
-                "deliver_message",
-                "Deliver Message to {npc}",
-                "Take this important message to {npc} in {location}.",
-                {"min_level": 1, "max_level": 8},
-                {"experience": 75, "gold": 40},
-                (1, 2),
-                ["fantasy", "adventure", "delivery"]
-            ),
-            QuestTemplate(
-                "investigate_mystery",
-                "Investigate the Mystery of {location}",
-                "Strange events have been occurring in {location}. Investigate and report back.",
-                {"min_level": 5, "max_level": 20},
-                {"experience": 250, "gold": 125},
-                (4, 7),
-                ["fantasy", "mystery", "investigation"]
-            )
-        ]
-
-        for template in templates:
-            self.quest_templates[template.template_id] = template
-
-        logger.info(f"Initialized {len(templates)} default quest templates")
+        logger.info("QuestManager initialized with AI-driven quest generation")
 
     async def generate_quest(self, context: GameContext) -> Quest:
-        """Generate a new quest based on game context"""
+        """Generate a new quest based on game context using AI"""
         try:
-            # Select appropriate template based on character level and context
-            suitable_templates = self._get_suitable_templates(context)
+            # Try AI-driven quest generation first
+            quest = await self._generate_ai_quest(context)
 
-            if not suitable_templates:
+            if not quest:
                 # Fallback to basic exploration quest
-                return self._create_fallback_quest(context)
-
-            # Choose random template
-            template = random.choice(suitable_templates)
-
-            # Generate quest using AI
-            quest = await self._generate_quest_from_template(template, context)
+                quest = self._create_fallback_quest(context)
 
             # Store quest
             self.active_quests[quest.id] = quest
@@ -238,33 +143,26 @@ class QuestManager:
             logger.error(f"Error generating quest: {str(e)}")
             return self._create_fallback_quest(context)
 
-    def _get_suitable_templates(self, context: GameContext) -> List[QuestTemplate]:
-        """Get quest templates suitable for the current context"""
-        suitable = []
-        character_level = context.character.level
-
-        for template in self.quest_templates.values():
-            # Check level requirements
-            # Ensure requirements is a dict and has min_level/max_level
-            req_min_level = template.requirements.get("min_level", 1) if isinstance(template.requirements, dict) else 1
-            req_max_level = template.requirements.get("max_level", 20) if isinstance(template.requirements, dict) else 20
-
-            if req_min_level <= character_level <= req_max_level:
-                suitable.append(template)
-
-        return suitable
-
-    async def _generate_quest_from_template(self, template: QuestTemplate, context: GameContext) -> Quest:
-        """Generate a specific quest from a template using AI"""
+    async def _generate_ai_quest(self, context: GameContext) -> Optional[Quest]:
+        """Generate a quest using AI based on game context"""
         try:
-            # Prepare context for AI generation
-            quest_prompt = self._build_quest_prompt(template, context)
+            # Build comprehensive prompt for AI quest generation
+            quest_prompt = self._build_ai_quest_prompt(context)
 
             # Generate quest details using AI
-            response = await gemini_client.generate_text(quest_prompt)
+            response = await gemini_client.generate_text(
+                quest_prompt,
+                system_instruction="You are a master quest designer creating engaging, contextual quests for an AI-driven RPG.",
+                temperature=0.7,
+                max_output_tokens=600,
+                response_format="json"
+            )
 
             # Parse AI response and create quest
-            quest_data = self._parse_quest_response(response, template, context)
+            quest_data = self._parse_ai_quest_response(response, context)
+
+            if not quest_data:
+                return None
 
             quest = Quest(
                 id=str(uuid.uuid4()),
@@ -279,7 +177,7 @@ class QuestManager:
                 objectives=quest_data["objectives"],
                 rewards=quest_data["rewards"],
                 metadata={
-                    "template_id": template.template_id,
+                    "ai_generated": True,
                     "difficulty": quest_data["difficulty"],
                     "estimated_time": quest_data["estimated_time"],
                     "location": context.location,
@@ -290,16 +188,22 @@ class QuestManager:
             return quest
 
         except Exception as e:
-            logger.error(f"Error generating quest from template: {str(e)}")
-            return self._create_quest_from_template_fallback(template, context)
+            logger.error(f"Error generating AI quest: {str(e)}")
+            return None
 
-    def _build_quest_prompt(self, template: QuestTemplate, context: GameContext) -> str:
+    def _build_ai_quest_prompt(self, context: GameContext) -> str:
         """Build prompt for AI quest generation"""
-        prompt = f"""Generate a quest based on the following template and context:
+        lorebook_context = ""
+        if context.lorebook:
+            lorebook_context = f"""
+World Lore:
+- Setting: {context.lorebook.series_metadata.setting}
+- Genre: {context.lorebook.series_metadata.genre}
+- Available Characters: {[char.name for char in context.lorebook.characters[:5]]}
+- Key Locations: {[loc.name for loc in context.lorebook.locations[:5]]}
+"""
 
-Template: {template.name_pattern}
-Description Pattern: {template.description_pattern}
-Difficulty Range: {template.difficulty_range[0]}-{template.difficulty_range[1]}
+        prompt = f"""Generate a contextual quest for an AI-driven RPG based on the current game state:
 
 Character Context:
 - Name: {context.character.name}
@@ -312,74 +216,57 @@ Character Context:
 World Context:
 - Available NPCs: {context.world_state.npcs_present}
 - Environment: {context.world_state.environment_description}
+- Special Conditions: {context.world_state.special_conditions}
+{lorebook_context}
 
-Generate a quest with:
-1. A compelling title
-2. An engaging description (2-3 sentences)
-3. 2-4 specific objectives
-4. Appropriate rewards for level {context.character.level}
-5. Estimated completion time
-6. Difficulty rating (1-10)
+Active Quests: {len(context.active_quests)} currently active
 
-Format as JSON with keys: title, description, objectives, rewards, difficulty, estimated_time"""
+Generate a quest that:
+1. Fits naturally into the current context and location
+2. Is appropriate for character level {context.character.level}
+3. Creates engaging narrative opportunities
+4. Has clear, achievable objectives
+5. Offers meaningful rewards
+
+Respond in JSON format:
+{{
+    "title": "Quest title",
+    "description": "2-3 sentence engaging description",
+    "objectives": ["objective 1", "objective 2", "objective 3"],
+    "rewards": {{"experience": 100, "gold": 50}},
+    "difficulty": 5,
+    "estimated_time": "30 minutes"
+}}"""
 
         return prompt
 
-    def _parse_quest_response(self, response: str, template: QuestTemplate, context: GameContext) -> Dict[str, Any]:
+    def _parse_ai_quest_response(self, response: str, context: GameContext) -> Optional[Dict[str, Any]]:
         """Parse AI response and extract quest data"""
         try:
-            # Try to parse JSON response
             import json
             quest_data = json.loads(response)
 
-            # Validate and set defaults
+            # Validate required fields
+            if not all(key in quest_data for key in ["title", "description", "objectives"]):
+                logger.warning("AI quest response missing required fields")
+                return None
+
+            # Calculate level-appropriate rewards
+            base_exp = 50 + (context.character.level * 25)
+            base_gold = 25 + (context.character.level * 15)
+
             return {
-                "title": quest_data.get("title", template.name_pattern.format(location=context.location)),
-                "description": quest_data.get("description", template.description_pattern.format(location=context.location)),
+                "title": quest_data["title"],
+                "description": quest_data["description"],
                 "objectives": quest_data.get("objectives", ["Complete the quest"]),
-                "rewards": quest_data.get("rewards", {"experience": 100, "gold": 50}),
-                "difficulty": quest_data.get("difficulty", template.difficulty_range[0]),
+                "rewards": quest_data.get("rewards", {"experience": base_exp, "gold": base_gold}),
+                "difficulty": quest_data.get("difficulty", 5),
                 "estimated_time": quest_data.get("estimated_time", "30 minutes")
             }
 
         except Exception as e:
-            logger.warning(f"Failed to parse AI quest response, using fallback: {str(e)}")
-            return self._create_fallback_quest_data(template, context)
-
-    def _create_fallback_quest_data(self, template: QuestTemplate, context: GameContext) -> Dict[str, Any]:
-        """Create fallback quest data when AI generation fails"""
-        return {
-            "title": template.name_pattern.replace("{location}", context.location),
-            "description": template.description_pattern.replace("{location}", context.location),
-            "objectives": ["Explore the area", "Report back with findings"],
-            "rewards": {"experience": 100, "gold": 50},
-            "difficulty": template.difficulty_range[0],
-            "estimated_time": "30 minutes"
-        }
-
-    def _create_quest_from_template_fallback(self, template: QuestTemplate, context: GameContext) -> Quest:
-        """Create a quest from template when AI generation fails"""
-        quest_data = self._create_fallback_quest_data(template, context)
-
-        return Quest(
-            id=str(uuid.uuid4()),
-            title=quest_data["title"],
-            description=quest_data["description"],
-            status="active",
-            progress=QuestProgress(
-                current=0,
-                total=len(quest_data["objectives"]),
-                completed_objectives=[False] * len(quest_data["objectives"])
-            ),
-            objectives=quest_data["objectives"],
-            rewards=quest_data["rewards"],
-            metadata={
-                "template_id": template.template_id,
-                "difficulty": quest_data["difficulty"],
-                "fallback": True,
-                "generated_at": datetime.now().isoformat()
-            }
-        )
+            logger.warning(f"Failed to parse AI quest response: {str(e)}")
+            return None
 
     def _create_fallback_quest(self, context: GameContext) -> Quest:
         """Create a basic fallback quest"""
@@ -541,8 +428,8 @@ Make it engaging and rewarding for the player."""
         return {
             "active_quests": len(self.active_quests),
             "completed_quests": len(self.completed_quests),
-            "available_templates": len(self.quest_templates),
-            "templates": list(self.quest_templates.keys())
+            "ai_driven": True,
+            "generation_method": "dynamic_ai"
         }
 
 

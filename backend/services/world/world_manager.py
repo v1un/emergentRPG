@@ -144,9 +144,9 @@ class WorldManager:
         self.locations: Dict[str, LocationInfo] = {}
         self.active_events: Dict[str, WorldEvent] = {}
         self.npc_states: Dict[str, NPCState] = {}
-        self.weather_patterns = ["clear", "cloudy", "rainy", "stormy", "foggy", "snowy"]
-        self.time_periods = ["dawn", "morning", "midday", "afternoon", "evening", "night", "midnight"]
+        # AI-driven weather and time progression
         self._initialize_default_locations()
+        logger.info("WorldManager initialized with AI-driven world state management")
     
     def _initialize_default_locations(self):
         """Initialize default generic locations"""
@@ -432,11 +432,14 @@ Format as JSON with keys: title, description, effects, duration, affected_locati
     
     def _create_fallback_event(self, event_type: str, context: Dict[str, Any]) -> WorldEvent:
         """Create a fallback world event"""
+        # Basic weather options for fallback
+        weather_options = ["clear", "cloudy", "rainy", "stormy", "foggy"]
+
         fallback_events = {
             "weather": {
                 "title": "Weather Change",
                 "description": "The weather begins to change.",
-                "effects": {"weather_change": random.choice(self.weather_patterns)}
+                "effects": {"weather_change": random.choice(weather_options)}
             },
             "npc_action": {
                 "title": "NPC Activity",
@@ -526,12 +529,11 @@ Format as JSON with keys: title, description, effects, duration, affected_locati
         }
     
     async def advance_time(self, session_id: str, current_time: str) -> str:
-        """Advance world time and trigger time-based events"""
+        """Advance world time using AI-driven progression"""
         try:
-            current_index = self.time_periods.index(current_time)
-            next_index = (current_index + 1) % len(self.time_periods)
-            new_time = self.time_periods[next_index]
-            
+            # AI-driven time progression
+            new_time = await self._generate_next_time_period(current_time)
+
             # Trigger time-based events
             if random.random() < 0.3:  # 30% chance of time-based event
                 await self.trigger_world_event("time_based", {
@@ -539,16 +541,53 @@ Format as JSON with keys: title, description, effects, duration, affected_locati
                     "new_time": new_time,
                     "session_id": session_id
                 })
-            
+
             # Update NPC schedules
             await self._update_npc_schedules(new_time)
-            
+
             logger.info(f"Advanced time from {current_time} to {new_time}")
             return new_time
-            
+
         except Exception as e:
             logger.error(f"Error advancing time: {str(e)}")
-            return current_time
+            return self._get_fallback_next_time(current_time)
+
+    async def _generate_next_time_period(self, current_time: str) -> str:
+        """Generate the next time period using AI"""
+        try:
+            prompt = f"""Given the current time period '{current_time}', what would be the next logical time period in a day cycle?
+
+Consider natural progression through:
+- dawn, morning, midday, afternoon, evening, night, midnight
+
+Respond with just the next time period name (one word)."""
+
+            response = await gemini_client.generate_text(prompt, max_output_tokens=10)
+            next_time = response.strip().lower()
+
+            # Validate response
+            valid_times = ["dawn", "morning", "midday", "afternoon", "evening", "night", "midnight"]
+            if next_time in valid_times:
+                return next_time
+            else:
+                return self._get_fallback_next_time(current_time)
+
+        except Exception as e:
+            logger.warning(f"Error generating next time period: {str(e)}")
+            return self._get_fallback_next_time(current_time)
+
+    def _get_fallback_next_time(self, current_time: str) -> str:
+        """Get fallback next time period"""
+        time_progression = {
+            "dawn": "morning",
+            "morning": "midday",
+            "midday": "afternoon",
+            "afternoon": "evening",
+            "evening": "night",
+            "night": "midnight",
+            "midnight": "dawn"
+        }
+        return time_progression.get(current_time, "morning")
     
     async def _update_npc_schedules(self, new_time: str):
         """Update NPC positions and activities based on time"""
