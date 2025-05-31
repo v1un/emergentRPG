@@ -86,6 +86,12 @@ GOOGLE_API_KEY=your_actual_api_key_here
 - **`./stop.sh`** - Stop all services gracefully
 - **`./format_all.sh`** - Format all code
 - **`./lint_all.sh`** - Lint all code
+- **Run backend tests**:  
+  ```bash
+  cd backend
+  pip install -r requirements.txt
+  pytest
+  ```
 
 ### Service URLs
 
